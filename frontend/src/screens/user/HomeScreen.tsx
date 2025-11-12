@@ -98,7 +98,7 @@ const HomeScreen: React.FC = () => {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Shop by Gender</Text>
+        <Text style={styles.sectionTitle}>Shoppp by Gender</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
           {genders.map((gender) => (
             <TouchableOpacity
