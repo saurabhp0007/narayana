@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import * as compression from 'compression';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -13,13 +15,20 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('app.port');
   const apiPrefix = configService.get<string>('app.apiPrefix');
+  const nodeEnv = configService.get<string>('app.nodeEnv');
+
+  // Security: Helmet middleware
+  app.use(helmet());
+
+  // Performance: Compression middleware
+  app.use(compression());
 
   // Global prefix for all routes
   app.setGlobalPrefix(apiPrefix);
 
   // Enable CORS
   app.enableCors({
-    origin: true, // In production, specify allowed origins
+    origin: nodeEnv === 'production' ? process.env.ALLOWED_ORIGINS?.split(',') : true,
     credentials: true,
   });
 
@@ -35,10 +44,15 @@ async function bootstrap() {
     }),
   );
 
+  // Graceful shutdown
+  app.enableShutdownHooks();
+
   await app.listen(port);
 
-  logger.log(`Application is running on: http://localhost:${port}/${apiPrefix}`);
-  logger.log(`Environment: ${configService.get<string>('app.nodeEnv')}`);
+  logger.log(`🚀 Application is running on: http://localhost:${port}/${apiPrefix}`);
+  logger.log(`🌍 Environment: ${nodeEnv}`);
+  logger.log(`🔒 Security: Helmet enabled`);
+  logger.log(`⚡ Compression: Enabled`);
 }
 
 bootstrap();
