@@ -1,0 +1,17 @@
+import { IsString, IsOptional, IsBoolean, MinLength, MaxLength } from 'class-validator';
+
+export class UpdateGenderDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2, { message: 'Name must be at least 2 characters long' })
+  @MaxLength(50, { message: 'Name must not exceed 50 characters' })
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  slug?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
