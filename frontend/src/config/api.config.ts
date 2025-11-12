@@ -11,7 +11,7 @@ const getBaseURL = () => {
   }
 
   // Production fallback
-  return 'https://narayana-il06bypxy-saurabhs-projects-2660e0f6.vercel.app';
+  return 'https://narayana-mszm.onrender.com';
 };
 
 export const API_CONFIG = {
