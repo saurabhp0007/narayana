@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { GenderModule } from './modules/gender/gender.module';
 import { CategoryModule } from './modules/category/category.module';
 import { SubcategoryModule } from './modules/subcategory/subcategory.module';
+import { ProductModule } from './modules/product/product.module';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
@@ -25,6 +26,7 @@ import emailConfig from './config/email.config';
     GenderModule,
     CategoryModule,
     SubcategoryModule,
+    ProductModule,
     // Other modules will be added here in future phases
   ],
   controllers: [AppController],
