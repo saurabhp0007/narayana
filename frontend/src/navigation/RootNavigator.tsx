@@ -63,10 +63,14 @@ const RootNavigator: React.FC = () => {
     ? window.location.pathname.startsWith('/admin')
     : false;
 
+  // If admin is authenticated, keep them in admin section regardless of URL
+  // This prevents admins from accessing user home/main routes
+  const shouldShowAdminSection = isAdminRoute || isAuthenticated;
+
   return (
     <NavigationContainer linking={Platform.OS === 'web' ? linking : undefined}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isAdminRoute ? (
+        {shouldShowAdminSection ? (
           <>
             {!isAuthenticated ? (
               <Stack.Screen name="AdminLogin" component={AdminLoginScreen} />
