@@ -9,6 +9,8 @@ import { CategoryModule } from './modules/category/category.module';
 import { SubcategoryModule } from './modules/subcategory/subcategory.module';
 import { ProductModule } from './modules/product/product.module';
 import { MediaModule } from './modules/media/media.module';
+import { CartModule } from './modules/cart/cart.module';
+import { WishlistModule } from './modules/wishlist/wishlist.module';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
@@ -30,6 +32,8 @@ import imagekitConfig from './config/imagekit.config';
     SubcategoryModule,
     ProductModule,
     MediaModule,
+    CartModule,
+    WishlistModule,
     // Other modules will be added here in future phases
   ],
   controllers: [AppController],
