@@ -9,6 +9,11 @@ import CartScreen from '../screens/user/CartScreen';
 import WishlistScreen from '../screens/user/WishlistScreen';
 import CheckoutScreen from '../screens/user/CheckoutScreen';
 import OrderSuccessScreen from '../screens/user/OrderSuccessScreen';
+import UserLoginScreen from '../screens/user/UserLoginScreen';
+import UserRegisterScreen from '../screens/user/UserRegisterScreen';
+import UserProfileScreen from '../screens/user/UserProfileScreen';
+import AddAddressScreen from '../screens/user/AddAddressScreen';
+import ChangePasswordScreen from '../screens/user/ChangePasswordScreen';
 
 export type UserStackParamList = {
   Main: undefined;
@@ -16,12 +21,18 @@ export type UserStackParamList = {
   ProductDetail: { productId: string };
   Checkout: undefined;
   OrderSuccess: { orderId: string };
+  UserLogin: undefined;
+  UserRegister: undefined;
+  UserProfile: undefined;
+  AddAddress: { mode: 'add' | 'edit'; index?: number; address?: any };
+  ChangePassword: undefined;
 };
 
 export type MainTabParamList = {
   Home: undefined;
   Cart: undefined;
   Wishlist: undefined;
+  Profile: undefined;
 };
 
 const Stack = createNativeStackNavigator<UserStackParamList>();
@@ -41,6 +52,8 @@ const MainTabs: React.FC = () => {
             iconName = focused ? 'cart' : 'cart-outline';
           } else if (route.name === 'Wishlist') {
             iconName = focused ? 'heart' : 'heart-outline';
+          } else if (route.name === 'Profile') {
+            iconName = focused ? 'person' : 'person-outline';
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -53,6 +66,7 @@ const MainTabs: React.FC = () => {
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Cart" component={CartScreen} />
       <Tab.Screen name="Wishlist" component={WishlistScreen} />
+      <Tab.Screen name="Profile" component={UserProfileScreen} />
     </Tab.Navigator>
   );
 };
@@ -95,6 +109,26 @@ const UserNavigator: React.FC = () => {
         name="OrderSuccess"
         component={OrderSuccessScreen}
         options={{ title: 'Order Confirmation', headerLeft: () => null }}
+      />
+      <Stack.Screen
+        name="UserLogin"
+        component={UserLoginScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="UserRegister"
+        component={UserRegisterScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="AddAddress"
+        component={AddAddressScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ChangePassword"
+        component={ChangePasswordScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
