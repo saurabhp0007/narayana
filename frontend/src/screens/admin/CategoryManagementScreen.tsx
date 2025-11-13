@@ -55,10 +55,13 @@ const CategoryManagementScreen: React.FC = () => {
   const openModal = (category?: Category) => {
     if (category) {
       setEditingCategory(category);
+      const genderId = typeof category.genderId === 'string'
+        ? category.genderId
+        : category.genderId._id;
       setFormData({
         name: category.name,
         slug: category.slug || '',
-        genderId: category.genderId,
+        genderId: genderId,
         isActive: category.isActive,
       });
     } else {
@@ -114,6 +117,13 @@ const CategoryManagementScreen: React.FC = () => {
     ]);
   };
 
+  const getGenderName = (genderId: string | Gender): string => {
+    if (typeof genderId === 'string') {
+      return genders.find(g => g._id === genderId)?.name || genderId;
+    }
+    return genderId.name;
+  };
+
   const renderCategory = ({ item }: { item: Category }) => (
     <View style={styles.itemCard}>
       <View style={styles.itemHeader}>
@@ -125,7 +135,7 @@ const CategoryManagementScreen: React.FC = () => {
         </View>
       </View>
       <Text style={styles.itemMeta}>
-        Gender: {genders.find(g => g._id === item.genderId)?.name || item.genderId}
+        Gender: {getGenderName(item.genderId)}
       </Text>
       {item.slug && <Text style={styles.itemDescription}>Slug: {item.slug}</Text>}
       <View style={styles.itemActions}>

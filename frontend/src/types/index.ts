@@ -51,7 +51,7 @@ export interface Category {
   _id: string;
   name: string;
   slug: string;
-  genderId: string;
+  genderId: string | Gender; // Can be populated
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -69,7 +69,7 @@ export interface Subcategory {
   _id: string;
   name: string;
   slug: string;
-  categoryId: string;
+  categoryId: string | Category; // Can be populated
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

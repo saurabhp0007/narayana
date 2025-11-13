@@ -55,10 +55,13 @@ const SubcategoryManagementScreen: React.FC = () => {
   const openModal = (subcategory?: Subcategory) => {
     if (subcategory) {
       setEditingSubcategory(subcategory);
+      const categoryId = typeof subcategory.categoryId === 'string'
+        ? subcategory.categoryId
+        : subcategory.categoryId._id;
       setFormData({
         name: subcategory.name,
         slug: subcategory.slug || '',
-        categoryId: subcategory.categoryId,
+        categoryId: categoryId,
         isActive: subcategory.isActive,
       });
     } else {
@@ -114,6 +117,13 @@ const SubcategoryManagementScreen: React.FC = () => {
     ]);
   };
 
+  const getCategoryName = (categoryId: string | Category): string => {
+    if (typeof categoryId === 'string') {
+      return categories.find(c => c._id === categoryId)?.name || categoryId;
+    }
+    return categoryId.name;
+  };
+
   const renderSubcategory = ({ item }: { item: Subcategory }) => (
     <View style={styles.itemCard}>
       <View style={styles.itemHeader}>
@@ -125,7 +135,7 @@ const SubcategoryManagementScreen: React.FC = () => {
         </View>
       </View>
       <Text style={styles.itemMeta}>
-        Category: {categories.find(c => c._id === item.categoryId)?.name || item.categoryId}
+        Category: {getCategoryName(item.categoryId)}
       </Text>
       {item.slug && <Text style={styles.itemDescription}>Slug: {item.slug}</Text>}
       <View style={styles.itemActions}>
