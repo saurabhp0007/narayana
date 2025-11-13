@@ -16,7 +16,7 @@ class GenderService {
   }
 
   async update(id: string, data: Partial<CreateGenderDto>): Promise<Gender> {
-    return await api.put<Gender>(API_ENDPOINTS.GENDER.UPDATE(id), data);
+    return await api.patch<Gender>(API_ENDPOINTS.GENDER.UPDATE(id), data);
   }
 
   async delete(id: string): Promise<void> {

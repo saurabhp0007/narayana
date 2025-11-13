@@ -20,7 +20,7 @@ class CategoryService {
   }
 
   async update(id: string, data: Partial<CreateCategoryDto>): Promise<Category> {
-    return await api.put<Category>(API_ENDPOINTS.CATEGORY.UPDATE(id), data);
+    return await api.patch<Category>(API_ENDPOINTS.CATEGORY.UPDATE(id), data);
   }
 
   async delete(id: string): Promise<void> {

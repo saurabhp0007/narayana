@@ -30,7 +30,7 @@ class ProductService {
   }
 
   async update(id: string, data: Partial<CreateProductDto>): Promise<Product> {
-    return await api.put<Product>(API_ENDPOINTS.PRODUCT.UPDATE(id), data);
+    return await api.patch<Product>(API_ENDPOINTS.PRODUCT.UPDATE(id), data);
   }
 
   async delete(id: string): Promise<void> {

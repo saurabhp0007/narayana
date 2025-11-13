@@ -22,7 +22,7 @@ class SubcategoryService {
   }
 
   async update(id: string, data: Partial<CreateSubcategoryDto>): Promise<Subcategory> {
-    return await api.put<Subcategory>(API_ENDPOINTS.SUBCATEGORY.UPDATE(id), data);
+    return await api.patch<Subcategory>(API_ENDPOINTS.SUBCATEGORY.UPDATE(id), data);
   }
 
   async delete(id: string): Promise<void> {

@@ -72,14 +72,14 @@ export const API_ENDPOINTS = {
 
   // Product
   PRODUCT: {
-    BASE: '/product',
-    CREATE: '/product',
-    LIST: '/product',
-    GET: (id: string) => `/product/${id}`,
-    UPDATE: (id: string) => `/product/${id}`,
-    DELETE: (id: string) => `/product/${id}`,
-    SEARCH: '/product/search',
-    FEATURED: '/product/featured',
+    BASE: '/products',
+    CREATE: '/products',
+    LIST: '/products',
+    GET: (id: string) => `/products/${id}`,
+    UPDATE: (id: string) => `/products/${id}`,
+    DELETE: (id: string) => `/products/${id}`,
+    SEARCH: '/products/search',
+    FEATURED: '/products/featured',
   },
 
   // Media

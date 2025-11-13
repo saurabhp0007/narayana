@@ -35,7 +35,6 @@ export interface Gender {
   _id: string;
   name: string;
   slug: string;
-  description?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -43,7 +42,7 @@ export interface Gender {
 
 export interface CreateGenderDto {
   name: string;
-  description?: string;
+  slug?: string;
   isActive?: boolean;
 }
 
@@ -52,8 +51,7 @@ export interface Category {
   _id: string;
   name: string;
   slug: string;
-  description?: string;
-  gender: Gender | string;
+  genderId: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -61,8 +59,8 @@ export interface Category {
 
 export interface CreateCategoryDto {
   name: string;
-  description?: string;
-  gender: string;
+  slug?: string;
+  genderId: string;
   isActive?: boolean;
 }
 
@@ -71,8 +69,7 @@ export interface Subcategory {
   _id: string;
   name: string;
   slug: string;
-  description?: string;
-  category: Category | string;
+  categoryId: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -80,8 +77,8 @@ export interface Subcategory {
 
 export interface CreateSubcategoryDto {
   name: string;
-  description?: string;
-  category: string;
+  slug?: string;
+  categoryId: string;
   isActive?: boolean;
 }
 
@@ -89,43 +86,44 @@ export interface CreateSubcategoryDto {
 export interface Product {
   _id: string;
   name: string;
-  description: string;
   sku: string;
   familySKU?: string;
-  gender: Gender | string;
-  category: Category | string;
-  subcategory: Subcategory | string;
-  price: number;
-  discountedPrice?: number;
+  description?: string;
+  genderId: string;
+  categoryId: string;
+  subcategoryId: string;
+  sizes?: string[];
   stock: number;
-  lowStockThreshold: number;
+  price: number;
+  discountPrice?: number;
+  relatedProductIds?: string[];
+  underPriceAmount?: number;
   images: string[];
   videos?: string[];
-  attributes: Record<string, any>;
-  tags: string[];
+  sliders?: string[];
   isActive: boolean;
-  isFeatured: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateProductDto {
   name: string;
-  description: string;
+  sku?: string;
   familySKU?: string;
-  gender: string;
-  category: string;
-  subcategory: string;
-  price: number;
-  discountedPrice?: number;
+  description?: string;
+  genderId: string;
+  categoryId: string;
+  subcategoryId: string;
+  sizes?: string[];
   stock: number;
-  lowStockThreshold?: number;
+  price: number;
+  discountPrice?: number;
+  relatedProductIds?: string[];
+  underPriceAmount?: number;
   images?: string[];
   videos?: string[];
-  attributes?: Record<string, any>;
-  tags?: string[];
+  sliders?: string[];
   isActive?: boolean;
-  isFeatured?: boolean;
 }
 
 export interface ProductFilters {
