@@ -31,22 +31,31 @@ const ProductManagementScreen: React.FC = () => {
   const [genderModalVisible, setGenderModalVisible] = useState(false);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [subcategoryModalVisible, setSubcategoryModalVisible] = useState(false);
+  const [relatedProductsModalVisible, setRelatedProductsModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<CreateProductDto>({
     name: '',
+    sku: '',
+    familySKU: '',
     description: '',
-    gender: '',
-    category: '',
-    subcategory: '',
-    price: 0,
-    discountedPrice: 0,
+    genderId: '',
+    categoryId: '',
+    subcategoryId: '',
+    sizes: [],
     stock: 0,
-    lowStockThreshold: 10,
-    tags: [],
+    price: 0,
+    discountPrice: undefined,
+    relatedProductIds: [],
+    underPriceAmount: undefined,
+    images: [],
+    videos: [],
+    sliders: [],
     isActive: true,
-    isFeatured: false,
   });
-  const [tagInput, setTagInput] = useState('');
+  const [sizeInput, setSizeInput] = useState('');
+  const [imageInput, setImageInput] = useState('');
+  const [videoInput, setVideoInput] = useState('');
+  const [sliderInput, setSliderInput] = useState('');
 
   useEffect(() => {
     loadData();
@@ -77,36 +86,49 @@ const ProductManagementScreen: React.FC = () => {
       setEditingProduct(product);
       setFormData({
         name: product.name,
+        sku: product.sku,
+        familySKU: product.familySKU,
         description: product.description,
-        gender: typeof product.gender === 'string' ? product.gender : product.gender._id,
-        category: typeof product.category === 'string' ? product.category : product.category._id,
-        subcategory: typeof product.subcategory === 'string' ? product.subcategory : product.subcategory._id,
-        price: product.price,
-        discountedPrice: product.discountedPrice,
+        genderId: product.genderId,
+        categoryId: product.categoryId,
+        subcategoryId: product.subcategoryId,
+        sizes: product.sizes || [],
         stock: product.stock,
-        lowStockThreshold: product.lowStockThreshold,
-        tags: product.tags,
+        price: product.price,
+        discountPrice: product.discountPrice,
+        relatedProductIds: product.relatedProductIds || [],
+        underPriceAmount: product.underPriceAmount,
+        images: product.images || [],
+        videos: product.videos || [],
+        sliders: product.sliders || [],
         isActive: product.isActive,
-        isFeatured: product.isFeatured,
       });
     } else {
       setEditingProduct(null);
       setFormData({
         name: '',
+        sku: '',
+        familySKU: '',
         description: '',
-        gender: '',
-        category: '',
-        subcategory: '',
-        price: 0,
-        discountedPrice: 0,
+        genderId: '',
+        categoryId: '',
+        subcategoryId: '',
+        sizes: [],
         stock: 0,
-        lowStockThreshold: 10,
-        tags: [],
+        price: 0,
+        discountPrice: undefined,
+        relatedProductIds: [],
+        underPriceAmount: undefined,
+        images: [],
+        videos: [],
+        sliders: [],
         isActive: true,
-        isFeatured: false,
       });
     }
-    setTagInput('');
+    setSizeInput('');
+    setImageInput('');
+    setVideoInput('');
+    setSliderInput('');
     setModalVisible(true);
   };
 
@@ -115,7 +137,7 @@ const ProductManagementScreen: React.FC = () => {
       Alert.alert('Error', 'Please enter a name');
       return;
     }
-    if (!formData.gender || !formData.category || !formData.subcategory) {
+    if (!formData.genderId || !formData.categoryId || !formData.subcategoryId) {
       Alert.alert('Error', 'Please select gender, category, and subcategory');
       return;
     }
@@ -135,6 +157,7 @@ const ProductManagementScreen: React.FC = () => {
       setModalVisible(false);
       loadData();
     } catch (error: any) {
+      console.error('Product submit error:', error);
       Alert.alert('Error', error.response?.data?.message || 'Operation failed');
     }
   };
@@ -147,10 +170,12 @@ const ProductManagementScreen: React.FC = () => {
         style: 'destructive',
         onPress: async () => {
           try {
+            console.log('Deleting product:', product._id);
             await productService.delete(product._id);
             Alert.alert('Success', 'Product deleted successfully');
             loadData();
           } catch (error: any) {
+            console.error('Delete product error:', error);
             Alert.alert('Error', error.response?.data?.message || 'Failed to delete product');
           }
         },
@@ -158,21 +183,87 @@ const ProductManagementScreen: React.FC = () => {
     ]);
   };
 
-  const addTag = () => {
-    if (tagInput.trim() && !formData.tags?.includes(tagInput.trim())) {
+  const addSize = () => {
+    if (sizeInput.trim() && !formData.sizes?.includes(sizeInput.trim())) {
       setFormData({
         ...formData,
-        tags: [...(formData.tags || []), tagInput.trim()],
+        sizes: [...(formData.sizes || []), sizeInput.trim()],
       });
-      setTagInput('');
+      setSizeInput('');
     }
   };
 
-  const removeTag = (tag: string) => {
+  const removeSize = (size: string) => {
     setFormData({
       ...formData,
-      tags: formData.tags?.filter((t) => t !== tag) || [],
+      sizes: formData.sizes?.filter((s) => s !== size) || [],
     });
+  };
+
+  const addImage = () => {
+    if (imageInput.trim() && !formData.images?.includes(imageInput.trim())) {
+      setFormData({
+        ...formData,
+        images: [...(formData.images || []), imageInput.trim()],
+      });
+      setImageInput('');
+    }
+  };
+
+  const removeImage = (image: string) => {
+    setFormData({
+      ...formData,
+      images: formData.images?.filter((img) => img !== image) || [],
+    });
+  };
+
+  const addVideo = () => {
+    if (videoInput.trim() && !formData.videos?.includes(videoInput.trim())) {
+      setFormData({
+        ...formData,
+        videos: [...(formData.videos || []), videoInput.trim()],
+      });
+      setVideoInput('');
+    }
+  };
+
+  const removeVideo = (video: string) => {
+    setFormData({
+      ...formData,
+      videos: formData.videos?.filter((v) => v !== video) || [],
+    });
+  };
+
+  const addSlider = () => {
+    if (sliderInput.trim() && !formData.sliders?.includes(sliderInput.trim())) {
+      setFormData({
+        ...formData,
+        sliders: [...(formData.sliders || []), sliderInput.trim()],
+      });
+      setSliderInput('');
+    }
+  };
+
+  const removeSlider = (slider: string) => {
+    setFormData({
+      ...formData,
+      sliders: formData.sliders?.filter((s) => s !== slider) || [],
+    });
+  };
+
+  const toggleRelatedProduct = (productId: string) => {
+    const relatedIds = formData.relatedProductIds || [];
+    if (relatedIds.includes(productId)) {
+      setFormData({
+        ...formData,
+        relatedProductIds: relatedIds.filter((id) => id !== productId),
+      });
+    } else {
+      setFormData({
+        ...formData,
+        relatedProductIds: [...relatedIds, productId],
+      });
+    }
   };
 
   const renderProduct = ({ item }: { item: Product }) => (
@@ -263,7 +354,23 @@ const ProductManagementScreen: React.FC = () => {
                 placeholder="Enter product name"
               />
 
-              <Text style={styles.label}>Description *</Text>
+              <Text style={styles.label}>SKU</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.sku}
+                onChangeText={(value) => setFormData({ ...formData, sku: value })}
+                placeholder="Enter SKU"
+              />
+
+              <Text style={styles.label}>Family SKU</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.familySKU}
+                onChangeText={(value) => setFormData({ ...formData, familySKU: value })}
+                placeholder="Enter Family SKU"
+              />
+
+              <Text style={styles.label}>Description</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 value={formData.description}
@@ -278,8 +385,8 @@ const ProductManagementScreen: React.FC = () => {
                 style={styles.selectorButton}
                 onPress={() => setGenderModalVisible(true)}
               >
-                <Text style={formData.gender ? styles.selectorButtonText : styles.selectorButtonPlaceholder}>
-                  {formData.gender ? genders.find(g => g._id === formData.gender)?.name : 'Select Gender'}
+                <Text style={formData.genderId ? styles.selectorButtonText : styles.selectorButtonPlaceholder}>
+                  {formData.genderId ? genders.find(g => g._id === formData.genderId)?.name : 'Select Gender'}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color="#666" />
               </TouchableOpacity>
@@ -289,8 +396,8 @@ const ProductManagementScreen: React.FC = () => {
                 style={styles.selectorButton}
                 onPress={() => setCategoryModalVisible(true)}
               >
-                <Text style={formData.category ? styles.selectorButtonText : styles.selectorButtonPlaceholder}>
-                  {formData.category ? categories.find(c => c._id === formData.category)?.name : 'Select Category'}
+                <Text style={formData.categoryId ? styles.selectorButtonText : styles.selectorButtonPlaceholder}>
+                  {formData.categoryId ? categories.find(c => c._id === formData.categoryId)?.name : 'Select Category'}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color="#666" />
               </TouchableOpacity>
@@ -300,8 +407,8 @@ const ProductManagementScreen: React.FC = () => {
                 style={styles.selectorButton}
                 onPress={() => setSubcategoryModalVisible(true)}
               >
-                <Text style={formData.subcategory ? styles.selectorButtonText : styles.selectorButtonPlaceholder}>
-                  {formData.subcategory ? subcategories.find(s => s._id === formData.subcategory)?.name : 'Select Subcategory'}
+                <Text style={formData.subcategoryId ? styles.selectorButtonText : styles.selectorButtonPlaceholder}>
+                  {formData.subcategoryId ? subcategories.find(s => s._id === formData.subcategoryId)?.name : 'Select Subcategory'}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color="#666" />
               </TouchableOpacity>
@@ -315,11 +422,11 @@ const ProductManagementScreen: React.FC = () => {
                 keyboardType="decimal-pad"
               />
 
-              <Text style={styles.label}>Discounted Price</Text>
+              <Text style={styles.label}>Discount Price</Text>
               <TextInput
                 style={styles.input}
-                value={formData.discountedPrice?.toString() || ''}
-                onChangeText={(value) => setFormData({ ...formData, discountedPrice: parseFloat(value) || undefined })}
+                value={formData.discountPrice?.toString() || ''}
+                onChangeText={(value) => setFormData({ ...formData, discountPrice: parseFloat(value) || undefined })}
                 placeholder="0.00"
                 keyboardType="decimal-pad"
               />
@@ -333,46 +440,118 @@ const ProductManagementScreen: React.FC = () => {
                 keyboardType="number-pad"
               />
 
-              <Text style={styles.label}>Low Stock Threshold</Text>
+              <Text style={styles.label}>Under Price Amount</Text>
               <TextInput
                 style={styles.input}
-                value={formData.lowStockThreshold?.toString() || '10'}
-                onChangeText={(value) => setFormData({ ...formData, lowStockThreshold: parseInt(value) || 10 })}
-                placeholder="10"
-                keyboardType="number-pad"
+                value={formData.underPriceAmount?.toString() || ''}
+                onChangeText={(value) => setFormData({ ...formData, underPriceAmount: parseFloat(value) || undefined })}
+                placeholder="0.00"
+                keyboardType="decimal-pad"
               />
 
-              <Text style={styles.label}>Tags</Text>
-              <View style={styles.tagInputContainer}>
+              <Text style={styles.label}>Sizes</Text>
+              <View style={styles.arrayInputContainer}>
                 <TextInput
-                  style={styles.tagInput}
-                  value={tagInput}
-                  onChangeText={setTagInput}
-                  placeholder="Enter tag"
+                  style={styles.arrayInput}
+                  value={sizeInput}
+                  onChangeText={setSizeInput}
+                  placeholder="Enter size (e.g. S, M, L)"
                 />
-                <TouchableOpacity style={styles.addTagButton} onPress={addTag}>
+                <TouchableOpacity style={styles.addButton} onPress={addSize}>
                   <Ionicons name="add" size={20} color="white" />
                 </TouchableOpacity>
               </View>
-              <View style={styles.tagsContainer}>
-                {formData.tags?.map((tag) => (
-                  <View key={tag} style={styles.tag}>
-                    <Text style={styles.tagText}>{tag}</Text>
-                    <TouchableOpacity onPress={() => removeTag(tag)}>
+              <View style={styles.arrayItemsContainer}>
+                {formData.sizes?.map((size, index) => (
+                  <View key={index} style={styles.arrayItem}>
+                    <Text style={styles.arrayItemText}>{size}</Text>
+                    <TouchableOpacity onPress={() => removeSize(size)}>
                       <Ionicons name="close-circle" size={16} color="#666" />
                     </TouchableOpacity>
                   </View>
                 ))}
               </View>
 
-              <View style={styles.switchRow}>
-                <Text style={styles.label}>Featured</Text>
-                <Switch
-                  value={formData.isFeatured}
-                  onValueChange={(value) => setFormData({ ...formData, isFeatured: value })}
-                  trackColor={{ false: '#ccc', true: '#b39ddb' }}
-                  thumbColor={formData.isFeatured ? '#6200ee' : '#f4f3f4'}
+              <Text style={styles.label}>Related Products</Text>
+              <TouchableOpacity
+                style={styles.selectorButton}
+                onPress={() => setRelatedProductsModalVisible(true)}
+              >
+                <Text style={formData.relatedProductIds && formData.relatedProductIds.length > 0 ? styles.selectorButtonText : styles.selectorButtonPlaceholder}>
+                  {formData.relatedProductIds && formData.relatedProductIds.length > 0
+                    ? `${formData.relatedProductIds.length} products selected`
+                    : 'Select Related Products'}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color="#666" />
+              </TouchableOpacity>
+
+              <Text style={styles.label}>Images (URLs)</Text>
+              <View style={styles.arrayInputContainer}>
+                <TextInput
+                  style={styles.arrayInput}
+                  value={imageInput}
+                  onChangeText={setImageInput}
+                  placeholder="Enter image URL"
                 />
+                <TouchableOpacity style={styles.addButton} onPress={addImage}>
+                  <Ionicons name="add" size={20} color="white" />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.arrayItemsContainer}>
+                {formData.images?.map((image, index) => (
+                  <View key={index} style={styles.arrayItem}>
+                    <Text style={styles.arrayItemText} numberOfLines={1}>{image}</Text>
+                    <TouchableOpacity onPress={() => removeImage(image)}>
+                      <Ionicons name="close-circle" size={16} color="#666" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+
+              <Text style={styles.label}>Videos (URLs)</Text>
+              <View style={styles.arrayInputContainer}>
+                <TextInput
+                  style={styles.arrayInput}
+                  value={videoInput}
+                  onChangeText={setVideoInput}
+                  placeholder="Enter video URL"
+                />
+                <TouchableOpacity style={styles.addButton} onPress={addVideo}>
+                  <Ionicons name="add" size={20} color="white" />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.arrayItemsContainer}>
+                {formData.videos?.map((video, index) => (
+                  <View key={index} style={styles.arrayItem}>
+                    <Text style={styles.arrayItemText} numberOfLines={1}>{video}</Text>
+                    <TouchableOpacity onPress={() => removeVideo(video)}>
+                      <Ionicons name="close-circle" size={16} color="#666" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+
+              <Text style={styles.label}>Sliders (URLs)</Text>
+              <View style={styles.arrayInputContainer}>
+                <TextInput
+                  style={styles.arrayInput}
+                  value={sliderInput}
+                  onChangeText={setSliderInput}
+                  placeholder="Enter slider URL"
+                />
+                <TouchableOpacity style={styles.addButton} onPress={addSlider}>
+                  <Ionicons name="add" size={20} color="white" />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.arrayItemsContainer}>
+                {formData.sliders?.map((slider, index) => (
+                  <View key={index} style={styles.arrayItem}>
+                    <Text style={styles.arrayItemText} numberOfLines={1}>{slider}</Text>
+                    <TouchableOpacity onPress={() => removeSlider(slider)}>
+                      <Ionicons name="close-circle" size={16} color="#666" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
               </View>
 
               <View style={styles.switchRow}>
@@ -413,7 +592,7 @@ const ProductManagementScreen: React.FC = () => {
                   key={gender._id}
                   style={styles.selectorModalItem}
                   onPress={() => {
-                    setFormData({ ...formData, gender: gender._id });
+                    setFormData({ ...formData, genderId: gender._id });
                     setGenderModalVisible(false);
                   }}
                 >
@@ -421,7 +600,7 @@ const ProductManagementScreen: React.FC = () => {
                     <Ionicons name="transgender" size={20} color="#6200ee" />
                     <Text style={styles.selectorModalItemText}>{gender.name}</Text>
                   </View>
-                  {formData.gender === gender._id && (
+                  {formData.genderId === gender._id && (
                     <Ionicons name="checkmark" size={24} color="#6200ee" />
                   )}
                 </TouchableOpacity>
@@ -446,7 +625,7 @@ const ProductManagementScreen: React.FC = () => {
                   key={category._id}
                   style={styles.selectorModalItem}
                   onPress={() => {
-                    setFormData({ ...formData, category: category._id });
+                    setFormData({ ...formData, categoryId: category._id });
                     setCategoryModalVisible(false);
                   }}
                 >
@@ -454,7 +633,7 @@ const ProductManagementScreen: React.FC = () => {
                     <Ionicons name="grid-outline" size={20} color="#6200ee" />
                     <Text style={styles.selectorModalItemText}>{category.name}</Text>
                   </View>
-                  {formData.category === category._id && (
+                  {formData.categoryId === category._id && (
                     <Ionicons name="checkmark" size={24} color="#6200ee" />
                   )}
                 </TouchableOpacity>
@@ -479,7 +658,7 @@ const ProductManagementScreen: React.FC = () => {
                   key={subcategory._id}
                   style={styles.selectorModalItem}
                   onPress={() => {
-                    setFormData({ ...formData, subcategory: subcategory._id });
+                    setFormData({ ...formData, subcategoryId: subcategory._id });
                     setSubcategoryModalVisible(false);
                   }}
                 >
@@ -487,7 +666,37 @@ const ProductManagementScreen: React.FC = () => {
                     <Ionicons name="list-outline" size={20} color="#6200ee" />
                     <Text style={styles.selectorModalItemText}>{subcategory.name}</Text>
                   </View>
-                  {formData.subcategory === subcategory._id && (
+                  {formData.subcategoryId === subcategory._id && (
+                    <Ionicons name="checkmark" size={24} color="#6200ee" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={relatedProductsModalVisible} animationType="slide" transparent onRequestClose={() => setRelatedProductsModalVisible(false)}>
+        <View style={styles.selectorModalOverlay}>
+          <View style={[styles.selectorModalContent, Platform.OS === 'web' && styles.selectorModalContentWeb]}>
+            <View style={styles.selectorModalHeader}>
+              <Text style={styles.selectorModalTitle}>Select Related Products</Text>
+              <TouchableOpacity onPress={() => setRelatedProductsModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.selectorModalList}>
+              {products.filter(p => !editingProduct || p._id !== editingProduct._id).map((product) => (
+                <TouchableOpacity
+                  key={product._id}
+                  style={styles.selectorModalItem}
+                  onPress={() => toggleRelatedProduct(product._id)}
+                >
+                  <View style={styles.selectorModalItemContent}>
+                    <Ionicons name="cube-outline" size={20} color="#6200ee" />
+                    <Text style={styles.selectorModalItemText}>{product.name}</Text>
+                  </View>
+                  {formData.relatedProductIds?.includes(product._id) && (
                     <Ionicons name="checkmark" size={24} color="#6200ee" />
                   )}
                 </TouchableOpacity>
@@ -767,12 +976,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-  tagInputContainer: {
+  arrayInputContainer: {
     flexDirection: 'row',
     gap: 8,
     marginBottom: 12,
   },
-  tagInput: {
+  arrayInput: {
     flex: 1,
     backgroundColor: '#f5f5f5',
     borderRadius: 8,
@@ -781,7 +990,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-  addTagButton: {
+  addButton: {
     backgroundColor: '#6200ee',
     width: 44,
     height: 44,
@@ -789,13 +998,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  tagsContainer: {
+  arrayItemsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 16,
   },
-  tag: {
+  arrayItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#e0e0e0',
@@ -804,9 +1013,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     gap: 4,
   },
-  tagText: {
+  arrayItemText: {
     fontSize: 14,
     color: '#333',
+    maxWidth: 200,
   },
   switchRow: {
     flexDirection: 'row',

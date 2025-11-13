@@ -86,10 +86,12 @@ const GenderManagementScreen: React.FC = () => {
         style: 'destructive',
         onPress: async () => {
           try {
+            console.log('Deleting gender:', gender._id);
             await genderService.delete(gender._id);
             Alert.alert('Success', 'Gender deleted successfully');
             loadGenders();
           } catch (error: any) {
+            console.error('Delete gender error:', error);
             Alert.alert('Error', error.response?.data?.message || 'Failed to delete gender');
           }
         },
