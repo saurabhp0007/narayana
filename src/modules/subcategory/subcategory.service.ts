@@ -205,4 +205,19 @@ export class SubcategoryService {
   async countByCategory(categoryId: string): Promise<number> {
     return this.subcategoryModel.countDocuments({ categoryId: new Types.ObjectId(categoryId) });
   }
+
+  async search(query: string, limit: number = 10): Promise<Subcategory[]> {
+    const searchRegex = new RegExp(query, 'i');
+    return this.subcategoryModel
+      .find({
+        isActive: true,
+        $or: [
+          { name: { $regex: searchRegex } },
+          { slug: { $regex: searchRegex } },
+        ],
+      })
+      .select('_id name slug')
+      .limit(limit)
+      .exec();
+  }
 }

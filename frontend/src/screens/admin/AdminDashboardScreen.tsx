@@ -7,6 +7,7 @@ import {
   Alert,
   StyleSheet,
   Platform,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -29,6 +30,7 @@ const AdminDashboardScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const dispatch = useAppDispatch();
   const { admin } = useAppSelector((state) => state.auth);
+  const [confirmLogoutVisible, setConfirmLogoutVisible] = React.useState(false);
 
   const managementCards: ManagementCard[] = [
     {
@@ -76,20 +78,27 @@ const AdminDashboardScreen: React.FC = () => {
   ];
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          await dispatch(logout());
-          // Redirect to admin login page after logout
-          if (Platform.OS === 'web') {
-            window.location.href = '/admin/login';
-          }
+    if (Platform.OS === 'web') {
+      setConfirmLogoutVisible(true);
+    } else {
+      Alert.alert('Logout', 'Are you sure you want to logout?', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: confirmLogout,
         },
-      },
-    ]);
+      ]);
+    }
+  };
+
+  const confirmLogout = async () => {
+    setConfirmLogoutVisible(false);
+    await dispatch(logout());
+    // Redirect to admin login page after logout
+    if (Platform.OS === 'web') {
+      window.location.href = '/adminLogin';
+    }
   };
 
   return (
@@ -124,6 +133,32 @@ const AdminDashboardScreen: React.FC = () => {
           ))}
         </View>
       </ScrollView>
+
+      {/* Logout Confirmation Modal */}
+      <Modal visible={confirmLogoutVisible} transparent animationType="fade">
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmCard}>
+            <View style={styles.confirmHeader}>
+              <Ionicons name="log-out-outline" size={32} color="#f44336" />
+            </View>
+            <Text style={styles.confirmTitle}>Logout</Text>
+            <Text style={styles.confirmMessage}>
+              Are you sure you want to logout?
+            </Text>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={styles.confirmCancelButton}
+                onPress={() => setConfirmLogoutVisible(false)}
+              >
+                <Text style={styles.confirmCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmLogoutButton} onPress={confirmLogout}>
+                <Text style={styles.confirmLogoutText}>Logout</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -198,6 +233,71 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     lineHeight: 18,
+  },
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  confirmHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  confirmTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  confirmMessage: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  confirmCancelButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+  },
+  confirmCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  confirmLogoutButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#f44336',
+    alignItems: 'center',
+  },
+  confirmLogoutText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
   },
 });
 

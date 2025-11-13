@@ -7,12 +7,12 @@ const getBaseURL = () => {
 
   // Check if we're in development
   if (typeof __DEV__ !== 'undefined' && __DEV__) {
-    return 'http://localhost:3000';
+    return 'https://orca-app-55tp9.ondigitalocean.app';
   }
 
   // Production fallback
   // return 'https://narayana-mszm.onrender.com';
-    return 'https://naryana-gpfm9.ondigitalocean.app';  
+    return 'https://orca-app-55tp9.ondigitalocean.app';  
 };
 
 export const API_CONFIG = {

@@ -5,10 +5,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  TextInput,
   FlatList,
   RefreshControl,
   StyleSheet,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -21,6 +21,9 @@ import { fetchWishlist } from '../../store/slices/wishlistSlice';
 import genderService from '../../services/gender.service';
 import categoryService from '../../services/category.service';
 import { Gender, Category } from '../../types';
+import SearchAutosuggest from '../../components/SearchAutosuggest';
+
+const { width } = Dimensions.get('window');
 
 type NavigationProp = NativeStackNavigationProp<UserStackParamList>;
 
@@ -30,7 +33,6 @@ const HomeScreen: React.FC = () => {
   const { featuredProducts, loading } = useAppSelector((state) => state.product);
   const [genders, setGenders] = useState<Gender[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -59,18 +61,16 @@ const HomeScreen: React.FC = () => {
     setRefreshing(false);
   };
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      navigation.navigate('ProductList', {});
-    }
-  };
-
   const handleCategoryPress = (genderId: string, categoryId?: string) => {
     navigation.navigate('ProductList', { genderId, categoryId });
   };
 
   const handleProductPress = (productId: string) => {
     navigation.navigate('ProductDetail', { productId });
+  };
+
+  const handleSearchSubmit = (query: string) => {
+    navigation.navigate('ProductList', { search: query });
   };
 
   return (
@@ -80,21 +80,23 @@ const HomeScreen: React.FC = () => {
     >
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>eCommerce</Text>
-          <TouchableOpacity>
-            <Ionicons name="notifications-outline" size={24} color="white" />
-          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Narayana Store</Text>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.headerIcon}>
+              <Ionicons name="heart-outline" size={24} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.navigate('Cart')}>
+              <Ionicons name="cart-outline" size={24} color="white" />
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#666" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search products..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearch}
-          />
-        </View>
+        <SearchAutosuggest
+          onSelectProduct={handleProductPress}
+          onSelectCategory={(id, name) => handleCategoryPress('', id)}
+          onSearchSubmit={handleSearchSubmit}
+          placeholder="Search products, categories..."
+          containerStyle={styles.searchWrapper}
+        />
       </View>
 
       <View style={styles.section}>
@@ -153,41 +155,51 @@ const HomeScreen: React.FC = () => {
         {loading ? (
           <Text style={styles.loadingText}>Loading...</Text>
         ) : (
-          <FlatList
-            data={featuredProducts}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item._id}
-            renderItem={({ item }) => (
+          <View style={styles.featuredProductsGrid}>
+            {featuredProducts.slice(0, 6).map((item) => (
               <TouchableOpacity
-                style={styles.productCard}
+                key={item._id}
+                style={styles.productGridCard}
                 onPress={() => handleProductPress(item._id)}
               >
                 {item.images && item.images.length > 0 ? (
-                  <Image source={{ uri: item.images[0] }} style={styles.productImage} resizeMode="cover" />
+                  <Image source={{ uri: item.images[0] }} style={styles.productGridImage} resizeMode="cover" />
                 ) : (
-                  <View style={styles.productImagePlaceholder}>
+                  <View style={[styles.productGridImage, styles.productImagePlaceholder]}>
                     <Ionicons name="image-outline" size={40} color="#999" />
                   </View>
                 )}
-                <View style={styles.productInfo}>
+                <View style={styles.productGridInfo}>
                   <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
                   <View style={styles.priceRow}>
-                    <Text style={styles.productPrice}>₹{item.price}</Text>
-                    {item.discountedPrice && (
-                      <Text style={styles.productDiscountPrice}>₹{item.discountedPrice}</Text>
+                    {item.discountPrice ? (
+                      <>
+                        <Text style={styles.productDiscountPriceGreen}>₹{item.discountPrice}</Text>
+                        <Text style={styles.productOriginalPrice}>₹{item.price}</Text>
+                        <View style={styles.discountBadge}>
+                          <Text style={styles.discountBadgeText}>
+                            {Math.round(((item.price - item.discountPrice) / item.price) * 100)}% OFF
+                          </Text>
+                        </View>
+                      </>
+                    ) : (
+                      <Text style={styles.productPrice}>₹{item.price}</Text>
                     )}
                   </View>
                   {item.stock <= 10 && item.stock > 0 && (
-                    <Text style={styles.lowStockText}>Only {item.stock} left!</Text>
+                    <View style={styles.lowStockBadge}>
+                      <Text style={styles.lowStockText}>Only {item.stock} left</Text>
+                    </View>
                   )}
                   {item.stock === 0 && (
-                    <Text style={styles.outOfStockText}>Out of Stock</Text>
+                    <View style={styles.outOfStockBadge}>
+                      <Text style={styles.outOfStockText}>Out of Stock</Text>
+                    </View>
                   )}
                 </View>
               </TouchableOpacity>
-            )}
-          />
+            ))}
+          </View>
         )}
       </View>
 
@@ -227,18 +239,15 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
   },
-  searchContainer: {
-    backgroundColor: 'white',
-    borderRadius: 8,
+  headerActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    gap: 16,
   },
-  searchInput: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 16,
+  headerIcon: {
+    padding: 4,
+  },
+  searchWrapper: {
+    marginBottom: 8,
   },
   section: {
     paddingHorizontal: 16,
@@ -318,11 +327,16 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 16,
   },
-  productCard: {
-    marginRight: 16,
-    width: 160,
+  featuredProductsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  productGridCard: {
+    width: width > 600 ? '32%' : '48%',
     backgroundColor: 'white',
     borderRadius: 8,
+    marginBottom: 16,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -330,51 +344,81 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  productImage: {
+  productGridImage: {
     width: '100%',
-    height: 160,
+    aspectRatio: 1,
   },
   productImagePlaceholder: {
-    width: '100%',
-    height: 160,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#f5f5f5',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  productInfo: {
+  productGridInfo: {
     padding: 12,
   },
   productName: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 8,
     color: '#333',
+    minHeight: 40,
   },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    flexWrap: 'wrap',
+    marginBottom: 8,
+    gap: 6,
   },
   productPrice: {
     color: '#6200ee',
     fontWeight: 'bold',
     fontSize: 16,
   },
-  productDiscountPrice: {
+  productDiscountPriceGreen: {
+    color: '#4caf50',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  productOriginalPrice: {
     color: '#999',
     textDecorationLine: 'line-through',
     fontSize: 12,
-    marginLeft: 8,
+  },
+  discountBadge: {
+    backgroundColor: '#ff5722',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  discountBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  lowStockBadge: {
+    backgroundColor: '#fff3e0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
   },
   lowStockText: {
     color: '#ff9800',
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  outOfStockBadge: {
+    backgroundColor: '#ffebee',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
   },
   outOfStockText: {
     color: '#f44336',
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 11,
+    fontWeight: '600',
   },
   banner: {
     marginHorizontal: 16,

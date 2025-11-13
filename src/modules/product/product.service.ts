@@ -311,4 +311,60 @@ export class ProductService {
       .sort({ name: 1 })
       .exec();
   }
+
+  async autosuggest(query: string, limit: number = 10): Promise<any> {
+    if (!query || query.trim().length < 2) {
+      return {
+        products: [],
+        categories: [],
+        subcategories: [],
+      };
+    }
+
+    const searchRegex = new RegExp(query, 'i');
+
+    // Search products
+    const products = await this.productModel
+      .find({
+        isActive: true,
+        $or: [
+          { name: { $regex: searchRegex } },
+          { sku: { $regex: searchRegex } },
+          { description: { $regex: searchRegex } },
+        ],
+      })
+      .select('_id name sku price discountPrice images')
+      .limit(limit)
+      .exec();
+
+    // Search categories
+    const categories = await this.categoryService.search(query, limit);
+
+    // Search subcategories
+    const subcategories = await this.subcategoryService.search(query, limit);
+
+    return {
+      products: products.map((p) => ({
+        _id: p._id,
+        name: p.name,
+        sku: p.sku,
+        price: p.price,
+        discountPrice: p.discountPrice,
+        image: p.images && p.images.length > 0 ? p.images[0] : null,
+        type: 'product',
+      })),
+      categories: categories.map((c) => ({
+        _id: c._id,
+        name: c.name,
+        slug: c.slug,
+        type: 'category',
+      })),
+      subcategories: subcategories.map((s) => ({
+        _id: s._id,
+        name: s.name,
+        slug: s.slug,
+        type: 'subcategory',
+      })),
+    };
+  }
 }

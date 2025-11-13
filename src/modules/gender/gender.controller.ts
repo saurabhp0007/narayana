@@ -17,11 +17,11 @@ import { UpdateGenderDto } from './dto/update-gender.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @Controller('gender')
-@UseGuards(JwtAuthGuard)
 export class GenderController {
   constructor(private readonly genderService: GenderService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createGenderDto: CreateGenderDto) {
     return this.genderService.create(createGenderDto);
@@ -51,11 +51,13 @@ export class GenderController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard)
   async update(@Param('id') id: string, @Body() updateGenderDto: UpdateGenderDto) {
     return this.genderService.update(id, updateGenderDto);
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async remove(@Param('id') id: string) {
     return this.genderService.remove(id);

@@ -17,11 +17,11 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @Controller('products')
-@UseGuards(JwtAuthGuard)
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createProductDto: CreateProductDto) {
     return this.productService.create(createProductDto);
@@ -61,6 +61,12 @@ export class ProductController {
     return this.productService.findAll(pageNum, limitNum, filters);
   }
 
+  @Get('autosuggest')
+  async autosuggest(@Query('q') query: string, @Query('limit') limit: string = '10') {
+    const limitNum = parseInt(limit, 10);
+    return this.productService.autosuggest(query, limitNum);
+  }
+
   @Get('by-category/:categoryId')
   async getProductsByCategory(@Param('categoryId') categoryId: string) {
     return this.productService.getProductsByCategory(categoryId);
@@ -87,16 +93,19 @@ export class ProductController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard)
   async update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
     return this.productService.update(id, updateProductDto);
   }
 
   @Patch(':id/stock')
+  @UseGuards(JwtAuthGuard)
   async updateStock(@Param('id') id: string, @Body('quantity') quantity: number) {
     return this.productService.updateStock(id, quantity);
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async remove(@Param('id') id: string) {
     return this.productService.remove(id);

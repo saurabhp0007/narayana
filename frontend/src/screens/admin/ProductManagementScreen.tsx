@@ -33,6 +33,13 @@ const ProductManagementScreen: React.FC = () => {
   const [subcategoryModalVisible, setSubcategoryModalVisible] = useState(false);
   const [relatedProductsModalVisible, setRelatedProductsModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [notification, setNotification] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({
+    visible: false,
+    message: '',
+    type: 'success',
+  });
   const [formData, setFormData] = useState<CreateProductDto>({
     name: '',
     sku: '',
@@ -56,6 +63,13 @@ const ProductManagementScreen: React.FC = () => {
   const [imageInput, setImageInput] = useState('');
   const [videoInput, setVideoInput] = useState('');
   const [sliderInput, setSliderInput] = useState('');
+
+  const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+    setNotification({ visible: true, message, type });
+    setTimeout(() => {
+      setNotification({ visible: false, message: '', type: 'success' });
+    }, 3000);
+  };
 
   useEffect(() => {
     loadData();
@@ -163,24 +177,47 @@ const ProductManagementScreen: React.FC = () => {
   };
 
   const handleDelete = (product: Product) => {
-    Alert.alert('Delete Product', `Are you sure you want to delete "${product.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            console.log('Deleting product:', product._id);
-            await productService.delete(product._id);
-            Alert.alert('Success', 'Product deleted successfully');
-            loadData();
-          } catch (error: any) {
-            console.error('Delete product error:', error);
-            Alert.alert('Error', error.response?.data?.message || 'Failed to delete product');
-          }
+    if (Platform.OS === 'web') {
+      setDeleteTarget(product);
+      setConfirmDeleteVisible(true);
+    } else {
+      Alert.alert('Delete Product', `Are you sure you want to delete "${product.name}"?`, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => deleteProduct(product._id),
         },
-      },
-    ]);
+      ]);
+    }
+  };
+
+  const confirmDelete = () => {
+    if (deleteTarget) {
+      deleteProduct(deleteTarget._id);
+      setConfirmDeleteVisible(false);
+      setDeleteTarget(null);
+    }
+  };
+
+  const deleteProduct = async (id: string) => {
+    try {
+      console.log('Deleting product:', id);
+      await productService.delete(id);
+      if (Platform.OS === 'web') {
+        showNotification('Product deleted successfully', 'success');
+      } else {
+        Alert.alert('Success', 'Product deleted successfully');
+      }
+      loadData();
+    } catch (error: any) {
+      console.error('Delete product error:', error);
+      if (Platform.OS === 'web') {
+        showNotification(error.response?.data?.message || 'Failed to delete product', 'error');
+      } else {
+        Alert.alert('Error', error.response?.data?.message || 'Failed to delete product');
+      }
+    }
   };
 
   const addSize = () => {
@@ -705,6 +742,49 @@ const ProductManagementScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal visible={confirmDeleteVisible} transparent animationType="fade">
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmCard}>
+            <View style={styles.confirmHeader}>
+              <Ionicons name="warning" size={32} color="#f44336" />
+            </View>
+            <Text style={styles.confirmTitle}>Delete Product</Text>
+            <Text style={styles.confirmMessage}>
+              Are you sure you want to delete "{deleteTarget?.name}"?
+            </Text>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={styles.confirmCancelButton}
+                onPress={() => {
+                  setConfirmDeleteVisible(false);
+                  setDeleteTarget(null);
+                }}
+              >
+                <Text style={styles.confirmCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmDeleteButton} onPress={confirmDelete}>
+                <Text style={styles.confirmDeleteText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Notification Modal */}
+      <Modal visible={notification.visible} transparent animationType="fade">
+        <View style={styles.notificationOverlay}>
+          <View style={[styles.notificationCard, notification.type === 'error' ? styles.notificationError : styles.notificationSuccess]}>
+            <Ionicons
+              name={notification.type === 'error' ? 'close-circle' : 'checkmark-circle'}
+              size={24}
+              color="white"
+            />
+            <Text style={styles.notificationText}>{notification.message}</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -1054,6 +1134,104 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  confirmHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  confirmTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  confirmMessage: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  confirmCancelButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+  },
+  confirmCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  confirmDeleteButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#f44336',
+    alignItems: 'center',
+  },
+  confirmDeleteText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+  notificationOverlay: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingTop: 50,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  notificationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    minWidth: 300,
+    maxWidth: '90%',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  notificationSuccess: {
+    backgroundColor: '#4caf50',
+  },
+  notificationError: {
+    backgroundColor: '#f44336',
+  },
+  notificationText: {
+    fontSize: 16,
+    color: 'white',
+    fontWeight: '600',
+    flex: 1,
   },
 });
 

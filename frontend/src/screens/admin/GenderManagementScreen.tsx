@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Switch,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import genderService from '../../services/gender.service';
@@ -19,12 +20,26 @@ const GenderManagementScreen: React.FC = () => {
   const [genders, setGenders] = useState<Gender[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
+  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Gender | null>(null);
   const [editingGender, setEditingGender] = useState<Gender | null>(null);
+  const [notification, setNotification] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({
+    visible: false,
+    message: '',
+    type: 'success',
+  });
   const [formData, setFormData] = useState<CreateGenderDto>({
     name: '',
     slug: '',
     isActive: true,
   });
+
+  const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+    setNotification({ visible: true, message, type });
+    setTimeout(() => {
+      setNotification({ visible: false, message: '', type: 'success' });
+    }, 3000);
+  };
 
   useEffect(() => {
     loadGenders();
@@ -36,7 +51,11 @@ const GenderManagementScreen: React.FC = () => {
       const data = await genderService.getAll();
       setGenders(data);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load genders');
+      if (Platform.OS === 'web') {
+        showNotification('Failed to load genders', 'error');
+      } else {
+        Alert.alert('Error', 'Failed to load genders');
+      }
     } finally {
       setLoading(false);
     }
@@ -59,44 +78,83 @@ const GenderManagementScreen: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
-      Alert.alert('Error', 'Please enter a name');
+      if (Platform.OS === 'web') {
+        showNotification('Please enter a name', 'error');
+      } else {
+        Alert.alert('Error', 'Please enter a name');
+      }
       return;
     }
 
     try {
       if (editingGender) {
         await genderService.update(editingGender._id, formData);
-        Alert.alert('Success', 'Gender updated successfully');
+        if (Platform.OS === 'web') {
+          showNotification('Gender updated successfully', 'success');
+        } else {
+          Alert.alert('Success', 'Gender updated successfully');
+        }
       } else {
         await genderService.create(formData);
-        Alert.alert('Success', 'Gender created successfully');
+        if (Platform.OS === 'web') {
+          showNotification('Gender created successfully', 'success');
+        } else {
+          Alert.alert('Success', 'Gender created successfully');
+        }
       }
       setModalVisible(false);
       loadGenders();
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Operation failed');
+      if (Platform.OS === 'web') {
+        showNotification(error.response?.data?.message || 'Operation failed', 'error');
+      } else {
+        Alert.alert('Error', error.response?.data?.message || 'Operation failed');
+      }
     }
   };
 
   const handleDelete = (gender: Gender) => {
-    Alert.alert('Delete Gender', `Are you sure you want to delete "${gender.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            console.log('Deleting gender:', gender._id);
-            await genderService.delete(gender._id);
-            Alert.alert('Success', 'Gender deleted successfully');
-            loadGenders();
-          } catch (error: any) {
-            console.error('Delete gender error:', error);
-            Alert.alert('Error', error.response?.data?.message || 'Failed to delete gender');
-          }
+    if (Platform.OS === 'web') {
+      setDeleteTarget(gender);
+      setConfirmDeleteVisible(true);
+    } else {
+      Alert.alert('Delete Gender', `Are you sure you want to delete "${gender.name}"?`, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => deleteGender(gender._id),
         },
-      },
-    ]);
+      ]);
+    }
+  };
+
+  const confirmDelete = () => {
+    if (deleteTarget) {
+      setConfirmDeleteVisible(false);
+      deleteGender(deleteTarget._id);
+      setDeleteTarget(null);
+    }
+  };
+
+  const deleteGender = async (id: string) => {
+    try {
+      console.log('Deleting gender:', id);
+      await genderService.delete(id);
+      if (Platform.OS === 'web') {
+        showNotification('Gender deleted successfully', 'success');
+      } else {
+        Alert.alert('Success', 'Gender deleted successfully');
+      }
+      loadGenders();
+    } catch (error: any) {
+      console.error('Delete gender error:', error);
+      if (Platform.OS === 'web') {
+        showNotification(error.response?.data?.message || 'Failed to delete gender', 'error');
+      } else {
+        Alert.alert('Error', error.response?.data?.message || 'Failed to delete gender');
+      }
+    }
   };
 
   const renderGender = ({ item }: { item: Gender }) => (
@@ -196,6 +254,49 @@ const GenderManagementScreen: React.FC = () => {
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveButton} onPress={handleSubmit}>
                 <Text style={styles.saveButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Notification Modal */}
+      <Modal visible={notification.visible} transparent animationType="fade">
+        <View style={styles.notificationOverlay}>
+          <View style={[styles.notificationCard, notification.type === 'error' ? styles.notificationError : styles.notificationSuccess]}>
+            <Ionicons
+              name={notification.type === 'error' ? 'close-circle' : 'checkmark-circle'}
+              size={24}
+              color="white"
+            />
+            <Text style={styles.notificationText}>{notification.message}</Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Confirm Delete Modal */}
+      <Modal visible={confirmDeleteVisible} transparent animationType="fade">
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmCard}>
+            <View style={styles.confirmHeader}>
+              <Ionicons name="warning" size={32} color="#f44336" />
+            </View>
+            <Text style={styles.confirmTitle}>Delete Gender</Text>
+            <Text style={styles.confirmMessage}>
+              Are you sure you want to delete "{deleteTarget?.name}"? This action cannot be undone.
+            </Text>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={styles.confirmCancelButton}
+                onPress={() => {
+                  setConfirmDeleteVisible(false);
+                  setDeleteTarget(null);
+                }}
+              >
+                <Text style={styles.confirmCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmDeleteButton} onPress={confirmDelete}>
+                <Text style={styles.confirmDeleteText}>Delete</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -402,6 +503,103 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+  notificationOverlay: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingTop: 50,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  notificationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    minWidth: 300,
+    maxWidth: '90%',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  notificationSuccess: {
+    backgroundColor: '#4caf50',
+  },
+  notificationError: {
+    backgroundColor: '#f44336',
+  },
+  notificationText: {
+    fontSize: 16,
+    color: 'white',
+    fontWeight: '600',
+    flex: 1,
+  },
+  confirmOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  confirmCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  confirmHeader: {
+    marginBottom: 16,
+  },
+  confirmTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  confirmMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  confirmCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+  },
+  confirmCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  confirmDeleteButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#f44336',
+    alignItems: 'center',
+  },
+  confirmDeleteText: {
     fontSize: 16,
     fontWeight: '600',
     color: 'white',

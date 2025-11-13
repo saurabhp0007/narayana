@@ -182,4 +182,19 @@ export class CategoryService {
   async countByGender(genderId: string): Promise<number> {
     return this.categoryModel.countDocuments({ genderId: new Types.ObjectId(genderId) });
   }
+
+  async search(query: string, limit: number = 10): Promise<Category[]> {
+    const searchRegex = new RegExp(query, 'i');
+    return this.categoryModel
+      .find({
+        isActive: true,
+        $or: [
+          { name: { $regex: searchRegex } },
+          { slug: { $regex: searchRegex } },
+        ],
+      })
+      .select('_id name slug')
+      .limit(limit)
+      .exec();
+  }
 }

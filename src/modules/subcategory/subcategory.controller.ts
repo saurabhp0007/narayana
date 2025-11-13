@@ -17,11 +17,11 @@ import { UpdateSubcategoryDto } from './dto/update-subcategory.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @Controller('subcategory')
-@UseGuards(JwtAuthGuard)
 export class SubcategoryController {
   constructor(private readonly subcategoryService: SubcategoryService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createSubcategoryDto: CreateSubcategoryDto) {
     return this.subcategoryService.create(createSubcategoryDto);
@@ -57,11 +57,13 @@ export class SubcategoryController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard)
   async update(@Param('id') id: string, @Body() updateSubcategoryDto: UpdateSubcategoryDto) {
     return this.subcategoryService.update(id, updateSubcategoryDto);
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async remove(@Param('id') id: string) {
     return this.subcategoryService.remove(id);
