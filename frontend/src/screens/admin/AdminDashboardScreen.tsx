@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Alert,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -80,7 +81,13 @@ const AdminDashboardScreen: React.FC = () => {
       {
         text: 'Logout',
         style: 'destructive',
-        onPress: () => dispatch(logout()),
+        onPress: async () => {
+          await dispatch(logout());
+          // Redirect to admin login page after logout
+          if (Platform.OS === 'web') {
+            window.location.href = '/admin/login';
+          }
+        },
       },
     ]);
   };

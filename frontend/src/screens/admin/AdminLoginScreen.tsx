@@ -38,6 +38,10 @@ const AdminLoginScreen: React.FC = () => {
     try {
       setLoading(true);
       await dispatch(login({ email, password })).unwrap();
+      // Redirect to admin dashboard after successful login
+      if (Platform.OS === 'web') {
+        window.location.href = '/admin/dashboard';
+      }
     } catch (error: any) {
       Alert.alert('Login Failed', error || 'Invalid email or password');
     } finally {
