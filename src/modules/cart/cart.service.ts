@@ -10,6 +10,7 @@ import { Cart } from './schemas/cart.schema';
 import { AddToCartDto } from './dto/add-to-cart.dto';
 import { UpdateCartDto } from './dto/update-cart.dto';
 import { ProductService } from '../product/product.service';
+import { OfferService } from '../offer/offer.service';
 import { RedisService } from '../../database/redis.service';
 
 @Injectable()
@@ -21,6 +22,7 @@ export class CartService {
     @InjectModel(Cart.name)
     private cartModel: Model<Cart>,
     private productService: ProductService,
+    private offerService: OfferService,
     private redisService: RedisService,
   ) {}
 
@@ -100,8 +102,8 @@ export class CartService {
       .sort({ createdAt: -1 })
       .exec();
 
-    // Calculate totals
-    const result = this.calculateCartTotals(cartItems);
+    // Calculate totals with offers
+    const result = await this.calculateCartTotals(cartItems);
 
     // Cache the result
     await this.redisService.set(cacheKey, JSON.stringify(result), this.CART_CACHE_TTL);
@@ -170,50 +172,77 @@ export class CartService {
     return { count };
   }
 
-  private calculateCartTotals(cartItems: any[]): any {
+  private async calculateCartTotals(cartItems: any[]): Promise<any> {
     let subtotal = 0;
-    let totalDiscount = 0;
+    let totalProductDiscount = 0;
+    let totalOfferDiscount = 0;
     let total = 0;
     let totalItems = 0;
 
-    const items = cartItems.map((item) => {
-      const product = item.productId;
-      const price = product.discountPrice || product.price;
-      const itemTotal = price * item.quantity;
-      const discount = product.discountPrice
-        ? (product.price - product.discountPrice) * item.quantity
-        : 0;
+    const items = await Promise.all(
+      cartItems.map(async (item) => {
+        const product = item.productId;
+        const originalPrice = product.price;
+        const productDiscountPrice = product.discountPrice || product.price;
+        const productDiscount = product.discountPrice
+          ? (product.price - product.discountPrice) * item.quantity
+          : 0;
 
-      subtotal += product.price * item.quantity;
-      totalDiscount += discount;
-      total += itemTotal;
-      totalItems += item.quantity;
+        // Check for applicable offers
+        const { offer, discount: offerDiscount } = await this.offerService.getBestOfferForProduct(
+          product._id.toString(),
+          item.quantity,
+          productDiscountPrice,
+        );
 
-      return {
-        _id: item._id,
-        product: {
-          _id: product._id,
-          name: product.name,
-          sku: product.sku,
-          price: product.price,
-          discountPrice: product.discountPrice,
-          images: product.images,
-          stock: product.stock,
-          isActive: product.isActive,
-        },
-        quantity: item.quantity,
-        price: price,
-        itemTotal: itemTotal,
-        discount: discount,
-        addedAt: item.addedAt,
-      };
-    });
+        // Use the better discount (product discount or offer discount)
+        const effectiveDiscount = Math.max(productDiscount, offerDiscount);
+        const finalPrice = productDiscountPrice * item.quantity - offerDiscount;
+
+        subtotal += originalPrice * item.quantity;
+        totalProductDiscount += productDiscount;
+        totalOfferDiscount += offerDiscount;
+        total += finalPrice;
+        totalItems += item.quantity;
+
+        return {
+          _id: item._id,
+          product: {
+            _id: product._id,
+            name: product.name,
+            sku: product.sku,
+            price: product.price,
+            discountPrice: product.discountPrice,
+            images: product.images,
+            stock: product.stock,
+            isActive: product.isActive,
+          },
+          quantity: item.quantity,
+          price: productDiscountPrice,
+          itemSubtotal: productDiscountPrice * item.quantity,
+          productDiscount: productDiscount,
+          offerDiscount: offerDiscount,
+          itemTotal: finalPrice,
+          appliedOffer: offer
+            ? {
+                _id: offer._id,
+                name: offer.name,
+                description: offer.description,
+                offerType: offer.offerType,
+              }
+            : null,
+          addedAt: item.addedAt,
+        };
+      }),
+    );
 
     return {
       items,
       summary: {
         subtotal,
-        totalDiscount,
+        totalProductDiscount,
+        totalOfferDiscount,
+        totalDiscount: totalProductDiscount + totalOfferDiscount,
         total,
         totalItems,
         itemCount: items.length,

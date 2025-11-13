@@ -93,6 +93,58 @@ export class OfferService {
       .exec();
   }
 
+  async getOffersForProduct(productId: string): Promise<Offer[]> {
+    const now = new Date();
+    const productObjectId = new Types.ObjectId(productId);
+
+    // Find offers that include this specific product
+    const productOffers = await this.offerModel
+      .find({
+        isActive: true,
+        startDate: { $lte: now },
+        endDate: { $gte: now },
+        productIds: productObjectId,
+      })
+      .sort({ priority: -1 })
+      .exec();
+
+    if (productOffers.length > 0) {
+      return productOffers;
+    }
+
+    // If no product-specific offers, check category/subcategory/gender offers
+    // This requires populating product data to get category/subcategory/gender
+    // For now, return empty if no product-specific offers
+    // TODO: Enhance to check category/subcategory/gender level offers
+
+    return [];
+  }
+
+  async getBestOfferForProduct(
+    productId: string,
+    quantity: number,
+    price: number,
+  ): Promise<{ offer: Offer | null; discount: number }> {
+    const offers = await this.getOffersForProduct(productId);
+
+    if (offers.length === 0) {
+      return { offer: null, discount: 0 };
+    }
+
+    let bestOffer: Offer | null = null;
+    let maxDiscount = 0;
+
+    for (const offer of offers) {
+      const discount = this.calculateOfferDiscount(offer, quantity, price);
+      if (discount > maxDiscount) {
+        maxDiscount = discount;
+        bestOffer = offer;
+      }
+    }
+
+    return { offer: bestOffer, discount: maxDiscount };
+  }
+
   calculateOfferDiscount(offer: Offer, quantity: number, originalPrice: number): number {
     switch (offer.offerType) {
       case OfferType.BUY_X_GET_Y:
