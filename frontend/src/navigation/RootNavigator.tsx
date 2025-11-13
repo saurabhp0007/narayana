@@ -16,9 +16,11 @@ const linking = {
     'http://localhost:19006',
     'http://localhost:3000',
     'https://narayana-qm1hbxpxc-saurabhs-projects-2660e0f6.vercel.app',
+    'https://naryana-ui-n2rys.ondigitalocean.app',
   ],
   config: {
     screens: {
+      AdminLogin: 'adminLogin',
       Admin: {
         path: 'admin',
         screens: {
@@ -65,12 +67,12 @@ const RootNavigator: React.FC = () => {
         const path = window.location.pathname;
 
         // If on admin route, check authentication
-        if (path.startsWith('/admin') && path !== '/admin/login') {
+        if ((path.startsWith('/admin') || path === '/adminLogin') && path !== '/admin/login' && path !== '/adminLogin') {
           try {
             await dispatch(checkAuth()).unwrap();
           } catch (error) {
             // If auth check fails, redirect to login
-            window.location.href = '/admin/login';
+            window.location.href = '/adminLogin';
           }
         }
       }
@@ -82,7 +84,7 @@ const RootNavigator: React.FC = () => {
 
   // Check if we're on admin route (for web)
   const isAdminRoute = Platform.OS === 'web'
-    ? window.location.pathname.startsWith('/admin')
+    ? (window.location.pathname.startsWith('/admin') || window.location.pathname === '/adminLogin')
     : false;
 
   // If admin is authenticated, keep them in admin section regardless of URL
