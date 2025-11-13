@@ -4,6 +4,7 @@ import { DatabaseModule } from './database/database.module';
 import { AppController } from './app.controller';
 import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { UserModule } from './modules/user/user.module';
 import { GenderModule } from './modules/gender/gender.module';
 import { CategoryModule } from './modules/category/category.module';
 import { SubcategoryModule } from './modules/subcategory/subcategory.module';
@@ -30,6 +31,7 @@ import imagekitConfig from './config/imagekit.config';
     DatabaseModule,
     AdminModule,
     AuthModule,
+    UserModule,
     GenderModule,
     CategoryModule,
     SubcategoryModule,
