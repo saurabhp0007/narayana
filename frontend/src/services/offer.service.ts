@@ -37,20 +37,20 @@ class OfferService {
   formatOfferDescription(offer: Offer): string {
     switch (offer.offerType) {
       case OfferType.BUY_X_GET_Y:
-        return `Buy ${offer.rules.buyQuantity} Get ${offer.rules.getQuantity} Free`;
+        return `Buy ${offer.rule.buyQuantity} Get ${offer.rule.getQuantity} Free`;
 
       case OfferType.BUNDLE_DISCOUNT:
-        return `Buy ${offer.rules.minQuantity}+ for ₹${offer.rules.bundlePrice}`;
+        return `Buy ${offer.rule.minQuantity}+ for ₹${offer.rule.bundlePrice}`;
 
       case OfferType.PERCENTAGE_OFF:
-        const minQty = offer.rules.minQuantity || 1;
+        const minQty = offer.rule.minQuantity || 1;
         const prefix = minQty > 1 ? `Buy ${minQty}+ & Get ` : '';
-        return `${prefix}${offer.rules.discountPercentage}% OFF`;
+        return `${prefix}${offer.rule.discountPercentage}% OFF`;
 
       case OfferType.FIXED_AMOUNT_OFF:
-        const minQtyFixed = offer.rules.minQuantity || 1;
+        const minQtyFixed = offer.rule.minQuantity || 1;
         const prefixFixed = minQtyFixed > 1 ? `Buy ${minQtyFixed}+ & Save ` : 'Save ';
-        return `${prefixFixed}₹${offer.rules.discountAmount}`;
+        return `${prefixFixed}₹${offer.rule.discountAmount}`;
 
       default:
         return offer.name;

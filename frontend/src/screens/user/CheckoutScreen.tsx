@@ -256,13 +256,13 @@ const CheckoutScreen: React.FC = () => {
               <Text style={styles.orderItemName} numberOfLines={1}>
                 {item.product.name} x {item.quantity}
               </Text>
-              <Text style={styles.orderItemPrice}>₹{item.subtotal}</Text>
+              <Text style={styles.orderItemPrice}>₹{item.itemTotal}</Text>
             </View>
           ))}
           <View style={styles.divider} />
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total ({cart.totalItems} items)</Text>
-            <Text style={styles.totalAmount}>₹{cart.totalPrice}</Text>
+            <Text style={styles.totalLabel}>Total ({cart.summary.totalItems} items)</Text>
+            <Text style={styles.totalAmount}>₹{cart.summary.total}</Text>
           </View>
         </View>
       </ScrollView>
@@ -278,7 +278,7 @@ const CheckoutScreen: React.FC = () => {
             <ActivityIndicator color="white" />
           ) : (
             <>
-              <Text style={styles.placeOrderText}>Place Order (₹{cart.totalPrice})</Text>
+              <Text style={styles.placeOrderText}>Place Order (₹{cart.summary.total})</Text>
               <Ionicons name="arrow-forward" size={20} color="white" />
             </>
           )}

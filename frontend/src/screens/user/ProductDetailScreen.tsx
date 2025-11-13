@@ -54,7 +54,7 @@ const ProductDetailScreen: React.FC = () => {
   };
 
   const isInWishlist = () => {
-    if (!product || !wishlist) return false;
+    if (!product || !wishlist || !wishlist.items) return false;
     return wishlist.items.some((item) => item.product._id === product._id);
   };
 
@@ -205,10 +205,12 @@ const ProductDetailScreen: React.FC = () => {
         </View>
 
         {/* Description */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Description</Text>
-          <Text style={styles.description}>{product.description}</Text>
-        </View>
+        {product.description && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Description</Text>
+            <Text style={styles.description}>{product.description}</Text>
+          </View>
+        )}
 
         {/* Product Details */}
         <View style={styles.section}>
