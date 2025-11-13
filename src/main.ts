@@ -27,9 +27,28 @@ async function bootstrap() {
   app.setGlobalPrefix(apiPrefix);
 
   // Enable CORS
+  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
   app.enableCors({
-    origin: nodeEnv === 'production' ? process.env.ALLOWED_ORIGINS?.split(',') : true,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      // In development, allow all origins
+      if (nodeEnv !== 'production') {
+        return callback(null, true);
+      }
+
+      // In production, check against allowed origins
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        logger.warn(`CORS blocked request from origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   });
 
   // Global validation pipe

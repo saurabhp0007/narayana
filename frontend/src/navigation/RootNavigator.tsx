@@ -12,7 +12,11 @@ const Stack = createNativeStackNavigator();
 
 // Linking configuration for React Native Web
 const linking = {
-  prefixes: ['http://localhost:19006', 'http://localhost:3000'],
+  prefixes: [
+    'http://localhost:19006',
+    'http://localhost:3000',
+    'https://narayana-qm1hbxpxc-saurabhs-projects-2660e0f6.vercel.app',
+  ],
   config: {
     screens: {
       Admin: {
@@ -31,11 +35,16 @@ const linking = {
       User: {
         path: '',
         screens: {
-          Home: '',
+          Main: {
+            path: '',
+            screens: {
+              Home: '',
+              Cart: 'cart',
+              Wishlist: 'wishlist',
+            },
+          },
           ProductList: 'products',
           ProductDetail: 'product/:id',
-          Cart: 'cart',
-          Wishlist: 'wishlist',
           Checkout: 'checkout',
           OrderSuccess: 'order-success',
         },
@@ -46,16 +55,29 @@ const linking = {
 
 const RootNavigator: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, loading } = useAppSelector((state) => state.auth);
+  const [isCheckingAuth, setIsCheckingAuth] = React.useState(true);
 
   useEffect(() => {
-    // Check if user is authenticated on app load
-    if (Platform.OS === 'web') {
-      const path = window.location.pathname;
-      if (path.startsWith('/admin')) {
-        dispatch(checkAuth());
+    // Check authentication status on app load
+    const checkAuthStatus = async () => {
+      if (Platform.OS === 'web') {
+        const path = window.location.pathname;
+
+        // If on admin route, check authentication
+        if (path.startsWith('/admin') && path !== '/admin/login') {
+          try {
+            await dispatch(checkAuth()).unwrap();
+          } catch (error) {
+            // If auth check fails, redirect to login
+            window.location.href = '/admin/login';
+          }
+        }
       }
-    }
+      setIsCheckingAuth(false);
+    };
+
+    checkAuthStatus();
   }, [dispatch]);
 
   // Check if we're on admin route (for web)
@@ -66,6 +88,11 @@ const RootNavigator: React.FC = () => {
   // If admin is authenticated, keep them in admin section regardless of URL
   // This prevents admins from accessing user home/main routes
   const shouldShowAdminSection = isAdminRoute || isAuthenticated;
+
+  // Show loading while checking auth
+  if (isCheckingAuth && Platform.OS === 'web' && isAdminRoute) {
+    return null; // or a loading spinner
+  }
 
   return (
     <NavigationContainer linking={Platform.OS === 'web' ? linking : undefined}>
