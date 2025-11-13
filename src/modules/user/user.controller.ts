@@ -64,7 +64,7 @@ export class UserController {
     }
 
     // Update last login
-    await this.userService.updateLastLogin(user._id);
+    await this.userService.updateLastLogin(user._id.toString());
 
     const payload = {
       userId: user._id.toString(),
