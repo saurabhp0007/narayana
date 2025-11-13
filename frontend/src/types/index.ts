@@ -89,18 +89,20 @@ export interface Product {
   sku: string;
   familySKU?: string;
   description?: string;
-  genderId: string;
-  categoryId: string;
-  subcategoryId: string;
+  genderId: string | Gender; // Can be populated
+  categoryId: string | Category; // Can be populated
+  subcategoryId: string | Subcategory; // Can be populated
   sizes?: string[];
   stock: number;
   price: number;
   discountPrice?: number;
+  discountedPrice?: number; // Calculated price with discounts
   relatedProductIds?: string[];
   underPriceAmount?: number;
   images: string[];
   videos?: string[];
   sliders?: string[];
+  tags?: string[];
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

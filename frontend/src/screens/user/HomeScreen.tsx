@@ -170,7 +170,7 @@ const HomeScreen: React.FC = () => {
               style={styles.categoryCard}
               onPress={() =>
                 handleCategoryPress(
-                  typeof category.gender === 'string' ? category.gender : category.gender._id,
+                  typeof category.genderId === 'string' ? category.genderId : category.genderId._id,
                   category._id
                 )
               }

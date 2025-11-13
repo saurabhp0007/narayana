@@ -226,13 +226,13 @@ const ProductDetailScreen: React.FC = () => {
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Gender:</Text>
             <Text style={styles.detailValue}>
-              {typeof product.gender === 'string' ? product.gender : product.gender.name}
+              {typeof product.genderId === 'string' ? product.genderId : product.genderId.name}
             </Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Category:</Text>
             <Text style={styles.detailValue}>
-              {typeof product.category === 'string' ? product.category : product.category.name}
+              {typeof product.categoryId === 'string' ? product.categoryId : product.categoryId.name}
             </Text>
           </View>
         </View>

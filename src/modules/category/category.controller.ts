@@ -41,7 +41,7 @@ export class CategoryController {
     return this.categoryService.findAll(pageNum, limitNum, genderId, isActiveBool);
   }
 
-  @Get('by-gender/:genderId')
+  @Get('gender/:genderId')
   async findByGender(@Param('genderId') genderId: string) {
     return this.categoryService.findByGender(genderId);
   }

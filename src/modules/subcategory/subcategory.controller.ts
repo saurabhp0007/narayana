@@ -41,7 +41,7 @@ export class SubcategoryController {
     return this.subcategoryService.findAll(pageNum, limitNum, categoryId, isActiveBool);
   }
 
-  @Get('by-category/:categoryId')
+  @Get('category/:categoryId')
   async findByCategory(@Param('categoryId') categoryId: string) {
     return this.subcategoryService.findByCategory(categoryId);
   }
