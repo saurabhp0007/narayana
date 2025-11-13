@@ -117,13 +117,13 @@ export const API_ENDPOINTS = {
 
   // Offer
   OFFER: {
-    BASE: '/offer',
-    CREATE: '/offer',
-    LIST: '/offer',
-    GET: (id: string) => `/offer/${id}`,
-    UPDATE: (id: string) => `/offer/${id}`,
-    DELETE: (id: string) => `/offer/${id}`,
-    ACTIVE: '/offer/active',
+    BASE: '/offers',
+    CREATE: '/offers',
+    LIST: '/offers',
+    GET: (id: string) => `/offers/${id}`,
+    UPDATE: (id: string) => `/offers/${id}`,
+    DELETE: (id: string) => `/offers/${id}`,
+    ACTIVE: '/offers/active',
   },
 };
 
