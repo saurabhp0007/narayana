@@ -1,10 +1,11 @@
 import api from './api';
 import { API_ENDPOINTS } from '../config/api.config';
-import { Subcategory, CreateSubcategoryDto } from '../types';
+import { Subcategory, CreateSubcategoryDto, PaginatedResponse } from '../types';
 
 class SubcategoryService {
   async getAll(): Promise<Subcategory[]> {
-    return await api.get<Subcategory[]>(API_ENDPOINTS.SUBCATEGORY.LIST);
+    const response = await api.get<PaginatedResponse<Subcategory>>(API_ENDPOINTS.SUBCATEGORY.LIST);
+    return response.data;
   }
 
   async getById(id: string): Promise<Subcategory> {

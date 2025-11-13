@@ -1,10 +1,11 @@
 import api from './api';
 import { API_ENDPOINTS } from '../config/api.config';
-import { Gender, CreateGenderDto } from '../types';
+import { Gender, CreateGenderDto, PaginatedResponse } from '../types';
 
 class GenderService {
   async getAll(): Promise<Gender[]> {
-    return await api.get<Gender[]>(API_ENDPOINTS.GENDER.LIST);
+    const response = await api.get<PaginatedResponse<Gender>>(API_ENDPOINTS.GENDER.LIST);
+    return response.data;
   }
 
   async getById(id: string): Promise<Gender> {

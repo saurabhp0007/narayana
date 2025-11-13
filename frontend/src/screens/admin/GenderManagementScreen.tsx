@@ -22,7 +22,7 @@ const GenderManagementScreen: React.FC = () => {
   const [editingGender, setEditingGender] = useState<Gender | null>(null);
   const [formData, setFormData] = useState<CreateGenderDto>({
     name: '',
-    description: '',
+    slug: '',
     isActive: true,
   });
 
@@ -47,12 +47,12 @@ const GenderManagementScreen: React.FC = () => {
       setEditingGender(gender);
       setFormData({
         name: gender.name,
-        description: gender.description || '',
+        slug: gender.slug || '',
         isActive: gender.isActive,
       });
     } else {
       setEditingGender(null);
-      setFormData({ name: '', description: '', isActive: true });
+      setFormData({ name: '', slug: '', isActive: true });
     }
     setModalVisible(true);
   };
@@ -107,7 +107,7 @@ const GenderManagementScreen: React.FC = () => {
           </Text>
         </View>
       </View>
-      {item.description && <Text style={styles.itemDescription}>{item.description}</Text>}
+      {item.slug && <Text style={styles.itemDescription}>Slug: {item.slug}</Text>}
       <View style={styles.itemActions}>
         <TouchableOpacity style={styles.editButton} onPress={() => openModal(item)}>
           <Ionicons name="create-outline" size={20} color="#2196f3" />
@@ -169,14 +169,12 @@ const GenderManagementScreen: React.FC = () => {
                 placeholder="Enter name"
               />
 
-              <Text style={styles.label}>Description</Text>
+              <Text style={styles.label}>Slug (optional)</Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
-                value={formData.description}
-                onChangeText={(value) => setFormData({ ...formData, description: value })}
-                placeholder="Enter description"
-                multiline
-                numberOfLines={3}
+                style={styles.input}
+                value={formData.slug}
+                onChangeText={(value) => setFormData({ ...formData, slug: value })}
+                placeholder="Enter slug (auto-generated if empty)"
               />
 
               <View style={styles.switchRow}>
