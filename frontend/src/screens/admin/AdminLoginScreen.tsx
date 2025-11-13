@@ -38,10 +38,9 @@ const AdminLoginScreen: React.FC = () => {
     try {
       setLoading(true);
       await dispatch(login({ email, password })).unwrap();
-      // Redirect to admin dashboard after successful login
-      if (Platform.OS === 'web') {
-        window.location.href = '/admin/dashboard';
-      }
+      // After successful login, the RootNavigator will automatically
+      // show the Admin component based on isAuthenticated state
+      // No need to manually redirect - React will re-render automatically
     } catch (error: any) {
       Alert.alert('Login Failed', error || 'Invalid email or password');
     } finally {

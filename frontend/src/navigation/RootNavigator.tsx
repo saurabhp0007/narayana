@@ -56,7 +56,7 @@ const linking = {
 const RootNavigator: React.FC = () => {
   const dispatch = useAppDispatch();
   const { isAuthenticated, loading } = useAppSelector((state) => state.auth);
-  const [isCheckingAuth, setIsCheckingAuth] = React.useState(true);
+  const [initialCheckDone, setInitialCheckDone] = React.useState(false);
 
   useEffect(() => {
     // Check authentication status on app load
@@ -64,17 +64,17 @@ const RootNavigator: React.FC = () => {
       if (Platform.OS === 'web') {
         const path = window.location.pathname;
 
-        // If on admin route, check authentication
+        // If on admin route (but not login), try to restore session
         if (path.startsWith('/admin') && path !== '/admin/login') {
           try {
             await dispatch(checkAuth()).unwrap();
           } catch (error) {
-            // If auth check fails, redirect to login
-            window.location.href = '/admin/login';
+            // Auth failed - will show login screen based on isAuthenticated state
+            console.log('Auth check failed, showing login');
           }
         }
       }
-      setIsCheckingAuth(false);
+      setInitialCheckDone(true);
     };
 
     checkAuthStatus();
@@ -85,12 +85,12 @@ const RootNavigator: React.FC = () => {
     ? window.location.pathname.startsWith('/admin')
     : false;
 
-  // If admin is authenticated, keep them in admin section regardless of URL
+  // If admin is authenticated, keep them in admin section
   // This prevents admins from accessing user home/main routes
   const shouldShowAdminSection = isAdminRoute || isAuthenticated;
 
-  // Show loading while checking auth
-  if (isCheckingAuth && Platform.OS === 'web' && isAdminRoute) {
+  // Show loading while checking auth on initial load for admin routes
+  if (!initialCheckDone && Platform.OS === 'web' && isAdminRoute) {
     return null; // or a loading spinner
   }
 

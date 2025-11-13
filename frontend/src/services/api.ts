@@ -1,9 +1,11 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_CONFIG, STORAGE_KEYS } from '../config/api.config';
+import { Platform } from 'react-native';
 
 class ApiService {
   private api: AxiosInstance;
+  private isRefreshing = false;
 
   constructor() {
     this.api = axios.create({
@@ -36,11 +38,27 @@ class ApiService {
     this.api.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
+        // Only handle 401 errors on authenticated routes
         if (error.response?.status === 401) {
-          // Clear token and redirect to login
+          const originalRequest = error.config;
+
+          // Don't redirect if this is a login request
+          if (originalRequest?.url?.includes('/auth/login')) {
+            return Promise.reject(error);
+          }
+
+          // Clear stored credentials
           await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
           await AsyncStorage.removeItem(STORAGE_KEYS.USER_DATA);
-          // You can dispatch a Redux action here to handle logout
+
+          // Only redirect to login if we're on admin routes
+          if (Platform.OS === 'web') {
+            const currentPath = window.location.pathname;
+            // Only redirect if on an admin route but not already on login page
+            if (currentPath.startsWith('/admin') && !currentPath.includes('/admin/login')) {
+              window.location.href = '/admin/login';
+            }
+          }
         }
         return Promise.reject(error);
       }
