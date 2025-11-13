@@ -25,12 +25,24 @@ const CategoryManagementScreen: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [genderModalVisible, setGenderModalVisible] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [notification, setNotification] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({
+    visible: false,
+    message: '',
+    type: 'success',
+  });
   const [formData, setFormData] = useState<CreateCategoryDto>({
     name: '',
     slug: '',
     genderId: '',
     isActive: true,
   });
+
+  const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+    setNotification({ visible: true, message, type });
+    setTimeout(() => {
+      setNotification({ visible: false, message: '', type: 'success' });
+    }, 3000);
+  };
 
   useEffect(() => {
     loadData();
@@ -119,7 +131,7 @@ const CategoryManagementScreen: React.FC = () => {
       console.log('Deleting category:', id);
       await categoryService.delete(id);
       if (Platform.OS === 'web') {
-        alert('Category deleted successfully');
+        showNotification('Category deleted successfully', 'success');
       } else {
         Alert.alert('Success', 'Category deleted successfully');
       }
@@ -127,7 +139,7 @@ const CategoryManagementScreen: React.FC = () => {
     } catch (error: any) {
       console.error('Delete category error:', error);
       if (Platform.OS === 'web') {
-        alert(error.response?.data?.message || 'Failed to delete category');
+        showNotification(error.response?.data?.message || 'Failed to delete category', 'error');
       } else {
         Alert.alert('Error', error.response?.data?.message || 'Failed to delete category');
       }
@@ -285,6 +297,20 @@ const CategoryManagementScreen: React.FC = () => {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Notification Modal */}
+      <Modal visible={notification.visible} transparent animationType="fade">
+        <View style={styles.notificationOverlay}>
+          <View style={[styles.notificationCard, notification.type === 'error' ? styles.notificationError : styles.notificationSuccess]}>
+            <Ionicons
+              name={notification.type === 'error' ? 'close-circle' : 'checkmark-circle'}
+              size={24}
+              color="white"
+            />
+            <Text style={styles.notificationText}>{notification.message}</Text>
           </View>
         </View>
       </Modal>
@@ -565,6 +591,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+  notificationOverlay: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingTop: 50,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  notificationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    minWidth: 300,
+    maxWidth: '90%',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  notificationSuccess: {
+    backgroundColor: '#4caf50',
+  },
+  notificationError: {
+    backgroundColor: '#f44336',
+  },
+  notificationText: {
+    fontSize: 16,
+    color: 'white',
+    fontWeight: '600',
+    flex: 1,
   },
 });
 

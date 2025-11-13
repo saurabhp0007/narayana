@@ -33,6 +33,11 @@ const ProductManagementScreen: React.FC = () => {
   const [subcategoryModalVisible, setSubcategoryModalVisible] = useState(false);
   const [relatedProductsModalVisible, setRelatedProductsModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [notification, setNotification] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({
+    visible: false,
+    message: '',
+    type: 'success',
+  });
   const [formData, setFormData] = useState<CreateProductDto>({
     name: '',
     sku: '',
@@ -56,6 +61,13 @@ const ProductManagementScreen: React.FC = () => {
   const [imageInput, setImageInput] = useState('');
   const [videoInput, setVideoInput] = useState('');
   const [sliderInput, setSliderInput] = useState('');
+
+  const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+    setNotification({ visible: true, message, type });
+    setTimeout(() => {
+      setNotification({ visible: false, message: '', type: 'success' });
+    }, 3000);
+  };
 
   useEffect(() => {
     loadData();
@@ -184,7 +196,7 @@ const ProductManagementScreen: React.FC = () => {
       console.log('Deleting product:', id);
       await productService.delete(id);
       if (Platform.OS === 'web') {
-        alert('Product deleted successfully');
+        showNotification('Product deleted successfully', 'success');
       } else {
         Alert.alert('Success', 'Product deleted successfully');
       }
@@ -192,7 +204,7 @@ const ProductManagementScreen: React.FC = () => {
     } catch (error: any) {
       console.error('Delete product error:', error);
       if (Platform.OS === 'web') {
-        alert(error.response?.data?.message || 'Failed to delete product');
+        showNotification(error.response?.data?.message || 'Failed to delete product', 'error');
       } else {
         Alert.alert('Error', error.response?.data?.message || 'Failed to delete product');
       }
@@ -721,6 +733,20 @@ const ProductManagementScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Notification Modal */}
+      <Modal visible={notification.visible} transparent animationType="fade">
+        <View style={styles.notificationOverlay}>
+          <View style={[styles.notificationCard, notification.type === 'error' ? styles.notificationError : styles.notificationSuccess]}>
+            <Ionicons
+              name={notification.type === 'error' ? 'close-circle' : 'checkmark-circle'}
+              size={24}
+              color="white"
+            />
+            <Text style={styles.notificationText}>{notification.message}</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -1070,6 +1096,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+  notificationOverlay: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingTop: 50,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  notificationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    minWidth: 300,
+    maxWidth: '90%',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  notificationSuccess: {
+    backgroundColor: '#4caf50',
+  },
+  notificationError: {
+    backgroundColor: '#f44336',
+  },
+  notificationText: {
+    fontSize: 16,
+    color: 'white',
+    fontWeight: '600',
+    flex: 1,
   },
 });
 
