@@ -13,11 +13,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAppDispatch } from '../../store/store';
+import { login as adminLogin } from '../../store/slices/authSlice';
 import authService from '../../services/auth.service';
 import userService from '../../services/user.service';
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation();
+  const dispatch = useAppDispatch();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -43,16 +46,15 @@ const LoginScreen: React.FC = () => {
 
       // First, try admin login
       try {
-        const adminResponse = await authService.login({ email, password });
+        // Dispatch admin login to Redux store
+        await dispatch(adminLogin({ email, password })).unwrap();
 
-        // Store admin token and data
+        // Store user type
         await AsyncStorage.setItem('userType', 'admin');
-        await AsyncStorage.setItem('adminToken', adminResponse.accessToken);
-        await AsyncStorage.setItem('admin', JSON.stringify(adminResponse.admin));
 
         // Navigate to admin dashboard
         if (Platform.OS === 'web') {
-          window.location.href = '/admin';
+          window.location.href = '/admin/dashboard';
         } else {
           (navigation as any).reset({
             index: 0,

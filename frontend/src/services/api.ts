@@ -21,7 +21,14 @@ class ApiService {
     // Request interceptor
     this.api.interceptors.request.use(
       async (config: InternalAxiosRequestConfig) => {
-        const token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+        // Check for both admin and user tokens
+        let token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN); // Admin token
+        if (!token) {
+          token = await AsyncStorage.getItem('userToken'); // User token
+        }
+        if (!token) {
+          token = await AsyncStorage.getItem('adminToken'); // Alternative admin token key
+        }
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
         }
