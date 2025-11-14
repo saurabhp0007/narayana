@@ -4,9 +4,12 @@ static_sites:
     github:
       branch: main
       deploy_on_push: true
+      repo: saurabhp0007/narayana
     build_command: npm run build
     output_dir: dist
     error_document: index.html
+    index_document: index.html
+    catchall_document: index.html
     routes:
       - path: /
-    catchall_document: index.html
+
