@@ -52,15 +52,9 @@ const LoginScreen: React.FC = () => {
         // Store user type
         await AsyncStorage.setItem('userType', 'admin');
 
-        // Navigate to admin dashboard
-        if (Platform.OS === 'web') {
-          window.location.href = '/admin/dashboard';
-        } else {
-          (navigation as any).reset({
-            index: 0,
-            routes: [{ name: 'Admin' }],
-          });
-        }
+        // Don't navigate manually - let RootNavigator handle it
+        // RootNavigator will detect isAuthenticated change and show Admin section
+        Alert.alert('Success', 'Admin login successful!');
 
         return;
       } catch (adminError) {
@@ -73,12 +67,9 @@ const LoginScreen: React.FC = () => {
           await AsyncStorage.setItem('userToken', userResponse.accessToken);
           await AsyncStorage.setItem('user', JSON.stringify(userResponse.user));
 
-          // Navigate to user home
-          if (Platform.OS === 'web') {
-            window.location.href = '/';
-          } else {
-            navigation.goBack();
-          }
+          Alert.alert('Success', 'Login successful!');
+          // Go back to previous screen (shopping app)
+          navigation.goBack();
 
           return;
         } catch (userError) {

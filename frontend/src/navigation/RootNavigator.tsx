@@ -61,9 +61,9 @@ const linking = {
 
 const RootNavigator: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { isAuthenticated, loading } = useAppSelector((state) => state.auth);
-  const [isCheckingAuth, setIsCheckingAuth] = React.useState(true);
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   const [userType, setUserType] = React.useState<'admin' | 'user' | null>(null);
+  const [initializing, setInitializing] = React.useState(true);
 
   useEffect(() => {
     // Check authentication status on app load
@@ -73,70 +73,58 @@ const RootNavigator: React.FC = () => {
         const storedUserType = await AsyncStorage.getItem('userType');
         setUserType(storedUserType as 'admin' | 'user' | null);
 
-        if (Platform.OS === 'web') {
-          const path = window.location.pathname;
-
-          // If user type is admin and on admin route, check admin auth
-          if (storedUserType === 'admin' && path.startsWith('/admin')) {
-            try {
-              await dispatch(checkAuth()).unwrap();
-            } catch (error) {
-              console.error('Admin auth check failed:', error);
-              // Clear stored data and redirect to login
-              await AsyncStorage.removeItem('userType');
-              await AsyncStorage.removeItem('adminToken');
-              setUserType(null);
-              window.location.href = '/login';
-            }
+        // If admin type stored, try to restore admin auth
+        if (storedUserType === 'admin') {
+          try {
+            await dispatch(checkAuth()).unwrap();
+            console.log('Admin auth restored successfully');
+          } catch (error) {
+            console.error('Admin auth check failed:', error);
+            // Clear stored data if auth fails
+            await AsyncStorage.removeItem('userType');
+            await AsyncStorage.removeItem('adminToken');
+            setUserType(null);
           }
         }
       } catch (error) {
         console.error('Error checking auth:', error);
       } finally {
-        setIsCheckingAuth(false);
+        setInitializing(false);
       }
     };
 
     checkAuthStatus();
   }, [dispatch]);
 
-  // Redirect after successful login based on user type
+  // Listen for userType changes
   useEffect(() => {
-    if (Platform.OS === 'web' && !isCheckingAuth) {
-      const path = window.location.pathname;
-
-      // If admin is authenticated and on login page, redirect to dashboard
-      if (isAuthenticated && userType === 'admin' && path === '/login') {
-        window.location.href = '/admin/dashboard';
+    const checkUserType = async () => {
+      const storedUserType = await AsyncStorage.getItem('userType');
+      if (storedUserType !== userType) {
+        setUserType(storedUserType as 'admin' | 'user' | null);
       }
-    }
-  }, [isAuthenticated, userType, isCheckingAuth]);
+    };
 
-  // Check if we're on admin route (for web)
-  const isAdminRoute = Platform.OS === 'web'
-    ? window.location.pathname.startsWith('/admin')
-    : false;
+    // Check every second for userType changes (mobile only)
+    const interval = setInterval(checkUserType, 1000);
+    return () => clearInterval(interval);
+  }, [userType]);
 
   // Determine what to show
-  const shouldShowAdmin = isAdminRoute || (isAuthenticated && userType === 'admin');
-  const needsLogin = (isAdminRoute || shouldShowAdmin) && !isAuthenticated;
+  const shouldShowAdmin = isAuthenticated && userType === 'admin';
 
-  // Show loading while checking auth
-  if (isCheckingAuth && Platform.OS === 'web' && isAdminRoute) {
+  // Show loading while initializing
+  if (initializing) {
     return null; // or a loading spinner
   }
 
+  console.log('RootNavigator state:', { isAuthenticated, userType, shouldShowAdmin });
+
   return (
-    <NavigationContainer linking={Platform.OS === 'web' ? linking : undefined}>
+    <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {shouldShowAdmin ? (
-          <>
-            {needsLogin ? (
-              <Stack.Screen name="Login" component={LoginScreen} />
-            ) : (
-              <Stack.Screen name="Admin" component={AdminNavigator} />
-            )}
-          </>
+          <Stack.Screen name="Admin" component={AdminNavigator} />
         ) : (
           <Stack.Screen name="User" component={UserNavigator} />
         )}
