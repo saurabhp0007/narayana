@@ -1,0 +1,31 @@
+alerts:
+- rule: DEPLOYMENT_FAILED
+- rule: DOMAIN_FAILED
+features:
+- buildpack-stack=ubuntu-22
+ingress:
+  rules:
+  - component:
+      name: narayana-frontend
+    match:
+      authority:
+        exact: ""
+      path:
+        prefix: /
+name: walrus-app
+region: blr
+static_sites:
+- environment_slug: node-js
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: saurabhp0007/narayana
+  name: narayana-frontend
+  source_dir: frontend
+  build_command: npm run build
+  output_dir: dist
+  error_document: index.html
+  index_document: index.html
+  catchall_document: index.html
+  routes:
+  - path: /
