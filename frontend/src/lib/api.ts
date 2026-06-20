@@ -1,7 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
-//const API_URL =  'http://localhost:3000/api';
-const API_URL =  'https://orca-app-55tp9.ondigitalocean.app/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 
 const api: AxiosInstance = axios.create({

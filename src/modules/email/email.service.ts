@@ -8,19 +8,23 @@ export class EmailService {
   private transporter: nodemailer.Transporter;
 
   constructor(private configService: ConfigService) {
+    const emailUser = this.configService.get<string>('email.user');
+    const emailPass = this.configService.get<string>('email.password');
+
+    if (!emailUser || !emailPass) {
+      this.logger.warn('Email credentials not configured — email service disabled');
+      return;
+    }
+
     const emailConfig = {
       host: this.configService.get<string>('email.host'),
       port: this.configService.get<number>('email.port'),
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: this.configService.get<string>('email.user'),
-        pass: this.configService.get<string>('email.password'),
-      },
+      secure: false,
+      auth: { user: emailUser, pass: emailPass },
     };
 
     this.transporter = nodemailer.createTransport(emailConfig);
 
-    // Verify connection
     this.transporter.verify((error) => {
       if (error) {
         this.logger.error('Email service connection error:', error);
@@ -40,6 +44,7 @@ export class EmailService {
       discount: number;
     },
   ): Promise<void> {
+    if (!this.transporter) return;
     try {
       const html = this.generateOrderConfirmationTemplate(orderData);
 
@@ -65,6 +70,7 @@ export class EmailService {
       totalAmount: number;
     },
   ): Promise<void> {
+    if (!this.transporter) return;
     try {
       const html = this.generateStatusUpdateTemplate(orderData);
 
