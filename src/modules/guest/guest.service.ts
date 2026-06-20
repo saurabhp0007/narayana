@@ -13,7 +13,7 @@ import {
   GuestUpdateCartDto,
   GuestCheckoutDto,
 } from './dto/guest.dto';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 interface GuestCartItem {
   productId: string;
@@ -41,7 +41,7 @@ export class GuestService {
   ) {}
 
   generateGuestId(): string {
-    return `guest_${uuidv4()}`;
+    return `guest_${randomUUID()}`;
   }
 
   // ==================== CART OPERATIONS ====================
@@ -328,7 +328,7 @@ export class GuestService {
     }
 
     // Generate order ID
-    const orderId = `GO_${Date.now()}_${uuidv4().substring(0, 8).toUpperCase()}`;
+    const orderId = `GO_${Date.now()}_${randomUUID().substring(0, 8).toUpperCase()}`;
 
     // Create order object
     const order = {
