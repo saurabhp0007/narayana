@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-const API_BASE_URL = 'http://192.168.1.4:3000/api';
+const API_BASE_URL = 'https://narayana-69sw.vercel.app/api/';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
