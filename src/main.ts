@@ -30,7 +30,7 @@ async function bootstrap() {
   // Swagger API Documentation
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Narayana eCommerce CMS API')
-    .setDescription('Complete API documentation for eCommerce CMS Backend - includes User, Admin, Product, Category, Subcategory, Gender, Cart, Wishlist, Order, and Offer management')
+    .setDescription('Complete API documentation for eCommerce CMS Backend - includes User, Admin, Product, Category, Gender, Cart, Wishlist, Order, and Offer management')
     .setVersion('2.0.0')
     .addBearerAuth(
       {
@@ -49,7 +49,6 @@ async function bootstrap() {
     .addTag('User', 'User registration, authentication, profile, and address management')
     .addTag('Gender', 'Gender CRUD operations')
     .addTag('Category', 'Category CRUD operations')
-    .addTag('Subcategory', 'Subcategory CRUD operations')
     .addTag('Product', 'Product CRUD operations with search and filtering')
     .addTag('Cart', 'Shopping cart management')
     .addTag('Wishlist', 'User wishlist management')

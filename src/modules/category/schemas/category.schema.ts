@@ -16,6 +16,21 @@ export class Category extends Document {
   @Prop({ default: true })
   isActive: boolean;
 
+  // Groups categories into homepage tab sections, e.g. "footwear" or "shop-by-category"
+  @Prop({ trim: true })
+  tabGroup: string;
+
+  // Free-text tile label shown on the category tile, e.g. "Limited Sale", "Premium", "Combo"
+  @Prop({ trim: true })
+  tileLabel: string;
+
+  @Prop({ default: 0 })
+  displayOrder: number;
+
+  // Whether this category appears in the homepage "Latest Arrivals" section
+  @Prop({ default: false })
+  showInLatestArrivals: boolean;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,3 +42,5 @@ CategorySchema.index({ name: 1, genderId: 1 }, { unique: true });
 CategorySchema.index({ slug: 1, genderId: 1 }, { unique: true });
 CategorySchema.index({ genderId: 1 });
 CategorySchema.index({ isActive: 1 });
+CategorySchema.index({ tabGroup: 1 });
+CategorySchema.index({ showInLatestArrivals: 1 });

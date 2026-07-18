@@ -1,7 +1,19 @@
+'use client';
+
+import { useEffect } from 'react';
 import Link from 'next/link';
+import { useDataStore } from '@/store/dataStore';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const { genders, fetchGenders } = useDataStore();
+
+  useEffect(() => {
+    fetchGenders();
+  }, [fetchGenders]);
+
+  const getGenderId = (name: string) =>
+    genders.find((g) => g.name.toLowerCase() === name.toLowerCase())?._id || '';
 
   return (
     <footer className="bg-white border-t border-gray-200">
@@ -78,23 +90,29 @@ export default function Footer() {
             <h3 className="text-base font-semibold text-gray-900 mb-4">Categories</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/products?gender=men" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                <Link
+                  href={getGenderId('Men') ? `/products?genderId=${getGenderId('Men')}` : '/products'}
+                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                >
                   Men
                 </Link>
               </li>
               <li>
-                <Link href="/products?gender=women" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                <Link
+                  href={getGenderId('Women') ? `/products?genderId=${getGenderId('Women')}` : '/products'}
+                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                >
                   Women
                 </Link>
               </li>
               <li>
-                <Link href="/products?category=shoes" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                <Link href="/products?categoryName=Shoes" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
                   Shoes
                 </Link>
               </li>
               <li>
-                <Link href="/products?category=accessories" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                  Accessories
+                <Link href="/products?categoryName=Bags%20%26%20Luggage" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                  Bags & Luggage
                 </Link>
               </li>
             </ul>

@@ -1,15 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { productApi, genderApi, categoryApi, subcategoryApi } from '@/lib/api';
-import { Gender, Category, Subcategory, Product } from '@/types';
+import { productApi, genderApi, categoryApi, mediaApi } from '@/lib/api';
+import { Gender, Category, Product, ProductBadge } from '@/types';
 
 interface FormErrors {
   name?: string;
   genderId?: string;
   categoryId?: string;
-  subcategoryId?: string;
   price?: string;
   stock?: string;
   general?: string;
@@ -20,13 +19,15 @@ interface ProductFormData {
   description: string;
   genderId: string;
   categoryId: string;
-  subcategoryId: string;
   price: number;
   discountPrice?: number;
   stock: number;
   sizes: string[];
   images: string[];
   isActive: boolean;
+  badge?: ProductBadge;
+  isBestSeller?: boolean;
+  showInLatestArrivals?: boolean;
 }
 
 export default function EditProductPage() {
@@ -45,7 +46,6 @@ export default function EditProductPage() {
     description: '',
     genderId: '',
     categoryId: '',
-    subcategoryId: '',
     price: 0,
     discountPrice: undefined,
     stock: 0,
@@ -57,33 +57,28 @@ export default function EditProductPage() {
   // Filter data
   const [genders, setGenders] = useState<Gender[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
-  const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
 
   // Sizes and images inputs
   const [sizeInput, setSizeInput] = useState('');
   const [imageInput, setImageInput] = useState('');
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch filter options and product data
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [gendersRes, categoriesRes, subcategoriesRes, productRes] = await Promise.all([
+        const [gendersRes, categoriesRes, productRes] = await Promise.all([
           genderApi.getAll({ isActive: true }),
           categoryApi.getAll({ isActive: true }),
-          subcategoryApi.getAll({ isActive: true }),
           productApi.getById(productId),
         ]);
 
         setGenders(Array.isArray(gendersRes.data) ? gendersRes.data : gendersRes.data.data || []);
         setCategories(
           Array.isArray(categoriesRes.data) ? categoriesRes.data : categoriesRes.data.data || []
-        );
-        setSubcategories(
-          Array.isArray(subcategoriesRes.data)
-            ? subcategoriesRes.data
-            : subcategoriesRes.data.data || []
         );
 
         const product: Product = productRes.data;
@@ -93,23 +88,21 @@ export default function EditProductPage() {
           typeof product.genderId === 'string' ? product.genderId : product.genderId._id;
         const categoryId =
           typeof product.categoryId === 'string' ? product.categoryId : product.categoryId._id;
-        const subcategoryId =
-          typeof product.subcategoryId === 'string'
-            ? product.subcategoryId
-            : product.subcategoryId._id;
 
         setFormData({
           name: product.name,
           description: product.description || '',
           genderId,
           categoryId,
-          subcategoryId,
           price: product.price,
           discountPrice: product.discountPrice,
           stock: product.stock,
           sizes: product.sizes || [],
           images: product.images || [],
           isActive: product.isActive,
+          badge: product.badge,
+          isBestSeller: product.isBestSeller || false,
+          showInLatestArrivals: product.showInLatestArrivals || false,
         });
       } catch (err) {
         console.error('Failed to fetch data:', err);
@@ -135,29 +128,14 @@ export default function EditProductPage() {
       );
       setFilteredCategories(filtered);
       if (!filtered.find((cat) => cat._id === formData.categoryId)) {
-        setFormData((prev) => ({ ...prev, categoryId: '', subcategoryId: '' }));
+        setFormData((prev) => ({ ...prev, categoryId: '' }));
       }
     } else {
       setFilteredCategories([]);
     }
   }, [formData.genderId, categories, formData.categoryId]);
 
-  // Filter subcategories based on selected category
-  useEffect(() => {
-    if (formData.categoryId && subcategories.length > 0) {
-      const filtered = subcategories.filter(
-        (sub) =>
-          (typeof sub.categoryId === 'string' ? sub.categoryId : sub.categoryId._id) ===
-          formData.categoryId
-      );
-      setFilteredSubcategories(filtered);
-      if (!filtered.find((sub) => sub._id === formData.subcategoryId)) {
-        setFormData((prev) => ({ ...prev, subcategoryId: '' }));
-      }
-    } else {
-      setFilteredSubcategories([]);
-    }
-  }, [formData.categoryId, subcategories, formData.subcategoryId]);
+  const selectedCategory = filteredCategories.find((cat) => cat._id === formData.categoryId);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -172,10 +150,6 @@ export default function EditProductPage() {
 
     if (!formData.categoryId) {
       newErrors.categoryId = 'Category is required';
-    }
-
-    if (!formData.subcategoryId) {
-      newErrors.subcategoryId = 'Subcategory is required';
     }
 
     if (formData.price <= 0) {
@@ -242,6 +216,31 @@ export default function EditProductPage() {
         images: [...(prev.images || []), imageInput.trim()],
       }));
       setImageInput('');
+    }
+  };
+
+  const handleImageFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setIsUploadingImages(true);
+    setUploadError(null);
+    try {
+      const res = await mediaApi.uploadMultiple(files, 'products');
+      const urls: string[] = res.data.map((f: { url: string }) => f.url);
+      setFormData((prev) => ({
+        ...prev,
+        images: [...(prev.images || []), ...urls],
+      }));
+    } catch (err: unknown) {
+      console.error('Image upload failed:', err);
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Upload failed. Please try again.';
+      setUploadError(message);
+    } finally {
+      setIsUploadingImages(false);
+      if (imageFileInputRef.current) imageFileInputRef.current.value = '';
     }
   };
 
@@ -406,33 +405,27 @@ export default function EditProductPage() {
               ))}
             </select>
             {errors.categoryId && <p className="mt-1 text-sm text-red-600">{errors.categoryId}</p>}
-          </div>
-
-          {/* Subcategory */}
-          <div>
-            <label htmlFor="subcategory" className="block text-sm font-medium text-gray-700 mb-1">
-              Subcategory *
-            </label>
-            <select
-              id="subcategory"
-              value={formData.subcategoryId}
-              onChange={(e) => setFormData((prev) => ({ ...prev, subcategoryId: e.target.value }))}
-              disabled={!formData.categoryId}
-              className={`text-black w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                errors.subcategoryId ? 'border-red-300' : 'border-gray-300'
-              } ${!formData.categoryId ? 'bg-gray-100' : ''}`}
-            >
-              <option value="">
-                {formData.categoryId ? 'Select Subcategory' : 'Select Category First'}
-              </option>
-              {filteredSubcategories.map((subcategory) => (
-                <option key={subcategory._id} value={subcategory._id}>
-                  {subcategory.name}
-                </option>
-              ))}
-            </select>
-            {errors.subcategoryId && (
-              <p className="mt-1 text-sm text-red-600">{errors.subcategoryId}</p>
+            {selectedCategory?.showInLatestArrivals && (
+              <div className="mt-2 bg-emerald-50 border border-emerald-200 rounded px-2 py-1.5">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="showInLatestArrivals"
+                    checked={formData.showInLatestArrivals || false}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, showInLatestArrivals: e.target.checked }))
+                    }
+                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="showInLatestArrivals" className="ml-2 block text-sm text-emerald-900">
+                    Show in Latest Arrivals (Homepage)
+                  </label>
+                </div>
+                <p className="mt-1 text-xs text-emerald-700">
+                  &quot;{selectedCategory.name}&quot; is live on the homepage. Turn this on to feature this specific
+                  product in the Latest Arrivals slider — it won&apos;t show there until you do.
+                </p>
+              </div>
             )}
           </div>
 
@@ -507,18 +500,64 @@ export default function EditProductPage() {
             {errors.stock && <p className="mt-1 text-sm text-red-600">{errors.stock}</p>}
           </div>
 
-          {/* Is Active */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="isActive"
-              checked={formData.isActive}
-              onChange={(e) => setFormData((prev) => ({ ...prev, isActive: e.target.checked }))}
-              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-            />
-            <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
-              Product is Active
+          {/* Badge */}
+          <div>
+            <label htmlFor="badge" className="block text-sm font-medium text-gray-700 mb-1">
+              Promotional Badge
             </label>
+            <select
+              id="badge"
+              value={formData.badge || ''}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  badge: e.target.value ? (e.target.value as ProductBadge) : undefined,
+                }))
+              }
+              className="text-black w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="">None</option>
+              <option value="NEW">NEW</option>
+              <option value="SALE">SALE</option>
+              <option value="PREMIUM">PREMIUM</option>
+              <option value="TRENDING">TRENDING</option>
+              <option value="COMBO">COMBO</option>
+              <option value="BEST_VALUE">BEST VALUE</option>
+              <option value="LIMITED_SALE">LIMITED SALE</option>
+              <option value="CASUAL">CASUAL</option>
+              <option value="OFFER">OFFER</option>
+              <option value="UNDER_1K">UNDER ₹1K</option>
+              <option value="BUDGET_PICK">BUDGET PICK</option>
+              <option value="LUXURY">LUXURY</option>
+            </select>
+          </div>
+
+          {/* Is Active */}
+          <div className="flex items-center space-x-6">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="isActive"
+                checked={formData.isActive}
+                onChange={(e) => setFormData((prev) => ({ ...prev, isActive: e.target.checked }))}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
+                Product is Active
+              </label>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="isBestSeller"
+                checked={formData.isBestSeller || false}
+                onChange={(e) => setFormData((prev) => ({ ...prev, isBestSeller: e.target.checked }))}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <label htmlFor="isBestSeller" className="ml-2 block text-sm text-gray-900">
+                Best Seller (shows in homepage Best Sellers tab)
+              </label>
+            </div>
           </div>
 
           {/* Sizes */}
@@ -564,24 +603,47 @@ export default function EditProductPage() {
 
           {/* Images */}
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Image URLs</label>
-            <div className="flex items-center space-x-2 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Images</label>
+            <div className="mb-2">
               <input
-                type="url"
-                value={imageInput}
-                onChange={(e) => setImageInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addImage())}
-                className="text-black flex-1 text-black px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Enter image URL"
+                ref={imageFileInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                multiple
+                onChange={handleImageFilesSelected}
+                className="hidden"
+                id="product-image-upload"
               />
               <button
                 type="button"
-                onClick={addImage}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                onClick={() => imageFileInputRef.current?.click()}
+                disabled={isUploadingImages}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
               >
-                Add
+                {isUploadingImages ? 'Uploading...' : 'Upload Images'}
               </button>
+              {uploadError && <p className="mt-1 text-xs text-red-600">{uploadError}</p>}
             </div>
+            <details className="mb-2">
+              <summary className="text-xs text-gray-500 cursor-pointer">Or paste an image URL</summary>
+              <div className="flex items-center space-x-2 mt-2">
+                <input
+                  type="url"
+                  value={imageInput}
+                  onChange={(e) => setImageInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addImage())}
+                  className="text-black flex-1 text-black px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Enter image URL"
+                />
+                <button
+                  type="button"
+                  onClick={addImage}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Add
+                </button>
+              </div>
+            </details>
             {formData.images && formData.images.length > 0 && (
               <div className="space-y-2">
                 {formData.images.map((image, index) => (

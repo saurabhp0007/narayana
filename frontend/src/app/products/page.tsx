@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { productApi } from '@/lib/api';
-import { Product, Category, Subcategory, PaginatedResponse } from '@/types';
+import { Product, Category, PaginatedResponse } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
 import { useAuthStore } from '@/store/authStore';
@@ -25,13 +25,8 @@ function ProductsPageContent() {
   // Use shared data store
   const {
     genders,
-    allSubcategories: globalSubcategories,
-    categoriesByGender,
-    subcategoriesByCategory,
     fetchGenders,
-    fetchAllSubcategories,
     fetchCategoriesByGender,
-    fetchSubcategoriesByCategory,
   } = useDataStore();
 
   // Products state
@@ -48,7 +43,6 @@ function ProductsPageContent() {
 
   // Local filter options (derived from global store)
   const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
 
   // Filter state - use refs to prevent excessive re-renders
   const [selectedGender, setSelectedGender] = useState<string>(
@@ -57,8 +51,8 @@ function ProductsPageContent() {
   const [selectedCategory, setSelectedCategory] = useState<string>(
     searchParams.get('categoryId') || ''
   );
-  const [selectedSubcategory, setSelectedSubcategory] = useState<string>(
-    searchParams.get('subcategoryId') || ''
+  const [categoryNameFilter, setCategoryNameFilter] = useState<string>(
+    searchParams.get('categoryName') || ''
   );
   const [minPrice, setMinPrice] = useState<string>(
     searchParams.get('minPrice') || ''
@@ -99,7 +93,7 @@ function ProductsPageContent() {
     const newOfferId = searchParams.get('offerId') || '';
     const newGenderId = searchParams.get('genderId') || '';
     const newCategoryId = searchParams.get('categoryId') || '';
-    const newSubcategoryId = searchParams.get('subcategoryId') || '';
+    const newCategoryName = searchParams.get('categoryName') || '';
     const newMinPrice = searchParams.get('minPrice') || '';
     const newMaxPrice = searchParams.get('maxPrice') || '';
     const newSearch = searchParams.get('search') || '';
@@ -112,7 +106,7 @@ function ProductsPageContent() {
     setCurrentOfferId(newOfferId);
     setSelectedGender(newGenderId);
     setSelectedCategory(newCategoryId);
-    setSelectedSubcategory(newSubcategoryId);
+    setCategoryNameFilter(newCategoryName);
     setMinPrice(newMinPrice);
     setMaxPrice(newMaxPrice);
     setSearchQuery(newSearch);
@@ -125,33 +119,7 @@ function ProductsPageContent() {
   useEffect(() => {
     const fetchFilterOptions = async () => {
       try {
-        // Use shared store (cached)
-        const [, allSubs] = await Promise.all([
-          fetchGenders(),
-          fetchAllSubcategories(),
-        ]);
-
-        // If subcategoryId is in URL, resolve the hierarchy
-        const urlSubcategoryId = searchParams.get('subcategoryId');
-        const urlCategoryId = searchParams.get('categoryId');
-        const urlGenderId = searchParams.get('genderId');
-
-        if (urlSubcategoryId && allSubs) {
-          const subcategory = allSubs.find((s: Subcategory) => s._id === urlSubcategoryId);
-          if (subcategory && subcategory.categoryId) {
-            const categoryData = typeof subcategory.categoryId === 'object' ? subcategory.categoryId : null;
-            if (categoryData) {
-              const genderData = typeof categoryData.genderId === 'object' ? categoryData.genderId : null;
-              if (genderData && !urlGenderId) {
-                setSelectedGender(genderData._id);
-              }
-              if (!urlCategoryId) {
-                setSelectedCategory(categoryData._id);
-              }
-            }
-          }
-        }
-
+        await fetchGenders();
         initialLoadDone.current = true;
       } catch (err) {
         console.error('Failed to fetch filter options:', err);
@@ -160,7 +128,7 @@ function ProductsPageContent() {
     };
 
     fetchFilterOptions();
-  }, [fetchGenders, fetchAllSubcategories, searchParams]); // Only run once on mount
+  }, [fetchGenders]); // Only run once on mount
 
   // Fetch categories when gender changes (from shared cache)
   useEffect(() => {
@@ -178,22 +146,6 @@ function ProductsPageContent() {
     fetchCategories();
   }, [selectedGender, fetchCategoriesByGender]);
 
-  // Fetch subcategories when category changes (from shared cache)
-  useEffect(() => {
-    if (!initialLoadDone.current) return;
-
-    const fetchSubcats = async () => {
-      if (selectedCategory) {
-        const subs = await fetchSubcategoriesByCategory(selectedCategory);
-        setSubcategories(subs);
-      } else {
-        setSubcategories([]);
-      }
-    };
-
-    fetchSubcats();
-  }, [selectedCategory, fetchSubcategoriesByCategory]);
-
   // Debounced product fetch to prevent flickering
   const fetchProducts = useCallback(async () => {
     const params: Record<string, unknown> = {
@@ -204,7 +156,7 @@ function ProductsPageContent() {
 
     if (selectedGender) params.genderId = selectedGender;
     if (selectedCategory) params.categoryId = selectedCategory;
-    if (selectedSubcategory) params.subcategoryId = selectedSubcategory;
+    if (categoryNameFilter) params.categoryName = categoryNameFilter;
     if (minPrice) params.minPrice = Number(minPrice);
     if (maxPrice) params.maxPrice = Number(maxPrice);
     if (searchQuery) params.search = searchQuery;
@@ -250,7 +202,7 @@ function ProductsPageContent() {
     pagination.limit,
     selectedGender,
     selectedCategory,
-    selectedSubcategory,
+    categoryNameFilter,
     minPrice,
     maxPrice,
     searchQuery,
@@ -327,7 +279,6 @@ function ProductsPageContent() {
   const clearFilters = () => {
     setSelectedGender('');
     setSelectedCategory('');
-    setSelectedSubcategory('');
     setMinPrice('');
     setMaxPrice('');
     setSearchQuery('');
@@ -424,53 +375,6 @@ function ProductsPageContent() {
                   </button>
                 </div>
 
-                {/* Quick Subcategory Filter - Like Zara */}
-                {globalSubcategories.length > 0 && (
-                  <div className="mb-5 pb-5 border-b border-gray-200">
-                    <label className="block text-xs font-semibold text-gray-900 mb-3 uppercase">Quick Filter</label>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => {
-                          setSelectedSubcategory('');
-                          setSelectedCategory('');
-                          setSelectedGender('');
-                          setCurrentPage(1);
-                        }}
-                        className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-                          !selectedSubcategory
-                            ? 'bg-gray-900 text-white border-gray-900'
-                            : 'bg-white text-gray-700 border-gray-300 hover:border-gray-900'
-                        }`}
-                      >
-                        All
-                      </button>
-                      {globalSubcategories.slice(0, 12).map((sub) => (
-                        <button
-                          key={sub._id}
-                          onClick={() => {
-                            setSelectedSubcategory(sub._id);
-                            // Auto-resolve hierarchy
-                            if (sub.categoryId && typeof sub.categoryId === 'object') {
-                              setSelectedCategory(sub.categoryId._id);
-                              if (sub.categoryId.genderId && typeof sub.categoryId.genderId === 'object') {
-                                setSelectedGender(sub.categoryId.genderId._id);
-                              }
-                            }
-                            setCurrentPage(1);
-                          }}
-                          className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-                            selectedSubcategory === sub._id
-                              ? 'bg-gray-900 text-white border-gray-900'
-                              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-900'
-                          }`}
-                        >
-                          {sub.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* Gender Filter */}
                 <div className="mb-4">
                   <label className="block text-xs font-medium text-gray-700 mb-2">Gender</label>
@@ -479,7 +383,6 @@ function ProductsPageContent() {
                     onChange={(e) => {
                       setSelectedGender(e.target.value);
                       setSelectedCategory('');
-                      setSelectedSubcategory('');
                       setCurrentPage(1);
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
@@ -501,7 +404,6 @@ function ProductsPageContent() {
                       value={selectedCategory}
                       onChange={(e) => {
                         setSelectedCategory(e.target.value);
-                        setSelectedSubcategory('');
                         setCurrentPage(1);
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
@@ -510,28 +412,6 @@ function ProductsPageContent() {
                       {categories.map((category) => (
                         <option key={category._id} value={category._id}>
                           {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* Subcategory Filter */}
-                {subcategories.length > 0 && (
-                  <div className="mb-4">
-                    <label className="block text-xs font-medium text-gray-700 mb-2">Subcategory</label>
-                    <select
-                      value={selectedSubcategory}
-                      onChange={(e) => {
-                        setSelectedSubcategory(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
-                    >
-                      <option value="">All</option>
-                      {subcategories.map((subcategory) => (
-                        <option key={subcategory._id} value={subcategory._id}>
-                          {subcategory.name}
                         </option>
                       ))}
                     </select>

@@ -62,7 +62,7 @@ export class ProductController {
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page', example: '10' })
   @ApiQuery({ name: 'genderId', required: false, description: 'Filter by gender ID' })
   @ApiQuery({ name: 'categoryId', required: false, description: 'Filter by category ID' })
-  @ApiQuery({ name: 'subcategoryId', required: false, description: 'Filter by subcategory ID' })
+  @ApiQuery({ name: 'categoryName', required: false, description: 'Filter by category name (case-insensitive, matches across all genders)' })
   @ApiQuery({ name: 'minPrice', required: false, description: 'Minimum price filter' })
   @ApiQuery({ name: 'maxPrice', required: false, description: 'Maximum price filter' })
   @ApiQuery({ name: 'underPriceAmount', required: false, description: 'Filter products under specified price' })
@@ -80,7 +80,7 @@ export class ProductController {
     @Query('limit') limit: string = '10',
     @Query('genderId') genderId?: string,
     @Query('categoryId') categoryId?: string,
-    @Query('subcategoryId') subcategoryId?: string,
+    @Query('categoryName') categoryName?: string,
     @Query('minPrice') minPrice?: string,
     @Query('maxPrice') maxPrice?: string,
     @Query('underPriceAmount') underPriceAmount?: string,
@@ -96,7 +96,7 @@ export class ProductController {
     const filters: any = {};
     if (genderId) filters.genderId = genderId;
     if (categoryId) filters.categoryId = categoryId;
-    if (subcategoryId) filters.subcategoryId = subcategoryId;
+    if (categoryName) filters.categoryName = categoryName;
     if (minPrice) filters.minPrice = parseFloat(minPrice);
     if (maxPrice) filters.maxPrice = parseFloat(maxPrice);
     if (underPriceAmount) filters.underPriceAmount = parseFloat(underPriceAmount);
@@ -141,6 +141,63 @@ export class ProductController {
     return this.productService.getFeaturedProducts(limitNum);
   }
 
+  @Get('best-sellers')
+  @ApiOperation({
+    summary: 'Get best-selling products',
+    description: 'Retrieves products flagged as best sellers by an admin',
+  })
+  @ApiQuery({ name: 'limit', required: false, description: 'Maximum number of best sellers', example: '12' })
+  @ApiResponse({
+    status: 200,
+    description: 'Best sellers retrieved successfully',
+  })
+  async getBestSellers(@Query('limit') limit: string = '12') {
+    const limitNum = parseInt(limit, 10);
+    return this.productService.getBestSellers(limitNum);
+  }
+
+  @Get('latest-arrivals')
+  @ApiOperation({
+    summary: 'Get latest arrivals sections',
+    description: 'Retrieves categories flagged for the homepage "Latest Arrivals" section, each with its most recent product images',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Latest arrivals sections retrieved successfully',
+  })
+  async getLatestArrivals() {
+    return this.productService.getLatestArrivalsSections();
+  }
+
+  @Get('best-sellers-sections')
+  @ApiOperation({
+    summary: 'Get best sellers sections',
+    description: 'Retrieves best-seller products grouped by category, in the same card shape as Latest Arrivals',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Best sellers sections retrieved successfully',
+  })
+  async getBestSellersSections() {
+    return this.productService.getBestSellersSections();
+  }
+
+  @Get('low-stock')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get low-stock products',
+    description: 'Retrieves active products at or below a stock threshold, for admin alerts. Requires authentication.',
+  })
+  @ApiQuery({ name: 'threshold', required: false, description: 'Stock threshold', example: '5' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Maximum results', example: '10' })
+  async getLowStockProducts(
+    @Query('threshold') threshold: string = '5',
+    @Query('limit') limit: string = '10',
+  ) {
+    return this.productService.getLowStockProducts(parseInt(threshold, 10), parseInt(limit, 10));
+  }
+
   @Get('by-category/:categoryId')
   @ApiOperation({
     summary: 'Get products by category',
@@ -157,24 +214,6 @@ export class ProductController {
   })
   async getProductsByCategory(@Param('categoryId') categoryId: string) {
     return this.productService.getProductsByCategory(categoryId);
-  }
-
-  @Get('by-subcategory/:subcategoryId')
-  @ApiOperation({
-    summary: 'Get products by subcategory',
-    description: 'Retrieves all products belonging to a specific subcategory',
-  })
-  @ApiParam({ name: 'subcategoryId', description: 'Subcategory ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Products retrieved successfully',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Subcategory not found',
-  })
-  async getProductsBySubcategory(@Param('subcategoryId') subcategoryId: string) {
-    return this.productService.getProductsBySubcategory(subcategoryId);
   }
 
   @Get('by-family/:familySKU')

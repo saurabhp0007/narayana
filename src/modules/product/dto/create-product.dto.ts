@@ -6,6 +6,7 @@ import {
   IsBoolean,
   IsArray,
   IsMongoId,
+  IsEnum,
   Min,
   MinLength,
   MaxLength,
@@ -13,6 +14,7 @@ import {
   IsUrl,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ProductBadge } from '../schemas/product.schema';
 
 export class CreateProductDto {
   @ApiProperty({
@@ -65,14 +67,6 @@ export class CreateProductDto {
   @IsMongoId({ message: 'Invalid category ID' })
   @IsNotEmpty({ message: 'Category ID is required' })
   categoryId: string;
-
-  @ApiProperty({
-    description: 'MongoDB ID of the subcategory',
-    example: '507f1f77bcf86cd799439013',
-  })
-  @IsMongoId({ message: 'Invalid subcategory ID' })
-  @IsNotEmpty({ message: 'Subcategory ID is required' })
-  subcategoryId: string;
 
   @ApiPropertyOptional({
     description: 'Available sizes for the product',
@@ -165,4 +159,29 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Promotional badge shown on the product tile',
+    enum: ProductBadge,
+    example: ProductBadge.NEW,
+  })
+  @IsOptional()
+  @IsEnum(ProductBadge)
+  badge?: ProductBadge;
+
+  @ApiPropertyOptional({
+    description: 'Whether the product is featured in the Best Sellers homepage section',
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isBestSeller?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Whether this product appears in the homepage Latest Arrivals slider. Only takes effect if its category also has showInLatestArrivals on.',
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  showInLatestArrivals?: boolean;
 }

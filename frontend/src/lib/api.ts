@@ -83,25 +83,13 @@ export const categoryApi = {
   getById: (id: string) => api.get(`/category/${id}`),
   getBySlug: (slug: string) => api.get(`/category/slug/${slug}`),
   getByGender: (genderId: string) => api.get(`/category/gender/${genderId}`),
-  create: (data: { name: string; slug?: string; genderId: string; isActive?: boolean }) =>
+  getByTabGroup: (tabGroup: string) => api.get(`/category/tab-group/${tabGroup}`),
+  getLatestArrivals: () => api.get('/category/latest-arrivals'),
+  create: (data: { name: string; slug?: string; genderId: string; isActive?: boolean; tabGroup?: string; tileLabel?: string; displayOrder?: number; showInLatestArrivals?: boolean }) =>
     api.post('/category', data),
-  update: (id: string, data: { name?: string; slug?: string; genderId?: string; isActive?: boolean }) =>
+  update: (id: string, data: { name?: string; slug?: string; genderId?: string; isActive?: boolean; tabGroup?: string; tileLabel?: string; displayOrder?: number; showInLatestArrivals?: boolean }) =>
     api.patch(`/category/${id}`, data),
   delete: (id: string) => api.delete(`/category/${id}`),
-};
-
-// Subcategory API
-export const subcategoryApi = {
-  getAll: (params?: { page?: number; limit?: number; categoryId?: string; isActive?: boolean }) =>
-    api.get('/subcategory', { params }),
-  getById: (id: string) => api.get(`/subcategory/${id}`),
-  getBySlug: (slug: string) => api.get(`/subcategory/slug/${slug}`),
-  getByCategory: (categoryId: string) => api.get(`/subcategory/category/${categoryId}`),
-  create: (data: { name: string; slug?: string; categoryId: string; image?: string; isActive?: boolean }) =>
-    api.post('/subcategory', data),
-  update: (id: string, data: { name?: string; slug?: string; categoryId?: string; image?: string; isActive?: boolean }) =>
-    api.patch(`/subcategory/${id}`, data),
-  delete: (id: string) => api.delete(`/subcategory/${id}`),
 };
 
 // Product API
@@ -111,7 +99,7 @@ export const productApi = {
     limit?: number;
     genderId?: string;
     categoryId?: string;
-    subcategoryId?: string;
+    categoryName?: string;
     minPrice?: number;
     maxPrice?: number;
     underPriceAmount?: number;
@@ -124,9 +112,12 @@ export const productApi = {
   getById: (id: string) => api.get(`/products/${id}`),
   getBySku: (sku: string) => api.get(`/products/sku/${sku}`),
   getByCategory: (categoryId: string) => api.get(`/products/by-category/${categoryId}`),
-  getBySubcategory: (subcategoryId: string) => api.get(`/products/by-subcategory/${subcategoryId}`),
   getByFamily: (familySKU: string) => api.get(`/products/by-family/${familySKU}`),
   getFeatured: (limit?: number) => api.get('/products/featured', { params: { limit } }),
+  getBestSellers: (limit?: number) => api.get('/products/best-sellers', { params: { limit } }),
+  getLatestArrivals: () => api.get('/products/latest-arrivals'),
+  getBestSellersSections: () => api.get('/products/best-sellers-sections'),
+  getLowStock: (threshold?: number, limit?: number) => api.get('/products/low-stock', { params: { threshold, limit } }),
   autosuggest: (q: string, limit?: number) => api.get('/products/autosuggest', { params: { q, limit } }),
   create: (data: object) => api.post('/products', data),
   update: (id: string, data: object) => api.patch(`/products/${id}`, data),
@@ -173,13 +164,70 @@ export const offerApi = {
   getAll: (params?: { page?: number; limit?: number; isActive?: boolean }) =>
     api.get('/offers', { params }),
   getActive: () => api.get('/offers/active'),
-  getHomepage: () => api.get('/offers/homepage'),
+  getFootwear: () => api.get('/offers/footwear'),
   getNavbar: () => api.get('/offers/navbar'),
+  getHeroBanners: () => api.get('/offers/hero-banners'),
   getById: (id: string) => api.get(`/offers/${id}`),
   getForProduct: (productId: string) => api.get(`/offers/product/${productId}`),
   create: (data: object) => api.post('/offers', data),
   update: (id: string, data: object) => api.patch(`/offers/${id}`, data),
   delete: (id: string) => api.delete(`/offers/${id}`),
+};
+
+// Footwear Tab API (tabs of the homepage Footwear section)
+export const footwearTabApi = {
+  getAll: (params?: { isActive?: boolean }) => api.get('/footwear-tabs', { params }),
+  getById: (id: string) => api.get(`/footwear-tabs/${id}`),
+  create: (data: object) => api.post('/footwear-tabs', data),
+  update: (id: string, data: object) => api.patch(`/footwear-tabs/${id}`, data),
+  delete: (id: string) => api.delete(`/footwear-tabs/${id}`),
+};
+
+// Hero Banner API (independent of Offers)
+export const heroBannerApi = {
+  getAll: () => api.get('/hero-banners'),
+  getActive: () => api.get('/hero-banners/active'),
+  getById: (id: string) => api.get(`/hero-banners/${id}`),
+  create: (data: object) => api.post('/hero-banners', data),
+  update: (id: string, data: object) => api.patch(`/hero-banners/${id}`, data),
+  delete: (id: string) => api.delete(`/hero-banners/${id}`),
+};
+
+// Collection API (curated homepage product showcase: banner + hand-picked products)
+export const collectionApi = {
+  getAll: () => api.get('/collections'),
+  getActive: () => api.get('/collections/active'),
+  getById: (id: string) => api.get(`/collections/${id}`),
+  create: (data: object) => api.post('/collections', data),
+  update: (id: string, data: object) => api.patch(`/collections/${id}`, data),
+  delete: (id: string) => api.delete(`/collections/${id}`),
+};
+
+// Settings API
+export const settingsApi = {
+  getHomepage: () => api.get('/settings/homepage'),
+  updateHomepage: (data: {
+    countdownEnabled?: boolean;
+    countdownEndDate?: string;
+    countdownLabel?: string;
+    announcementBarEnabled?: boolean;
+    announcementBarText?: string;
+  }) => api.patch('/settings/homepage', data),
+};
+
+// Review API
+export const reviewApi = {
+  getAll: (params?: { page?: number; limit?: number; isApproved?: boolean }) =>
+    api.get('/reviews', { params }),
+  getHomepage: (limit?: number) => api.get('/reviews/homepage', { params: { limit } }),
+  getSummary: (params?: { productId?: string; categoryId?: string }) =>
+    api.get('/reviews/summary', { params }),
+  getScoped: (params?: { productId?: string; categoryId?: string; page?: number; limit?: number }) =>
+    api.get('/reviews/scoped', { params }),
+  getById: (id: string) => api.get(`/reviews/${id}`),
+  create: (data: object) => api.post('/reviews', data),
+  update: (id: string, data: object) => api.patch(`/reviews/${id}`, data),
+  delete: (id: string) => api.delete(`/reviews/${id}`),
 };
 
 // Media API

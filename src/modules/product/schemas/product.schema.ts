@@ -1,6 +1,21 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
+export enum ProductBadge {
+  NEW = 'NEW',
+  SALE = 'SALE',
+  PREMIUM = 'PREMIUM',
+  TRENDING = 'TRENDING',
+  COMBO = 'COMBO',
+  BEST_VALUE = 'BEST_VALUE',
+  LIMITED_SALE = 'LIMITED_SALE',
+  CASUAL = 'CASUAL',
+  OFFER = 'OFFER',
+  UNDER_1K = 'UNDER_1K',
+  BUDGET_PICK = 'BUDGET_PICK',
+  LUXURY = 'LUXURY',
+}
+
 @Schema({ timestamps: true })
 export class Product extends Document {
   @Prop({ required: true, trim: true })
@@ -20,9 +35,6 @@ export class Product extends Document {
 
   @Prop({ type: Types.ObjectId, ref: 'Category', required: true })
   categoryId: Types.ObjectId;
-
-  @Prop({ type: Types.ObjectId, ref: 'Subcategory', required: true })
-  subcategoryId: Types.ObjectId;
 
   @Prop({ type: [String], default: [] })
   sizes: string[];
@@ -54,6 +66,17 @@ export class Product extends Document {
   @Prop({ default: true })
   isActive: boolean;
 
+  @Prop({ type: String, enum: ProductBadge })
+  badge: ProductBadge;
+
+  @Prop({ default: false })
+  isBestSeller: boolean;
+
+  // Only takes effect when the product's category also has showInLatestArrivals on —
+  // both must be true for the product to appear in the homepage Latest Arrivals slider
+  @Prop({ default: false })
+  showInLatestArrivals: boolean;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -66,8 +89,9 @@ ProductSchema.index({ familySKU: 1 });
 ProductSchema.index({ name: 1 });
 ProductSchema.index({ genderId: 1 });
 ProductSchema.index({ categoryId: 1 });
-ProductSchema.index({ subcategoryId: 1 });
 ProductSchema.index({ price: 1 });
 ProductSchema.index({ isActive: 1 });
 ProductSchema.index({ stock: 1 });
 ProductSchema.index({ createdAt: -1 });
+ProductSchema.index({ showInLatestArrivals: 1 });
+ProductSchema.index({ isBestSeller: 1 });

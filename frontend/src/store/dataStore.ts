@@ -1,18 +1,17 @@
 import { create } from 'zustand';
-import { Gender, Category, Subcategory, Product } from '@/types';
-import { genderApi, categoryApi, subcategoryApi, productApi } from '@/lib/api';
+import { Gender, Category, Product } from '@/types';
+import { genderApi, categoryApi, productApi } from '@/lib/api';
 
 interface DataStore {
   // Data
   genders: Gender[];
-  allSubcategories: Subcategory[];
+  allCategories: Category[];
   featuredProducts: Product[];
   categoriesByGender: Record<string, Category[]>;
-  subcategoriesByCategory: Record<string, Subcategory[]>;
 
   // Loading states
   isLoadingGenders: boolean;
-  isLoadingSubcategories: boolean;
+  isLoadingCategories: boolean;
   isLoadingProducts: boolean;
 
   // Timestamps for cache invalidation
@@ -20,10 +19,9 @@ interface DataStore {
 
   // Actions
   fetchGenders: () => Promise<Gender[]>;
-  fetchAllSubcategories: () => Promise<Subcategory[]>;
+  fetchAllCategories: () => Promise<Category[]>;
   fetchFeaturedProducts: (limit?: number) => Promise<Product[]>;
   fetchCategoriesByGender: (genderId: string) => Promise<Category[]>;
-  fetchSubcategoriesByCategory: (categoryId: string) => Promise<Subcategory[]>;
 
   // Preload all essential data
   preloadEssentialData: () => Promise<void>;
@@ -37,13 +35,12 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
 export const useDataStore = create<DataStore>((set, get) => ({
   // Initial state
   genders: [],
-  allSubcategories: [],
+  allCategories: [],
   featuredProducts: [],
   categoriesByGender: {},
-  subcategoriesByCategory: {},
 
   isLoadingGenders: false,
-  isLoadingSubcategories: false,
+  isLoadingCategories: false,
   isLoadingProducts: false,
 
   lastFetchTime: {},
@@ -96,50 +93,48 @@ export const useDataStore = create<DataStore>((set, get) => ({
     }
   },
 
-  fetchAllSubcategories: async () => {
+  fetchAllCategories: async () => {
     const state = get();
-    const cacheKey = 'allSubcategories';
+    const cacheKey = 'allCategories';
     const now = Date.now();
 
-    // Return cached data if fresh
     if (
-      state.allSubcategories.length > 0 &&
+      state.allCategories.length > 0 &&
       state.lastFetchTime[cacheKey] &&
       now - state.lastFetchTime[cacheKey] < CACHE_TTL
     ) {
-      return state.allSubcategories;
+      return state.allCategories;
     }
 
-    // Prevent duplicate fetches
-    if (state.isLoadingSubcategories) {
+    if (state.isLoadingCategories) {
       return new Promise((resolve) => {
         const checkInterval = setInterval(() => {
           const currentState = get();
-          if (!currentState.isLoadingSubcategories) {
+          if (!currentState.isLoadingCategories) {
             clearInterval(checkInterval);
-            resolve(currentState.allSubcategories);
+            resolve(currentState.allCategories);
           }
         }, 50);
       });
     }
 
-    set({ isLoadingSubcategories: true });
+    set({ isLoadingCategories: true });
 
     try {
-      const response = await subcategoryApi.getAll({ isActive: true, limit: 100 });
+      const response = await categoryApi.getAll({ isActive: true, limit: 100 });
       const data = response.data.data || response.data || [];
 
       set({
-        allSubcategories: data,
-        isLoadingSubcategories: false,
+        allCategories: data,
+        isLoadingCategories: false,
         lastFetchTime: { ...get().lastFetchTime, [cacheKey]: now },
       });
 
       return data;
     } catch (error) {
-      console.error('Failed to fetch subcategories:', error);
-      set({ isLoadingSubcategories: false });
-      return state.allSubcategories;
+      console.error('Failed to fetch categories:', error);
+      set({ isLoadingCategories: false });
+      return state.allCategories;
     }
   },
 
@@ -223,39 +218,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
     }
   },
 
-  fetchSubcategoriesByCategory: async (categoryId: string) => {
-    const state = get();
-    const cacheKey = `subcategories:${categoryId}`;
-    const now = Date.now();
-
-    // Return cached data if fresh
-    if (
-      state.subcategoriesByCategory[categoryId] &&
-      state.lastFetchTime[cacheKey] &&
-      now - state.lastFetchTime[cacheKey] < CACHE_TTL
-    ) {
-      return state.subcategoriesByCategory[categoryId];
-    }
-
-    try {
-      const response = await subcategoryApi.getByCategory(categoryId);
-      const data = response.data || [];
-
-      set({
-        subcategoriesByCategory: {
-          ...get().subcategoriesByCategory,
-          [categoryId]: data,
-        },
-        lastFetchTime: { ...get().lastFetchTime, [cacheKey]: now },
-      });
-
-      return data;
-    } catch (error) {
-      console.error('Failed to fetch subcategories:', error);
-      return state.subcategoriesByCategory[categoryId] || [];
-    }
-  },
-
   preloadEssentialData: async () => {
     const state = get();
 
@@ -264,10 +226,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
     if (state.genders.length === 0) {
       promises.push(get().fetchGenders());
-    }
-
-    if (state.allSubcategories.length === 0) {
-      promises.push(get().fetchAllSubcategories());
     }
 
     if (state.featuredProducts.length === 0) {
@@ -280,10 +238,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
   clearCache: () => {
     set({
       genders: [],
-      allSubcategories: [],
       featuredProducts: [],
       categoriesByGender: {},
-      subcategoriesByCategory: {},
       lastFetchTime: {},
     });
   },

@@ -5,7 +5,6 @@ import { ProductController } from './product.controller';
 import { Product, ProductSchema } from './schemas/product.schema';
 import { GenderModule } from '../gender/gender.module';
 import { CategoryModule } from '../category/category.module';
-import { SubcategoryModule } from '../subcategory/subcategory.module';
 import { DatabaseModule } from '../../database/database.module';
 
 @Module({
@@ -13,7 +12,6 @@ import { DatabaseModule } from '../../database/database.module';
     MongooseModule.forFeature([{ name: Product.name, schema: ProductSchema }]),
     GenderModule,
     CategoryModule,
-    SubcategoryModule,
     DatabaseModule,
   ],
   controllers: [ProductController],

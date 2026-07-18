@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { productApi } from '@/lib/api';
-import { Product, Gender, Category, Subcategory } from '@/types';
+import { Product, Gender, Category } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
 import { useAuthStore } from '@/store/authStore';
@@ -144,11 +144,6 @@ export default function ProductDetailPage() {
     return categoryId.name;
   };
 
-  const getSubcategoryName = (subcategoryId: Subcategory | string | null): string => {
-    if (!subcategoryId || typeof subcategoryId === 'string') return '';
-    return subcategoryId.name;
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -267,14 +262,6 @@ export default function ProductDetailPage() {
                   <li>/</li>
                   <li>
                     <span className="text-gray-900">{getCategoryName(product.categoryId)}</span>
-                  </li>
-                </>
-              )}
-              {getSubcategoryName(product.subcategoryId) && (
-                <>
-                  <li>/</li>
-                  <li>
-                    <span className="text-gray-900">{getSubcategoryName(product.subcategoryId)}</span>
                   </li>
                 </>
               )}

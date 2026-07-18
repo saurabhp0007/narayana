@@ -144,6 +144,16 @@ export class GenderService {
     return gender;
   }
 
+  // Always hits Mongo directly, bypassing the Redis cache — mutations need a live
+  // Mongoose document (for .save()/.deleteOne()), which a JSON.parse'd cache hit is not.
+  private async getDocumentOrThrow(id: string): Promise<Gender> {
+    const gender = await this.genderModel.findById(id).exec();
+    if (!gender) {
+      throw new NotFoundException(`Gender with ID ${id} not found`);
+    }
+    return gender;
+  }
+
   async findBySlug(slug: string): Promise<Gender> {
     const cacheKey = `${this.CACHE_PREFIX}slug:${slug}`;
 
@@ -175,7 +185,7 @@ export class GenderService {
   }
 
   async update(id: string, updateGenderDto: UpdateGenderDto): Promise<Gender> {
-    const gender = await this.findOne(id);
+    const gender = await this.getDocumentOrThrow(id);
 
     // If name is being updated, regenerate slug
     if (updateGenderDto.name) {
@@ -209,7 +219,7 @@ export class GenderService {
   }
 
   async remove(id: string): Promise<{ message: string }> {
-    const gender = await this.findOne(id);
+    const gender = await this.getDocumentOrThrow(id);
 
     // Check if there are any categories using this gender
     const categoryCount = await this.categoryService.countByGender(id);

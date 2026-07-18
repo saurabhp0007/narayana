@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { categoryApi, genderApi } from '@/lib/api';
 import { Category, Gender, CreateCategoryDto } from '@/types';
+
+const MAX_LATEST_ARRIVALS = 4;
 
 export default function CategoryManagementPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [genders, setGenders] = useState<Gender[]>([]);
+  const [latestArrivalsIds, setLatestArrivalsIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -22,6 +26,10 @@ export default function CategoryManagementPage() {
     slug: '',
     genderId: '',
     isActive: true,
+    tabGroup: '',
+    tileLabel: '',
+    displayOrder: 0,
+    showInLatestArrivals: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -78,8 +86,19 @@ export default function CategoryManagementPage() {
     }
   };
 
+  const fetchLatestArrivals = async () => {
+    try {
+      const response = await categoryApi.getLatestArrivals();
+      const data: Category[] = response.data.data || response.data || [];
+      setLatestArrivalsIds(data.map((c) => c._id));
+    } catch (err) {
+      console.error('Failed to fetch latest arrivals categories:', err);
+    }
+  };
+
   useEffect(() => {
     fetchGenders();
+    fetchLatestArrivals();
   }, []);
 
   useEffect(() => {
@@ -108,6 +127,10 @@ export default function CategoryManagementPage() {
       slug: '',
       genderId: genders.length > 0 ? genders[0]._id : '',
       isActive: true,
+      tabGroup: '',
+      tileLabel: '',
+      displayOrder: 0,
+      showInLatestArrivals: false,
     });
     setIsModalOpen(true);
   };
@@ -120,6 +143,10 @@ export default function CategoryManagementPage() {
       slug: category.slug,
       genderId,
       isActive: category.isActive,
+      tabGroup: category.tabGroup || '',
+      tileLabel: category.tileLabel || '',
+      displayOrder: category.displayOrder || 0,
+      showInLatestArrivals: category.showInLatestArrivals || false,
     });
     setIsModalOpen(true);
   };
@@ -132,6 +159,10 @@ export default function CategoryManagementPage() {
       slug: '',
       genderId: '',
       isActive: true,
+      tabGroup: '',
+      tileLabel: '',
+      displayOrder: 0,
+      showInLatestArrivals: false,
     });
   };
 
@@ -162,9 +193,12 @@ export default function CategoryManagementPage() {
 
       closeModal();
       fetchCategories();
+      fetchLatestArrivals();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save category. Please try again.';
+      const errorMessage = axios.isAxiosError(err)
+        ? err.response?.data?.message || err.message
+        : err instanceof Error ? err.message : 'Failed to save category. Please try again.';
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -180,6 +214,7 @@ export default function CategoryManagementPage() {
       setSuccessMessage('Category deleted successfully!');
       setDeleteConfirmId(null);
       fetchCategories();
+      fetchLatestArrivals();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete category. Please try again.';
@@ -196,6 +231,7 @@ export default function CategoryManagementPage() {
       await categoryApi.update(category._id, { isActive: !category.isActive });
       setSuccessMessage(`Category ${!category.isActive ? 'activated' : 'deactivated'} successfully!`);
       fetchCategories();
+      fetchLatestArrivals();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update status. Please try again.';
@@ -211,6 +247,10 @@ export default function CategoryManagementPage() {
     return genderId.name;
   };
 
+  const isLatestArrivalsAtCapacity =
+    latestArrivalsIds.length >= MAX_LATEST_ARRIVALS &&
+    !(editingCategory && latestArrivalsIds.includes(editingCategory._id));
+
   return (
     <div className="p-6">
       <div className="mb-6 flex justify-between items-center">
@@ -218,6 +258,9 @@ export default function CategoryManagementPage() {
           <h1 className="text-2xl font-bold text-gray-900">Category Management</h1>
           <p className="mt-1 text-sm text-gray-600">
             Manage product categories for your store
+          </p>
+          <p className="mt-1 text-sm text-gray-600">
+            <span className="font-medium text-gray-900">{latestArrivalsIds.length}/{MAX_LATEST_ARRIVALS}</span> categories shown in homepage Latest Arrivals
           </p>
         </div>
         <button
@@ -314,16 +357,23 @@ export default function CategoryManagementPage() {
                         {getGenderName(category.genderId)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          onClick={() => handleToggleStatus(category)}
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            category.isActive
-                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                              : 'bg-red-100 text-red-800 hover:bg-red-200'
-                          }`}
-                        >
-                          {category.isActive ? 'Active' : 'Inactive'}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleToggleStatus(category)}
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              category.isActive
+                                ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                : 'bg-red-100 text-red-800 hover:bg-red-200'
+                            }`}
+                          >
+                            {category.isActive ? 'Active' : 'Inactive'}
+                          </button>
+                          {category.showInLatestArrivals && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                              Live on Homepage
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
@@ -436,6 +486,47 @@ export default function CategoryManagementPage() {
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label htmlFor="tabGroup" className="block text-sm font-medium text-gray-700">
+                    Homepage Tab Group
+                  </label>
+                  <input
+                    type="text"
+                    id="tabGroup"
+                    value={formData.tabGroup || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, tabGroup: e.target.value }))}
+                    className="text-black mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    placeholder="e.g., footwear, shop-by-category"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Groups this category into a homepage tab section (e.g. the Footwear or Shop by Category tabs).
+                  </p>
+                </div>
+                <div>
+                  <label htmlFor="tileLabel" className="block text-sm font-medium text-gray-700">
+                    Tile Label
+                  </label>
+                  <input
+                    type="text"
+                    id="tileLabel"
+                    value={formData.tileLabel || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, tileLabel: e.target.value }))}
+                    className="text-black mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    placeholder="e.g., Limited Sale, Premium, Combo"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="displayOrder" className="block text-sm font-medium text-gray-700">
+                    Display Order
+                  </label>
+                  <input
+                    type="number"
+                    id="displayOrder"
+                    value={formData.displayOrder ?? 0}
+                    onChange={(e) => setFormData(prev => ({ ...prev, displayOrder: parseInt(e.target.value) || 0 }))}
+                    className="text-black mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                </div>
                 <div className="flex items-center">
                   <input
                     type="checkbox"
@@ -447,6 +538,29 @@ export default function CategoryManagementPage() {
                   <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
                     Active
                   </label>
+                </div>
+                <div>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="showInLatestArrivals"
+                      checked={formData.showInLatestArrivals || false}
+                      disabled={isLatestArrivalsAtCapacity && !formData.showInLatestArrivals}
+                      onChange={(e) => setFormData(prev => ({ ...prev, showInLatestArrivals: e.target.checked }))}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <label htmlFor="showInLatestArrivals" className="ml-2 block text-sm text-gray-900">
+                      Show in Latest Arrivals (Homepage)
+                    </label>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Featured as an auto-sliding category card in the homepage &quot;Latest Arrivals&quot; section.
+                  </p>
+                  {isLatestArrivalsAtCapacity && !formData.showInLatestArrivals && (
+                    <p className="mt-1 text-xs text-amber-600">
+                      {MAX_LATEST_ARRIVALS} categories are already featured. Turn one off before enabling another.
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3 rounded-b-lg">
@@ -477,7 +591,7 @@ export default function CategoryManagementPage() {
             <div className="px-6 py-4">
               <h3 className="text-lg font-medium text-gray-900 mb-2">Confirm Delete</h3>
               <p className="text-sm text-gray-500">
-                Are you sure you want to delete this category? This action cannot be undone and may affect related subcategories and products.
+                Are you sure you want to delete this category? This action cannot be undone and may affect related products.
               </p>
             </div>
             <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3 rounded-b-lg">

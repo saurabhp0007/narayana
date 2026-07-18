@@ -3,21 +3,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { productApi, genderApi, categoryApi, subcategoryApi } from '@/lib/api';
-import { Product, Gender, Category, Subcategory, PaginatedResponse } from '@/types';
+import { productApi, genderApi, categoryApi } from '@/lib/api';
+import { Product, Gender, Category, PaginatedResponse } from '@/types';
 
 export default function ProductManagementPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [genders, setGenders] = useState<Gender[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Filters
   const [selectedGender, setSelectedGender] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedSubcategory, setSelectedSubcategory] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Pagination
@@ -43,7 +41,6 @@ export default function ProductManagementPage() {
       };
       if (selectedGender) params.genderId = selectedGender;
       if (selectedCategory) params.categoryId = selectedCategory;
-      if (selectedSubcategory) params.subcategoryId = selectedSubcategory;
       if (searchQuery) params.search = searchQuery;
 
       const response = await productApi.getAll(params);
@@ -64,18 +61,16 @@ export default function ProductManagementPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, selectedGender, selectedCategory, selectedSubcategory, searchQuery]);
+  }, [currentPage, selectedGender, selectedCategory, searchQuery]);
 
   const fetchFilters = useCallback(async () => {
     try {
-      const [gendersRes, categoriesRes, subcategoriesRes] = await Promise.all([
+      const [gendersRes, categoriesRes] = await Promise.all([
         genderApi.getAll({ isActive: true }),
         categoryApi.getAll({ isActive: true }),
-        subcategoryApi.getAll({ isActive: true }),
       ]);
       setGenders(Array.isArray(gendersRes.data) ? gendersRes.data : gendersRes.data.data || []);
       setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : categoriesRes.data.data || []);
-      setSubcategories(Array.isArray(subcategoriesRes.data) ? subcategoriesRes.data : subcategoriesRes.data.data || []);
     } catch (err) {
       console.error('Failed to fetch filters:', err);
     }
@@ -118,14 +113,6 @@ export default function ProductManagementPage() {
       )
     : categories;
 
-  const filteredSubcategories = selectedCategory
-    ? subcategories.filter(
-        (sub) =>
-          (typeof sub.categoryId === 'string' ? sub.categoryId : sub.categoryId._id) ===
-          selectedCategory
-      )
-    : subcategories;
-
   const getGenderName = (genderId: Gender | string) => {
     if (typeof genderId === 'object') return genderId.name;
     const gender = genders.find((g) => g._id === genderId);
@@ -136,12 +123,6 @@ export default function ProductManagementPage() {
     if (typeof categoryId === 'object') return categoryId.name;
     const category = categories.find((c) => c._id === categoryId);
     return category?.name || 'Unknown';
-  };
-
-  const getSubcategoryName = (subcategoryId: Subcategory | string) => {
-    if (typeof subcategoryId === 'object') return subcategoryId?.name;
-    const subcategory = subcategories.find((s) => s._id === subcategoryId);
-    return subcategory?.name || 'Unknown';
   };
 
   return (
@@ -206,7 +187,6 @@ export default function ProductManagementPage() {
               onChange={(e) => {
                 setSelectedGender(e.target.value);
                 setSelectedCategory('');
-                setSelectedSubcategory('');
                 setCurrentPage(1);
               }}
               className="text-black w-full text-black px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
@@ -228,7 +208,6 @@ export default function ProductManagementPage() {
               value={selectedCategory}
               onChange={(e) => {
                 setSelectedCategory(e.target.value);
-                setSelectedSubcategory('');
                 setCurrentPage(1);
               }}
               className="text-black w-full text-black px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
@@ -237,27 +216,6 @@ export default function ProductManagementPage() {
               {filteredCategories.map((category) => (
                 <option key={category._id} value={category._id}>
                   {category.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="subcategory" className="block text-sm font-medium text-gray-700 mb-1">
-              Subcategory
-            </label>
-            <select
-              id="subcategory"
-              value={selectedSubcategory}
-              onChange={(e) => {
-                setSelectedSubcategory(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="text-black w-full text-black px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="">All Subcategories</option>
-              {filteredSubcategories.map((subcategory) => (
-                <option key={subcategory._id} value={subcategory._id}>
-                  {subcategory.name}
                 </option>
               ))}
             </select>
@@ -342,8 +300,7 @@ export default function ProductManagementPage() {
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">{product.name}</div>
                       <div className="text-xs text-gray-500">
-                        {getGenderName(product.genderId)} / {getCategoryName(product.categoryId)} /{' '}
-                        {getSubcategoryName(product.subcategoryId)}
+                        {getGenderName(product.genderId)} / {getCategoryName(product.categoryId)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

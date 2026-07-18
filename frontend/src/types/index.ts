@@ -42,7 +42,6 @@ export interface Product {
   description?: string;
   genderId: Gender | string;
   categoryId: Category | string;
-  subcategoryId: Subcategory | string;
   sizes?: string[];
   stock: number;
   price: number;
@@ -53,6 +52,9 @@ export interface Product {
   videos: string[];
   sliders: string[];
   isActive: boolean;
+  badge?: ProductBadge;
+  isBestSeller?: boolean;
+  showInLatestArrivals?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -72,19 +74,19 @@ export interface Category {
   slug: string;
   genderId: Gender | string;
   isActive: boolean;
+  tabGroup?: string;
+  tileLabel?: string;
+  displayOrder?: number;
+  showInLatestArrivals?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface Subcategory {
-  _id: string;
-  name: string;
-  slug: string;
-  categoryId: Category | string;
-  image?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+export interface LatestArrivalsSection {
+  categoryId: string;
+  categoryName: string;
+  categorySlug: string;
+  images: string[];
 }
 
 // Cart types
@@ -176,26 +178,39 @@ export interface OfferRules {
   minQuantity?: number;
 }
 
+// A tab in the homepage Footwear section — fully admin-managed (see /admin/footwear-tabs).
+export interface FootwearTabItem {
+  _id: string;
+  name: string;
+  slug: string;
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateFootwearTabDto {
+  name: string;
+  slug?: string;
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
 export interface Offer {
   _id: string;
   name: string;
   description?: string;
   offerType: 'buyXgetY' | 'bundleDiscount' | 'percentageOff' | 'fixedAmountOff';
   rules: OfferRules;
-  productIds: string[];
+  productIds: string[] | Product[];
   categoryIds: string[];
-  subcategoryIds: string[];
   genderIds: string[];
   startDate: string;
   endDate: string;
   isActive: boolean;
   priority: number;
-  image?: string;
-  homepageSubtitle?: string;
-  homepagePrice?: string;
-  homepageCategory?: string;
-  displayOnHomepage?: boolean;
   displayInNavbar?: boolean;
+  footwearTabId?: string | FootwearTabItem;
   createdAt: string;
   updatedAt: string;
 }
@@ -238,7 +253,6 @@ export interface CreateProductDto {
   description?: string;
   genderId: string;
   categoryId: string;
-  subcategoryId: string;
   sizes?: string[];
   stock: number;
   price: number;
@@ -249,7 +263,24 @@ export interface CreateProductDto {
   videos?: string[];
   sliders?: string[];
   isActive?: boolean;
+  badge?: ProductBadge;
+  isBestSeller?: boolean;
+  showInLatestArrivals?: boolean;
 }
+
+export type ProductBadge =
+  | 'NEW'
+  | 'SALE'
+  | 'PREMIUM'
+  | 'TRENDING'
+  | 'COMBO'
+  | 'BEST_VALUE'
+  | 'LIMITED_SALE'
+  | 'CASUAL'
+  | 'OFFER'
+  | 'UNDER_1K'
+  | 'BUDGET_PICK'
+  | 'LUXURY';
 
 export interface CreateGenderDto {
   name: string;
@@ -262,14 +293,10 @@ export interface CreateCategoryDto {
   slug?: string;
   genderId: string;
   isActive?: boolean;
-}
-
-export interface CreateSubcategoryDto {
-  name: string;
-  slug?: string;
-  categoryId: string;
-  image?: string;
-  isActive?: boolean;
+  tabGroup?: string;
+  tileLabel?: string;
+  displayOrder?: number;
+  showInLatestArrivals?: boolean;
 }
 
 export interface CreateOfferDto {
@@ -279,18 +306,91 @@ export interface CreateOfferDto {
   rules: OfferRules;
   productIds?: string[];
   categoryIds?: string[];
-  subcategoryIds?: string[];
   genderIds?: string[];
   startDate: string;
   endDate: string;
   isActive?: boolean;
   priority?: number;
-  image?: string;
-  homepageSubtitle?: string;
-  homepagePrice?: string;
-  homepageCategory?: string;
-  displayOnHomepage?: boolean;
   displayInNavbar?: boolean;
+  footwearTabId?: string;
+}
+
+// Hero banner types (independent of Offer)
+export interface HeroBanner {
+  _id: string;
+  image: string;
+  subtitle?: string;
+  title: string;
+  buttonText?: string;
+  linkUrl: string;
+  isActive: boolean;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateHeroBannerDto {
+  image: string;
+  subtitle?: string;
+  title: string;
+  buttonText?: string;
+  linkUrl: string;
+  isActive?: boolean;
+  displayOrder?: number;
+}
+
+// Collection types (curated homepage product showcase: banner + hand-picked products)
+export interface Collection {
+  _id: string;
+  name: string;
+  slug: string;
+  bannerImage?: string;
+  productIds: string[] | Product[];
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCollectionDto {
+  name: string;
+  slug?: string;
+  bannerImage?: string;
+  productIds?: string[];
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
+// Review types
+export interface Review {
+  _id: string;
+  customerName: string;
+  location?: string;
+  rating: number;
+  text: string;
+  verifiedPurchase: boolean;
+  productId?: string;
+  categoryId?: string;
+  productLabel?: string;
+  isApproved: boolean;
+  displayOnHomepage: boolean;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateReviewDto {
+  customerName: string;
+  location?: string;
+  rating: number;
+  text: string;
+  verifiedPurchase?: boolean;
+  productId?: string;
+  categoryId?: string;
+  productLabel?: string;
+  isApproved?: boolean;
+  displayOnHomepage?: boolean;
+  displayOrder?: number;
 }
 
 export interface AddToCartDto {

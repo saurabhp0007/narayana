@@ -97,6 +97,33 @@ export class CategoryController {
     return this.categoryService.findByGender(genderId);
   }
 
+  @Get('tab-group/:tabGroup')
+  @ApiOperation({
+    summary: 'Get categories by tab group',
+    description: 'Retrieves categories belonging to a homepage tab group (e.g. "footwear", "shop-by-category")',
+  })
+  @ApiParam({ name: 'tabGroup', description: 'Tab group key' })
+  @ApiResponse({
+    status: 200,
+    description: 'Categories retrieved successfully',
+  })
+  async findByTabGroup(@Param('tabGroup') tabGroup: string) {
+    return this.categoryService.findByTabGroup(tabGroup);
+  }
+
+  @Get('latest-arrivals')
+  @ApiOperation({
+    summary: 'Get categories featured in Latest Arrivals',
+    description: 'Retrieves the (max 4) categories currently toggled to show in the homepage "Latest Arrivals" section',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Categories retrieved successfully',
+  })
+  async findLatestArrivalsCategories() {
+    return this.categoryService.findLatestArrivalsCategories();
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: 'Get category by ID',

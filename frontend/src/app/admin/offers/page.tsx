@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { offerApi, productApi, categoryApi, subcategoryApi } from '@/lib/api';
-import { Offer, Product, Category, Subcategory, CreateOfferDto, OfferRules } from '@/types';
+import { offerApi, productApi, categoryApi, footwearTabApi } from '@/lib/api';
+import { Offer, Product, Category, CreateOfferDto, OfferRules, FootwearTabItem } from '@/types';
 
 type OfferType = 'buyXgetY' | 'bundleDiscount' | 'percentageOff' | 'fixedAmountOff';
 
@@ -10,15 +10,13 @@ export default function OfferManagementPage() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [footwearTabs, setFootwearTabs] = useState<FootwearTabItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterActive, setFilterActive] = useState<string>('all');
 
   // Cascading selection state
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
-  const [selectedSubcategory, setSelectedSubcategory] = useState<string>('');
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
 
   // Modal state
@@ -37,17 +35,12 @@ export default function OfferManagementPage() {
     rules: {},
     productIds: [],
     categoryIds: [],
-    subcategoryIds: [],
     startDate: '',
     endDate: '',
     isActive: true,
     priority: 0,
-    image: '',
-    homepageSubtitle: '',
-    homepagePrice: '',
-    homepageCategory: '',
-    displayOnHomepage: false,
     displayInNavbar: false,
+    footwearTabId: '',
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -73,10 +66,10 @@ export default function OfferManagementPage() {
 
   const fetchSupportData = useCallback(async () => {
     try {
-      const [productsRes, categoriesRes, subcategoriesRes] = await Promise.all([
+      const [productsRes, categoriesRes, footwearTabsRes] = await Promise.all([
         productApi.getAll({ limit: 100, isActive: true }),
         categoryApi.getAll({ isActive: true }),
-        subcategoryApi.getAll({ isActive: true }),
+        footwearTabApi.getAll({ isActive: true }),
       ]);
 
       const productsData = productsRes.data;
@@ -85,8 +78,8 @@ export default function OfferManagementPage() {
       const categoriesData = categoriesRes.data;
       setCategories(Array.isArray(categoriesData) ? categoriesData : categoriesData.data || []);
 
-      const subcategoriesData = subcategoriesRes.data;
-      setSubcategories(Array.isArray(subcategoriesData) ? subcategoriesData : subcategoriesData.data || []);
+      const footwearTabsData = footwearTabsRes.data;
+      setFootwearTabs(Array.isArray(footwearTabsData) ? footwearTabsData : footwearTabsData.data || []);
     } catch (err) {
       console.error('Failed to fetch support data:', err);
     }
@@ -105,51 +98,27 @@ export default function OfferManagementPage() {
       rules: {},
       productIds: [],
       categoryIds: [],
-      subcategoryIds: [],
       startDate: '',
       endDate: '',
       isActive: true,
       priority: 0,
-      image: '',
-      homepageSubtitle: '',
-      homepagePrice: '',
-      homepageCategory: '',
-      displayOnHomepage: false,
       displayInNavbar: false,
+      footwearTabId: '',
     });
     setFormErrors({});
     setEditingOffer(null);
     setSelectedCategory('');
-    setSelectedSubcategory('');
-    setFilteredSubcategories([]);
     setFilteredProducts([]);
   };
 
-  // Handle category change - filter subcategories
+  // Handle category change - filter products
   const handleCategoryChange = (categoryId: string) => {
     setSelectedCategory(categoryId);
-    setSelectedSubcategory('');
-    setFilteredProducts([]);
-    setFormData(prev => ({ ...prev, productIds: [], subcategoryIds: [] }));
+    setFormData(prev => ({ ...prev, productIds: [], categoryIds: categoryId ? [categoryId] : [] }));
 
     if (categoryId) {
-      const filtered = subcategories.filter(
-        sub => (sub.categoryId as Category)?._id === categoryId || sub.categoryId === categoryId
-      );
-      setFilteredSubcategories(filtered);
-    } else {
-      setFilteredSubcategories([]);
-    }
-  };
-
-  // Handle subcategory change - filter products
-  const handleSubcategoryChange = (subcategoryId: string) => {
-    setSelectedSubcategory(subcategoryId);
-    setFormData(prev => ({ ...prev, productIds: [], subcategoryIds: subcategoryId ? [subcategoryId] : [] }));
-
-    if (subcategoryId) {
       const filtered = products.filter(
-        prod => (prod.subcategoryId as Subcategory)?._id === subcategoryId || prod.subcategoryId === subcategoryId
+        prod => (prod.categoryId as Category)?._id === categoryId || prod.categoryId === categoryId
       );
       setFilteredProducts(filtered);
     } else {
@@ -164,50 +133,38 @@ export default function OfferManagementPage() {
 
   const openEditModal = (offer: Offer) => {
     setEditingOffer(offer);
+    const productIdList = (offer.productIds || []).map((p) => (typeof p === 'string' ? p : p._id));
+    const footwearTabId =
+      typeof offer.footwearTabId === 'string' ? offer.footwearTabId : offer.footwearTabId?._id || '';
     setFormData({
       name: offer.name,
       description: offer.description || '',
       offerType: offer.offerType,
-      rules: offer.rules,
-      productIds: offer.productIds || [],
+      rules: offer.rules || {},
+      productIds: productIdList,
       categoryIds: offer.categoryIds || [],
-      subcategoryIds: offer.subcategoryIds || [],
       startDate: new Date(offer.startDate).toISOString().slice(0, 16),
       endDate: new Date(offer.endDate).toISOString().slice(0, 16),
       isActive: offer.isActive,
       priority: offer.priority,
-      image: offer.image || '',
-      homepageSubtitle: offer.homepageSubtitle || '',
-      homepagePrice: offer.homepagePrice || '',
-      homepageCategory: offer.homepageCategory || '',
-      displayOnHomepage: offer.displayOnHomepage || false,
       displayInNavbar: offer.displayInNavbar || false,
+      footwearTabId,
     });
 
     // Initialize cascading selection for editing
-    if (offer.productIds && offer.productIds.length > 0) {
-      // Find the first product to get its subcategory and category
-      const firstProductId = offer.productIds[0];
+    if (productIdList.length > 0) {
+      // Find the first product to get its category
+      const firstProductId = productIdList[0];
       const product = products.find(p => p._id === firstProductId);
       if (product) {
-        const subcategoryId = (product.subcategoryId as Subcategory)?._id || product.subcategoryId as string;
-        const subcategory = subcategories.find(s => s._id === subcategoryId);
-        if (subcategory) {
-          const categoryId = (subcategory.categoryId as Category)?._id || subcategory.categoryId as string;
-          setSelectedCategory(categoryId);
-          setFilteredSubcategories(subcategories.filter(
-            sub => (sub.categoryId as Category)?._id === categoryId || sub.categoryId === categoryId
-          ));
-          setSelectedSubcategory(subcategoryId);
-          setFilteredProducts(products.filter(
-            prod => (prod.subcategoryId as Subcategory)?._id === subcategoryId || prod.subcategoryId === subcategoryId
-          ));
-        }
+        const categoryId = (product.categoryId as Category)?._id || product.categoryId as string;
+        setSelectedCategory(categoryId);
+        setFilteredProducts(products.filter(
+          prod => (prod.categoryId as Category)?._id === categoryId || prod.categoryId === categoryId
+        ));
       }
     } else {
       setSelectedCategory('');
-      setSelectedSubcategory('');
-      setFilteredSubcategories([]);
       setFilteredProducts([]);
     }
 
@@ -278,10 +235,11 @@ export default function OfferManagementPage() {
 
     setIsSubmitting(true);
     try {
+      const payload = { ...formData, footwearTabId: formData.footwearTabId || undefined };
       if (editingOffer) {
-        await offerApi.update(editingOffer._id, formData);
+        await offerApi.update(editingOffer._id, payload);
       } else {
-        await offerApi.create(formData);
+        await offerApi.create(payload);
       }
       closeModal();
       fetchOffers();
@@ -416,6 +374,9 @@ export default function OfferManagementPage() {
                   Priority
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Footwear Tab
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -423,7 +384,7 @@ export default function OfferManagementPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center">
+                  <td colSpan={8} className="px-6 py-4 text-center">
                     <div className="flex justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                     </div>
@@ -431,7 +392,7 @@ export default function OfferManagementPage() {
                 </tr>
               ) : offers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
                     No offers found.
                   </td>
                 </tr>
@@ -464,6 +425,9 @@ export default function OfferManagementPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {offer.priority}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {footwearTabs.find((t) => t._id === offer.footwearTabId)?.name || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-3">
@@ -721,10 +685,10 @@ export default function OfferManagementPage() {
                       )}
                     </div>
 
-                    {/* Cascading Selection: Category -> Subcategory -> Products */}
+                    {/* Cascading Selection: Category -> Products */}
                     <div className="md:col-span-2 bg-green-50 p-4 rounded-md">
                       <h4 className="text-sm font-medium text-gray-700 mb-3">Product Selection (Cascading)</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Category Selection */}
                         <div>
                           <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -744,30 +708,10 @@ export default function OfferManagementPage() {
                           </select>
                         </div>
 
-                        {/* Subcategory Selection */}
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            2. Select Subcategory *
-                          </label>
-                          <select
-                            value={selectedSubcategory}
-                            onChange={(e) => handleSubcategoryChange(e.target.value)}
-                            disabled={!selectedCategory}
-                            className="text-black w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
-                          >
-                            <option value="">-- Choose Subcategory --</option>
-                            {filteredSubcategories.map((subcategory) => (
-                              <option key={subcategory._id} value={subcategory._id}>
-                                {subcategory.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
                         {/* Products Selection */}
                         <div>
                           <label className="block text-xs font-medium text-gray-600 mb-1">
-                            3. Select Products * ({formData.productIds?.length || 0} selected)
+                            2. Select Products * ({formData.productIds?.length || 0} selected)
                           </label>
                           <select
                             multiple
@@ -778,7 +722,7 @@ export default function OfferManagementPage() {
                                 productIds: Array.from(e.target.selectedOptions, (opt) => opt.value),
                               }))
                             }
-                            disabled={!selectedSubcategory}
+                            disabled={!selectedCategory}
                             className="text-black w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 h-32 disabled:bg-gray-100"
                           >
                             {filteredProducts.map((product) => (
@@ -792,105 +736,34 @@ export default function OfferManagementPage() {
                       </div>
                     </div>
 
-                    {/* Homepage Display Settings */}
+                    {/* Footwear Section */}
                     <div className="md:col-span-2 bg-blue-50 p-4 rounded-md">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">Homepage Display Settings</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Image URL */}
-                        <div className="md:col-span-2">
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Image URL (for homepage card)
-                          </label>
-                          <input
-                            type="url"
-                            value={formData.image || ''}
-                            onChange={(e) =>
-                              setFormData((prev) => ({ ...prev, image: e.target.value }))
-                            }
-                            placeholder="https://example.com/image.jpg"
-                            className="text-black w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                          />
-                        </div>
-
-                        {/* Homepage Subtitle */}
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Homepage Subtitle (e.g., Under, BUY 3)
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.homepageSubtitle || ''}
-                            onChange={(e) =>
-                              setFormData((prev) => ({ ...prev, homepageSubtitle: e.target.value }))
-                            }
-                            placeholder="Under"
-                            className="text-black w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                          />
-                        </div>
-
-                        {/* Homepage Price */}
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Homepage Price (e.g., ₹500, ₹3000)
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.homepagePrice || ''}
-                            onChange={(e) =>
-                              setFormData((prev) => ({ ...prev, homepagePrice: e.target.value }))
-                            }
-                            placeholder="₹500"
-                            className="text-black w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                          />
-                        </div>
-
-                        {/* Homepage Category */}
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Homepage Category (e.g., Shirts, T-Shirts)
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.homepageCategory || ''}
-                            onChange={(e) =>
-                              setFormData((prev) => ({ ...prev, homepageCategory: e.target.value }))
-                            }
-                            placeholder="Shirts"
-                            className="text-black w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                          />
-                        </div>
-
-                        {/* Display On Homepage */}
-                        <div className="flex items-center">
-                          <input
-                            type="checkbox"
-                            id="displayOnHomepage"
-                            checked={formData.displayOnHomepage || false}
-                            onChange={(e) =>
-                              setFormData((prev) => ({ ...prev, displayOnHomepage: e.target.checked }))
-                            }
-                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                          />
-                          <label htmlFor="displayOnHomepage" className="ml-2 block text-sm text-gray-900">
-                            Display on Homepage
-                          </label>
-                        </div>
-
-                        {/* Display In Navbar */}
-                        <div className="flex items-center">
-                          <input
-                            type="checkbox"
-                            id="displayInNavbar"
-                            checked={formData.displayInNavbar || false}
-                            onChange={(e) =>
-                              setFormData((prev) => ({ ...prev, displayInNavbar: e.target.checked }))
-                            }
-                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                          />
-                          <label htmlFor="displayInNavbar" className="ml-2 block text-sm text-gray-900">
-                            Display in Navbar Dropdown
-                          </label>
-                        </div>
+                      <h4 className="text-sm font-medium text-gray-700 mb-1">Homepage Footwear Section</h4>
+                      <p className="text-xs text-gray-500 mb-3">
+                        Pick a tab to feature this offer&apos;s first selected product as a card in the homepage
+                        Footwear section. Image, name and price are pulled from that product automatically. Manage
+                        the list of tabs under{' '}
+                        <a href="/admin/footwear-tabs" className="underline">
+                          Footwear Tabs
+                        </a>
+                        .
+                      </p>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Footwear Tab</label>
+                        <select
+                          value={formData.footwearTabId || ''}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, footwearTabId: e.target.value }))
+                          }
+                          className="text-black w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                        >
+                          <option value="">Don&apos;t show in Footwear section</option>
+                          {footwearTabs.map((tab) => (
+                            <option key={tab._id} value={tab._id}>
+                              {tab.name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 
@@ -947,6 +820,22 @@ export default function OfferManagementPage() {
                       />
                       <label htmlFor="isActiveOffer" className="ml-2 block text-sm text-gray-900">
                         Offer is Active
+                      </label>
+                    </div>
+
+                    {/* Display In Navbar */}
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="displayInNavbar"
+                        checked={formData.displayInNavbar || false}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, displayInNavbar: e.target.checked }))
+                        }
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="displayInNavbar" className="ml-2 block text-sm text-gray-900">
+                        Display in Navbar Dropdown
                       </label>
                     </div>
                   </div>

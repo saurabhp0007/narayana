@@ -5,7 +5,6 @@ import { Category } from './schemas/category.schema';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { GenderService } from '../gender/gender.service';
-import { SubcategoryService } from '../subcategory/subcategory.service';
 import { RedisService } from '../../database/redis.service';
 import { generateSlug } from '../../common/utils/slug.util';
 
@@ -14,20 +13,36 @@ export class CategoryService {
   private readonly logger = new Logger(CategoryService.name);
   private readonly CACHE_PREFIX = 'category:';
   private readonly CACHE_TTL = 3600; // 1 hour
+  private readonly MAX_LATEST_ARRIVALS_CATEGORIES = 4;
 
   constructor(
     @InjectModel(Category.name)
     private categoryModel: Model<Category>,
     @Inject(forwardRef(() => GenderService))
     private genderService: GenderService,
-    @Inject(forwardRef(() => SubcategoryService))
-    private subcategoryService: SubcategoryService,
     private redisService: RedisService,
   ) {}
+
+  private async assertLatestArrivalsCapacity(excludeId?: string): Promise<void> {
+    const filter: any = { showInLatestArrivals: true };
+    if (excludeId) {
+      filter._id = { $ne: excludeId };
+    }
+    const count = await this.categoryModel.countDocuments(filter);
+    if (count >= this.MAX_LATEST_ARRIVALS_CATEGORIES) {
+      throw new BadRequestException(
+        `Only ${this.MAX_LATEST_ARRIVALS_CATEGORIES} categories can be shown in Latest Arrivals at a time. Turn one off before enabling another.`,
+      );
+    }
+  }
 
   async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
     // Validate gender exists
     await this.genderService.findOne(createCategoryDto.genderId);
+
+    if (createCategoryDto.showInLatestArrivals) {
+      await this.assertLatestArrivalsCapacity();
+    }
 
     // Generate slug if not provided
     const slug = createCategoryDto.slug || generateSlug(createCategoryDto.name);
@@ -166,6 +181,16 @@ export class CategoryService {
     return category;
   }
 
+  // Always hits Mongo directly, bypassing the Redis cache — mutations need a live
+  // Mongoose document (for .save()/.deleteOne()), which a JSON.parse'd cache hit is not.
+  private async getDocumentOrThrow(id: string): Promise<Category> {
+    const category = await this.categoryModel.findById(id).exec();
+    if (!category) {
+      throw new NotFoundException(`Category with ID ${id} not found`);
+    }
+    return category;
+  }
+
   async findBySlug(slug: string, genderId?: string): Promise<Category> {
     const cacheKey = `${this.CACHE_PREFIX}slug:${slug}:${genderId || 'all'}`;
 
@@ -223,7 +248,7 @@ export class CategoryService {
 
     const categories = await this.categoryModel
       .find({ genderId: new Types.ObjectId(genderId), isActive: true })
-      .sort({ name: 1 })
+      .sort({ displayOrder: 1, name: 1 })
       .exec();
 
     // Cache the result
@@ -237,12 +262,72 @@ export class CategoryService {
     return categories;
   }
 
+  async findByTabGroup(tabGroup: string): Promise<Category[]> {
+    const cacheKey = `${this.CACHE_PREFIX}tabgroup:${tabGroup}`;
+
+    try {
+      const cached = await this.redisService.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (error) {
+      this.logger.error('Cache read error:', error);
+    }
+
+    const categories = await this.categoryModel
+      .find({ tabGroup, isActive: true })
+      .populate('genderId', 'name slug')
+      .sort({ displayOrder: 1, name: 1 })
+      .exec();
+
+    try {
+      await this.redisService.set(cacheKey, JSON.stringify(categories), this.CACHE_TTL);
+    } catch (error) {
+      this.logger.error('Cache write error:', error);
+    }
+
+    return categories;
+  }
+
+  async findLatestArrivalsCategories(): Promise<Category[]> {
+    const cacheKey = `${this.CACHE_PREFIX}latest-arrivals`;
+
+    try {
+      const cached = await this.redisService.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (error) {
+      this.logger.error('Cache read error:', error);
+    }
+
+    const categories = await this.categoryModel
+      .find({ showInLatestArrivals: true, isActive: true })
+      .populate('genderId', 'name slug')
+      .sort({ displayOrder: 1, name: 1 })
+      .limit(this.MAX_LATEST_ARRIVALS_CATEGORIES)
+      .exec();
+
+    try {
+      await this.redisService.set(cacheKey, JSON.stringify(categories), this.CACHE_TTL);
+    } catch (error) {
+      this.logger.error('Cache write error:', error);
+    }
+
+    return categories;
+  }
+
   async update(id: string, updateCategoryDto: UpdateCategoryDto): Promise<Category> {
-    const category = await this.findOne(id);
+    const category = await this.getDocumentOrThrow(id);
 
     // If genderId is being updated, validate it exists
     if (updateCategoryDto.genderId) {
       await this.genderService.findOne(updateCategoryDto.genderId);
+    }
+
+    // Only re-check capacity when the flag is being turned on for a category that wasn't already on
+    if (updateCategoryDto.showInLatestArrivals && !category.showInLatestArrivals) {
+      await this.assertLatestArrivalsCapacity(id);
     }
 
     // If name is being updated, regenerate slug
@@ -283,15 +368,7 @@ export class CategoryService {
   }
 
   async remove(id: string): Promise<{ message: string }> {
-    const category = await this.findOne(id);
-
-    // Check if there are any subcategories using this category
-    const subcategoryCount = await this.subcategoryService.countByCategory(id);
-    if (subcategoryCount > 0) {
-      throw new BadRequestException(
-        `Cannot delete category. It has ${subcategoryCount} associated subcategory(ies). Please delete them first.`,
-      );
-    }
+    const category = await this.getDocumentOrThrow(id);
 
     await category.deleteOne();
 
@@ -303,6 +380,18 @@ export class CategoryService {
 
   async countByGender(genderId: string): Promise<number> {
     return this.categoryModel.countDocuments({ genderId: new Types.ObjectId(genderId) });
+  }
+
+  /**
+   * Find all categories with an exact (case-insensitive) name match, across all genders.
+   * Used to filter products by a human-readable category name (e.g. "Shoes") without
+   * needing to know the per-gender categoryId.
+   */
+  async findAllByName(name: string): Promise<Category[]> {
+    const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return this.categoryModel
+      .find({ name: { $regex: `^${escaped}$`, $options: 'i' }, isActive: true })
+      .exec();
   }
 
   async search(query: string, limit: number = 10): Promise<Category[]> {

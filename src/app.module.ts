@@ -7,7 +7,6 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { GenderModule } from './modules/gender/gender.module';
 import { CategoryModule } from './modules/category/category.module';
-import { SubcategoryModule } from './modules/subcategory/subcategory.module';
 import { ProductModule } from './modules/product/product.module';
 import { MediaModule } from './modules/media/media.module';
 import { CartModule } from './modules/cart/cart.module';
@@ -15,7 +14,12 @@ import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { EmailModule } from './modules/email/email.module';
 import { OrderModule } from './modules/order/order.module';
 import { OfferModule } from './modules/offer/offer.module';
+import { FootwearTabModule } from './modules/footwear-tab/footwear-tab.module';
 import { GuestModule } from './modules/guest/guest.module';
+import { ReviewModule } from './modules/review/review.module';
+import { SettingsModule } from './modules/settings/settings.module';
+import { HeroBannerModule } from './modules/hero-banner/hero-banner.module';
+import { CollectionModule } from './modules/collection/collection.module';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
@@ -35,7 +39,6 @@ import imagekitConfig from './config/imagekit.config';
     UserModule,
     GenderModule,
     CategoryModule,
-    SubcategoryModule,
     ProductModule,
     MediaModule,
     CartModule,
@@ -43,7 +46,12 @@ import imagekitConfig from './config/imagekit.config';
     EmailModule,
     OrderModule,
     OfferModule,
+    FootwearTabModule,
     GuestModule,
+    ReviewModule,
+    SettingsModule,
+    HeroBannerModule,
+    CollectionModule,
   ],
   controllers: [AppController],
   providers: [],

@@ -179,62 +179,57 @@ export class CartService {
     let total = 0;
     let totalItems = 0;
 
-    const items = await Promise.all(
-      cartItems.map(async (item) => {
-        const product = item.productId;
-        const originalPrice = product.price;
-        const productDiscountPrice = product.discountPrice || product.price;
-        const productDiscount = product.discountPrice
-          ? (product.price - product.discountPrice) * item.quantity
-          : 0;
-
-        // Check for applicable offers
-        const { offer, discount: offerDiscount } = await this.offerService.getBestOfferForProduct(
-          product._id.toString(),
-          item.quantity,
-          productDiscountPrice,
-        );
-
-        // Use the better discount (product discount or offer discount)
-        const effectiveDiscount = Math.max(productDiscount, offerDiscount);
-        const finalPrice = productDiscountPrice * item.quantity - offerDiscount;
-
-        subtotal += originalPrice * item.quantity;
-        totalProductDiscount += productDiscount;
-        totalOfferDiscount += offerDiscount;
-        total += finalPrice;
-        totalItems += item.quantity;
-
-        return {
-          _id: item._id,
-          product: {
-            _id: product._id,
-            name: product.name,
-            sku: product.sku,
-            price: product.price,
-            discountPrice: product.discountPrice,
-            images: product.images,
-            stock: product.stock,
-            isActive: product.isActive,
-          },
-          quantity: item.quantity,
-          price: productDiscountPrice,
-          itemSubtotal: productDiscountPrice * item.quantity,
-          productDiscount: productDiscount,
-          offerDiscount: offerDiscount,
-          itemTotal: finalPrice,
-          appliedOffer: offer
-            ? {
-                _id: offer._id,
-                name: offer.name,
-                description: offer.description,
-                offerType: offer.offerType,
-              }
-            : null,
-          addedAt: item.addedAt,
-        };
-      }),
+    // Compute offer discounts across the whole cart at once, so bundle/buyXgetY
+    // offers can be satisfied by mixing quantities across different eligible products.
+    const { perProductDiscount, perProductOffer } = await this.offerService.computeCartOfferDiscounts(
+      cartItems.map((item) => ({
+        productId: item.productId._id.toString(),
+        quantity: item.quantity,
+        unitPrice: item.productId.discountPrice || item.productId.price,
+      })),
     );
+
+    const items = cartItems.map((item) => {
+      const product = item.productId;
+      const originalPrice = product.price;
+      const productDiscountPrice = product.discountPrice || product.price;
+      const productDiscount = product.discountPrice
+        ? (product.price - product.discountPrice) * item.quantity
+        : 0;
+
+      const offerDiscount = perProductDiscount[product._id.toString()] || 0;
+      const offer = perProductOffer[product._id.toString()] || null;
+
+      const finalPrice = productDiscountPrice * item.quantity - offerDiscount;
+
+      subtotal += originalPrice * item.quantity;
+      totalProductDiscount += productDiscount;
+      totalOfferDiscount += offerDiscount;
+      total += finalPrice;
+      totalItems += item.quantity;
+
+      return {
+        _id: item._id,
+        product: {
+          _id: product._id,
+          name: product.name,
+          sku: product.sku,
+          price: product.price,
+          discountPrice: product.discountPrice,
+          images: product.images,
+          stock: product.stock,
+          isActive: product.isActive,
+        },
+        quantity: item.quantity,
+        price: productDiscountPrice,
+        itemSubtotal: productDiscountPrice * item.quantity,
+        productDiscount: productDiscount,
+        offerDiscount: offerDiscount,
+        itemTotal: finalPrice,
+        appliedOffer: offer,
+        addedAt: item.addedAt,
+      };
+    });
 
     return {
       items,

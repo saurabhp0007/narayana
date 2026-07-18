@@ -89,17 +89,17 @@ export class OfferController {
     return this.offerService.getActiveOffers();
   }
 
-  @Get('homepage')
+  @Get('footwear')
   @ApiOperation({
-    summary: 'Get homepage offers',
-    description: 'Retrieves offers to be displayed on the homepage',
+    summary: 'Get footwear section offers',
+    description: 'Retrieves offers to be displayed in the homepage Footwear section, grouped by tab',
   })
   @ApiResponse({
     status: 200,
-    description: 'Homepage offers retrieved successfully',
+    description: 'Footwear section offers retrieved successfully',
   })
-  async getHomepageOffers() {
-    return this.offerService.getHomepageOffers();
+  async getFootwearOffers() {
+    return this.offerService.getFootwearOffers();
   }
 
   @Get('navbar')

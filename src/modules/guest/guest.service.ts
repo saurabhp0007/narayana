@@ -467,66 +467,69 @@ export class GuestService {
     let total = 0;
     let totalItems = 0;
 
-    const items = await Promise.all(
+    // Resolve products first so offer discounts can be computed across the whole cart at once
+    const resolvedItems = await Promise.all(
       cartItems.map(async (item) => {
         try {
           const product = await this.productService.findOne(item.productId);
-          const originalPrice = product.price;
-          const productDiscountPrice = product.discountPrice || product.price;
-          const productDiscount = product.discountPrice
-            ? (product.price - product.discountPrice) * item.quantity
-            : 0;
-
-          // Check for applicable offers
-          const { offer, discount: offerDiscount } =
-            await this.offerService.getBestOfferForProduct(
-              product._id.toString(),
-              item.quantity,
-              productDiscountPrice,
-            );
-
-          const finalPrice =
-            productDiscountPrice * item.quantity - offerDiscount;
-
-          subtotal += originalPrice * item.quantity;
-          totalProductDiscount += productDiscount;
-          totalOfferDiscount += offerDiscount;
-          total += finalPrice;
-          totalItems += item.quantity;
-
-          return {
-            productId: item.productId,
-            product: {
-              _id: product._id,
-              name: product.name,
-              sku: product.sku,
-              price: product.price,
-              discountPrice: product.discountPrice,
-              images: product.images,
-              stock: product.stock,
-              isActive: product.isActive,
-            },
-            quantity: item.quantity,
-            price: productDiscountPrice,
-            itemSubtotal: productDiscountPrice * item.quantity,
-            productDiscount: productDiscount,
-            offerDiscount: offerDiscount,
-            itemTotal: finalPrice,
-            appliedOffer: offer
-              ? {
-                  _id: offer._id,
-                  name: offer.name,
-                  description: offer.description,
-                  offerType: offer.offerType,
-                }
-              : null,
-            addedAt: item.addedAt,
-          };
+          return { item, product };
         } catch {
           return null;
         }
       }),
     );
+    const validResolved = resolvedItems.filter(
+      (r): r is { item: GuestCartItem; product: any } => r !== null,
+    );
+
+    const { perProductDiscount, perProductOffer } = await this.offerService.computeCartOfferDiscounts(
+      validResolved.map(({ item, product }) => ({
+        productId: product._id.toString(),
+        quantity: item.quantity,
+        unitPrice: product.discountPrice || product.price,
+      })),
+    );
+
+    const items = validResolved.map(({ item, product }) => {
+      const originalPrice = product.price;
+      const productDiscountPrice = product.discountPrice || product.price;
+      const productDiscount = product.discountPrice
+        ? (product.price - product.discountPrice) * item.quantity
+        : 0;
+
+      const offerDiscount = perProductDiscount[product._id.toString()] || 0;
+      const offer = perProductOffer[product._id.toString()] || null;
+
+      const finalPrice = productDiscountPrice * item.quantity - offerDiscount;
+
+      subtotal += originalPrice * item.quantity;
+      totalProductDiscount += productDiscount;
+      totalOfferDiscount += offerDiscount;
+      total += finalPrice;
+      totalItems += item.quantity;
+
+      return {
+        productId: item.productId,
+        product: {
+          _id: product._id,
+          name: product.name,
+          sku: product.sku,
+          price: product.price,
+          discountPrice: product.discountPrice,
+          images: product.images,
+          stock: product.stock,
+          isActive: product.isActive,
+        },
+        quantity: item.quantity,
+        price: productDiscountPrice,
+        itemSubtotal: productDiscountPrice * item.quantity,
+        productDiscount: productDiscount,
+        offerDiscount: offerDiscount,
+        itemTotal: finalPrice,
+        appliedOffer: offer,
+        addedAt: item.addedAt,
+      };
+    });
 
     const validItems = items.filter((item) => item !== null);
 

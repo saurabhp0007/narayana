@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useDataStore } from '@/store/dataStore';
 import { productApi } from '@/lib/api';
-import { Product, Subcategory } from '@/types';
+import { Product } from '@/types';
 
 interface SearchDropdownProps {
   isOpen: boolean;
@@ -31,7 +31,7 @@ export default function SearchDropdown({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { allSubcategories, featuredProducts, fetchAllSubcategories, fetchFeaturedProducts } = useDataStore();
+  const { allCategories, featuredProducts, fetchAllCategories, fetchFeaturedProducts } = useDataStore();
 
   const [internalQuery, setInternalQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
@@ -63,10 +63,10 @@ export default function SearchDropdown({
   // Ensure data is loaded
   useEffect(() => {
     if (isOpen) {
-      fetchAllSubcategories();
+      fetchAllCategories();
       fetchFeaturedProducts(4);
     }
-  }, [isOpen, fetchAllSubcategories, fetchFeaturedProducts]);
+  }, [isOpen, fetchAllCategories, fetchFeaturedProducts]);
 
   // Handle click outside
   useEffect(() => {
@@ -171,8 +171,8 @@ export default function SearchDropdown({
     }
   };
 
-  const handleSubcategoryClick = (subcategoryId: string) => {
-    router.push(`/products?subcategoryId=${subcategoryId}`);
+  const handleCategoryClick = (categoryId: string) => {
+    router.push(`/products?categoryId=${categoryId}`);
     onClose();
   };
 
@@ -183,7 +183,7 @@ export default function SearchDropdown({
 
   if (!isOpen) return null;
 
-  const displayedSubcategories = allSubcategories.slice(0, 5);
+  const displayedCategories = allCategories.slice(0, 5);
   const displayedFeaturedProducts = featuredProducts.slice(0, 4);
 
   return (
@@ -315,13 +315,13 @@ export default function SearchDropdown({
                 Popular Categories
               </h3>
               <div className="flex flex-wrap gap-2">
-                {displayedSubcategories.map((subcategory) => (
+                {displayedCategories.map((category) => (
                   <button
-                    key={subcategory._id}
-                    onClick={() => handleSubcategoryClick(subcategory._id)}
+                    key={category._id}
+                    onClick={() => handleCategoryClick(category._id)}
                     className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-xs font-medium text-gray-900 transition-colors"
                   >
-                    {subcategory.name}
+                    {category.name}
                   </button>
                 ))}
               </div>

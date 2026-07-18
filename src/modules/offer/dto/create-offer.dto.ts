@@ -115,16 +115,6 @@ export class CreateOfferDto {
   categoryIds?: string[];
 
   @ApiPropertyOptional({
-    description: 'Array of subcategory IDs this offer applies to',
-    example: [],
-    type: [String],
-  })
-  @IsOptional()
-  @IsArray()
-  @IsMongoId({ each: true })
-  subcategoryIds?: string[];
-
-  @ApiPropertyOptional({
     description: 'Array of gender IDs this offer applies to',
     example: [],
     type: [String],
@@ -166,50 +156,18 @@ export class CreateOfferDto {
   priority?: number;
 
   @ApiPropertyOptional({
-    description: 'Image URL for the offer',
-    example: 'https://example.com/offer-image.jpg',
-  })
-  @IsOptional()
-  @IsString()
-  image?: string;
-
-  @ApiPropertyOptional({
-    description: 'Subtitle text for homepage display (e.g., "Under", "BUY 3")',
-    example: 'Under',
-  })
-  @IsOptional()
-  @IsString()
-  homepageSubtitle?: string;
-
-  @ApiPropertyOptional({
-    description: 'Price text for homepage display (e.g., "₹500", "₹3000")',
-    example: '₹500',
-  })
-  @IsOptional()
-  @IsString()
-  homepagePrice?: string;
-
-  @ApiPropertyOptional({
-    description: 'Category name for homepage display (e.g., "Shirts", "T-Shirts")',
-    example: 'Shirts',
-  })
-  @IsOptional()
-  @IsString()
-  homepageCategory?: string;
-
-  @ApiPropertyOptional({
-    description: 'Whether to display this offer on homepage',
-    example: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  displayOnHomepage?: boolean;
-
-  @ApiPropertyOptional({
     description: 'Whether to display this offer in navbar dropdown',
     example: true,
   })
   @IsOptional()
   @IsBoolean()
   displayInNavbar?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'ID of the homepage Footwear section tab this offer should be surfaced in',
+    example: '507f1f77bcf86cd799439099',
+  })
+  @IsOptional()
+  @IsMongoId()
+  footwearTabId?: string;
 }

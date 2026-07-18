@@ -12,7 +12,6 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { GenderService } from '../gender/gender.service';
 import { CategoryService } from '../category/category.service';
-import { SubcategoryService } from '../subcategory/subcategory.service';
 import { RedisService } from '../../database/redis.service';
 import { generateSKU } from '../../common/utils/sku.util';
 
@@ -27,7 +26,6 @@ export class ProductService {
     private productModel: Model<Product>,
     private genderService: GenderService,
     private categoryService: CategoryService,
-    private subcategoryService: SubcategoryService,
     private redisService: RedisService,
   ) {}
 
@@ -45,10 +43,9 @@ export class ProductService {
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     // Validate relationships exist
-    const [gender, category, subcategory] = await Promise.all([
+    const [gender, category] = await Promise.all([
       this.genderService.findOne(createProductDto.genderId),
       this.categoryService.findOne(createProductDto.categoryId),
-      this.subcategoryService.findOne(createProductDto.subcategoryId),
     ]);
 
     // Validate discount price is less than price
@@ -80,7 +77,6 @@ export class ProductService {
       familySKU: createProductDto.familySKU?.toUpperCase(),
       genderId: new Types.ObjectId(createProductDto.genderId),
       categoryId: new Types.ObjectId(createProductDto.categoryId),
-      subcategoryId: new Types.ObjectId(createProductDto.subcategoryId),
       relatedProductIds: createProductDto.relatedProductIds?.map((id) => new Types.ObjectId(id)),
     });
 
@@ -95,7 +91,7 @@ export class ProductService {
     filters?: {
       genderId?: string;
       categoryId?: string;
-      subcategoryId?: string;
+      categoryName?: string;
       minPrice?: number;
       maxPrice?: number;
       underPriceAmount?: number;
@@ -130,8 +126,9 @@ export class ProductService {
     if (filters?.categoryId) {
       filter.categoryId = new Types.ObjectId(filters.categoryId);
     }
-    if (filters?.subcategoryId) {
-      filter.subcategoryId = new Types.ObjectId(filters.subcategoryId);
+    if (filters?.categoryName) {
+      const matchingCategories = await this.categoryService.findAllByName(filters.categoryName);
+      filter.categoryId = { $in: matchingCategories.map((c) => c._id) };
     }
     if (filters?.minPrice !== undefined || filters?.maxPrice !== undefined) {
       filter.price = {};
@@ -177,7 +174,6 @@ export class ProductService {
         .find(filter)
         .populate('genderId', 'name slug')
         .populate('categoryId', 'name slug')
-        .populate('subcategoryId', 'name slug')
         .skip(skip)
         .limit(limit)
         .sort({ createdAt: -1 })
@@ -224,7 +220,6 @@ export class ProductService {
       .findById(id)
       .populate('genderId', 'name slug')
       .populate('categoryId', 'name slug')
-      .populate('subcategoryId', 'name slug')
       .populate('relatedProductIds', 'name sku price discountPrice images')
       .exec();
 
@@ -243,12 +238,21 @@ export class ProductService {
     return product;
   }
 
+  // Always hits Mongo directly, bypassing the Redis cache — mutations need a live
+  // Mongoose document (for .save()/.deleteOne()), which a JSON.parse'd cache hit is not.
+  private async getDocumentOrThrow(id: string): Promise<Product> {
+    const product = await this.productModel.findById(id).exec();
+    if (!product) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+    return product;
+  }
+
   async findBySKU(sku: string): Promise<Product> {
     const product = await this.productModel
       .findOne({ sku: sku.toUpperCase() })
       .populate('genderId', 'name slug')
       .populate('categoryId', 'name slug')
-      .populate('subcategoryId', 'name slug')
       .populate('relatedProductIds', 'name sku price discountPrice images')
       .exec();
 
@@ -264,13 +268,12 @@ export class ProductService {
       .find({ familySKU: familySKU.toUpperCase(), isActive: true })
       .populate('genderId', 'name slug')
       .populate('categoryId', 'name slug')
-      .populate('subcategoryId', 'name slug')
       .sort({ name: 1 })
       .exec();
   }
 
   async update(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
-    const product = await this.findOne(id);
+    const product = await this.getDocumentOrThrow(id);
 
     // Validate relationships if being updated
     if (updateProductDto.genderId) {
@@ -278,9 +281,6 @@ export class ProductService {
     }
     if (updateProductDto.categoryId) {
       await this.categoryService.findOne(updateProductDto.categoryId);
-    }
-    if (updateProductDto.subcategoryId) {
-      await this.subcategoryService.findOne(updateProductDto.subcategoryId);
     }
 
     // Validate discount price
@@ -323,14 +323,14 @@ export class ProductService {
   }
 
   async remove(id: string): Promise<{ message: string }> {
-    const product = await this.findOne(id);
+    const product = await this.getDocumentOrThrow(id);
     await product.deleteOne();
     await this.invalidateCache();
     return { message: `Product ${product.name} (SKU: ${product.sku}) has been deleted successfully` };
   }
 
   async updateStock(id: string, quantity: number): Promise<Product> {
-    const product = await this.findOne(id);
+    const product = await this.getDocumentOrThrow(id);
 
     if (product.stock + quantity < 0) {
       throw new BadRequestException('Insufficient stock for this operation');
@@ -391,7 +391,6 @@ export class ProductService {
       .find({ categoryId: new Types.ObjectId(categoryId), isActive: true })
       .populate('genderId', 'name slug')
       .populate('categoryId', 'name slug')
-      .populate('subcategoryId', 'name slug')
       .sort({ name: 1 })
       .exec();
 
@@ -406,46 +405,11 @@ export class ProductService {
     return products;
   }
 
-  async getProductsBySubcategory(subcategoryId: string): Promise<Product[]> {
-    const cacheKey = `${this.CACHE_PREFIX}subcategory:${subcategoryId}`;
-
-    // Try to get from cache first
-    try {
-      const cached = await this.redisService.get(cacheKey);
-      if (cached) {
-        this.logger.log(`Cache hit for products by subcategory ${subcategoryId}`);
-        return JSON.parse(cached);
-      }
-    } catch (error) {
-      this.logger.error('Cache read error:', error);
-    }
-
-    await this.subcategoryService.findOne(subcategoryId);
-    const products = await this.productModel
-      .find({ subcategoryId: new Types.ObjectId(subcategoryId), isActive: true })
-      .populate('genderId', 'name slug')
-      .populate('categoryId', 'name slug')
-      .populate('subcategoryId', 'name slug')
-      .sort({ name: 1 })
-      .exec();
-
-    // Cache the result
-    try {
-      await this.redisService.set(cacheKey, JSON.stringify(products), this.CACHE_TTL);
-      this.logger.log(`Cached products by subcategory ${subcategoryId}`);
-    } catch (error) {
-      this.logger.error('Cache write error:', error);
-    }
-
-    return products;
-  }
-
   async autosuggest(query: string, limit: number = 10): Promise<any> {
     if (!query || query.trim().length < 2) {
       return {
         products: [],
         categories: [],
-        subcategories: [],
       };
     }
 
@@ -468,9 +432,6 @@ export class ProductService {
     // Search categories
     const categories = await this.categoryService.search(query, limit);
 
-    // Search subcategories
-    const subcategories = await this.subcategoryService.search(query, limit);
-
     return {
       products: products.map((p) => ({
         _id: p._id,
@@ -486,12 +447,6 @@ export class ProductService {
         name: c.name,
         slug: c.slug,
         type: 'category',
-      })),
-      subcategories: subcategories.map((s) => ({
-        _id: s._id,
-        name: s.name,
-        slug: s.slug,
-        type: 'subcategory',
       })),
     };
   }
@@ -517,7 +472,6 @@ export class ProductService {
       })
       .populate('genderId', 'name slug')
       .populate('categoryId', 'name slug')
-      .populate('subcategoryId', 'name slug')
       .sort({ createdAt: -1 })
       .limit(limit)
       .exec();
@@ -531,6 +485,177 @@ export class ProductService {
     }
 
     return products;
+  }
+
+  async getLowStockProducts(threshold: number = 5, limit: number = 10): Promise<Product[]> {
+    return this.productModel
+      .find({
+        isActive: true,
+        stock: { $gt: 0, $lte: threshold },
+      })
+      .populate('categoryId', 'name slug')
+      .sort({ stock: 1 })
+      .limit(limit)
+      .exec();
+  }
+
+  async getBestSellers(limit: number = 12): Promise<Product[]> {
+    const cacheKey = `${this.CACHE_PREFIX}bestsellers:${limit}`;
+
+    try {
+      const cached = await this.redisService.get(cacheKey);
+      if (cached) {
+        this.logger.log(`Cache hit for best sellers`);
+        return JSON.parse(cached);
+      }
+    } catch (error) {
+      this.logger.error('Cache read error:', error);
+    }
+
+    const products = await this.productModel
+      .find({
+        isActive: true,
+        isBestSeller: true,
+        stock: { $gt: 0 },
+      })
+      .populate('genderId', 'name slug')
+      .populate('categoryId', 'name slug')
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .exec();
+
+    try {
+      await this.redisService.set(cacheKey, JSON.stringify(products), this.CACHE_TTL);
+      this.logger.log(`Cached best sellers`);
+    } catch (error) {
+      this.logger.error('Cache write error:', error);
+    }
+
+    return products;
+  }
+
+  async getLatestArrivalsSections(imagesPerCategory: number = 5): Promise<
+    { categoryId: string; categoryName: string; categorySlug: string; images: string[] }[]
+  > {
+    const cacheKey = `${this.CACHE_PREFIX}latest-arrivals-sections:${imagesPerCategory}`;
+    const CACHE_TTL_SHORT = 300; // 5 minutes — favors freshness over the standard product cache TTL
+
+    try {
+      const cached = await this.redisService.get(cacheKey);
+      if (cached) {
+        this.logger.log('Cache hit for latest arrivals sections');
+        return JSON.parse(cached);
+      }
+    } catch (error) {
+      this.logger.error('Cache read error:', error);
+    }
+
+    const categories = await this.categoryService.findLatestArrivalsCategories();
+
+    const sections = await Promise.all(
+      categories.map(async (category) => {
+        const products = await this.productModel
+          .find({
+            categoryId: new Types.ObjectId(String(category._id)),
+            isActive: true,
+            stock: { $gt: 0 },
+            images: { $exists: true, $ne: [] },
+            showInLatestArrivals: true,
+          })
+          .sort({ createdAt: -1 })
+          .limit(imagesPerCategory)
+          .select('images')
+          .exec();
+
+        const images = products.map((p) => p.images[0]).filter(Boolean);
+
+        return {
+          categoryId: category._id.toString(),
+          categoryName: category.name,
+          categorySlug: category.slug,
+          images,
+        };
+      }),
+    );
+
+    const result = sections.filter((section) => section.images.length > 0);
+
+    try {
+      await this.redisService.set(cacheKey, JSON.stringify(result), CACHE_TTL_SHORT);
+      this.logger.log('Cached latest arrivals sections');
+    } catch (error) {
+      this.logger.error('Cache write error:', error);
+    }
+
+    return result;
+  }
+
+  // Same card shape as getLatestArrivalsSections (one slideshow card per category),
+  // but grouping isBestSeller products instead of the most recent ones per live category.
+  async getBestSellersSections(imagesPerCategory: number = 5): Promise<
+    { categoryId: string; categoryName: string; categorySlug: string; images: string[] }[]
+  > {
+    const cacheKey = `${this.CACHE_PREFIX}best-sellers-sections:${imagesPerCategory}`;
+    const CACHE_TTL_SHORT = 300; // 5 minutes — favors freshness over the standard product cache TTL
+
+    try {
+      const cached = await this.redisService.get(cacheKey);
+      if (cached) {
+        this.logger.log('Cache hit for best sellers sections');
+        return JSON.parse(cached);
+      }
+    } catch (error) {
+      this.logger.error('Cache read error:', error);
+    }
+
+    const products = await this.productModel
+      .find({
+        isActive: true,
+        isBestSeller: true,
+        stock: { $gt: 0 },
+        images: { $exists: true, $ne: [] },
+      })
+      .populate('categoryId', 'name slug')
+      .sort({ createdAt: -1 })
+      .select('images categoryId')
+      .exec();
+
+    const sectionsByCategory = new Map<
+      string,
+      { categoryId: string; categoryName: string; categorySlug: string; images: string[] }
+    >();
+
+    for (const product of products) {
+      const category = product.categoryId as unknown as { _id: Types.ObjectId; name: string; slug: string } | null;
+      if (!category?._id) continue;
+
+      const categoryId = category._id.toString();
+      if (!sectionsByCategory.has(categoryId)) {
+        sectionsByCategory.set(categoryId, {
+          categoryId,
+          categoryName: category.name,
+          categorySlug: category.slug,
+          images: [],
+        });
+      }
+
+      const section = sectionsByCategory.get(categoryId)!;
+      const image = product.images[0];
+      if (image && section.images.length < imagesPerCategory) {
+        section.images.push(image);
+      }
+    }
+
+    const result = Array.from(sectionsByCategory.values());
+
+    try {
+      await this.redisService.set(cacheKey, JSON.stringify(result), CACHE_TTL_SHORT);
+      this.logger.log('Cached best sellers sections');
+    } catch (error) {
+      this.logger.error('Cache write error:', error);
+    }
+
+    return result;
   }
 
   /**
