@@ -1,59 +1,36 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { categoryApi, productApi } from '@/lib/api';
-import { Category, Product } from '@/types';
+import { shopCategoryApi } from '@/lib/api';
+import { ShopCategory, Product } from '@/types';
 import { productBadgeStyles, productBadgeLabels } from '@/lib/productBadge';
 
 export default function ShopByCategorySection() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [activeCategoryName, setActiveCategoryName] = useState<string>('');
-  const [products, setProducts] = useState<Product[]>([]);
+  const [shopCategories, setShopCategories] = useState<ShopCategory[]>([]);
+  const [activeCategoryId, setActiveCategoryId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    categoryApi
-      .getAll({ isActive: true, limit: 100 })
+    shopCategoryApi
+      .getActive()
       .then((res) => {
-        const data: Category[] = res.data.data || res.data || [];
-
-        // Categories exist per-gender, so dedupe by name to keep tabs gender-neutral.
-        const seen = new Set<string>();
-        const deduped = data
-          .filter((cat) => {
-            const key = cat.name.toLowerCase();
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-          })
-          .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
-
-        setCategories(deduped);
-        if (deduped.length > 0) setActiveCategoryName(deduped[0].name);
+        const data: ShopCategory[] = res.data.data || res.data || [];
+        setShopCategories(data);
+        if (data.length > 0) setActiveCategoryId(data[0]._id);
       })
-      .catch((err) => console.error('Failed to load categories:', err));
+      .catch((err) => console.error('Failed to load shop categories:', err))
+      .finally(() => setIsLoading(false));
   }, []);
 
-  const fetchProducts = useCallback(async (categoryName: string) => {
-    if (!categoryName) return;
-    setIsLoading(true);
-    try {
-      const res = await productApi.getAll({ categoryName, isActive: true, limit: 8 });
-      setProducts(res.data.data || []);
-    } catch (err) {
-      console.error('Failed to load products:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const products = useMemo(() => {
+    const active = shopCategories.find((c) => c._id === activeCategoryId);
+    if (!active) return [];
+    return (active.productIds as Product[]).filter((p) => typeof p === 'object' && p.isActive);
+  }, [shopCategories, activeCategoryId]);
 
-  useEffect(() => {
-    if (activeCategoryName) fetchProducts(activeCategoryName);
-  }, [activeCategoryName, fetchProducts]);
-
-  if (categories.length === 0) return null;
+  if (!isLoading && shopCategories.length === 0) return null;
 
   return (
     <section className="py-12 md:py-16 bg-white">
@@ -64,12 +41,12 @@ export default function ShopByCategorySection() {
         </h2>
 
         <div className="flex items-center justify-center gap-6 md:gap-10 border-b border-gray-200 mb-10 overflow-x-auto">
-          {categories.map((category) => (
+          {shopCategories.map((category) => (
             <button
-              key={category.name}
-              onClick={() => setActiveCategoryName(category.name)}
+              key={category._id}
+              onClick={() => setActiveCategoryId(category._id)}
               className={`pb-3 text-xs md:text-sm font-semibold uppercase tracking-wide border-b-2 whitespace-nowrap transition-colors ${
-                activeCategoryName === category.name
+                activeCategoryId === category._id
                   ? 'text-gray-900 border-gray-900'
                   : 'text-gray-400 border-transparent hover:text-gray-600'
               }`}

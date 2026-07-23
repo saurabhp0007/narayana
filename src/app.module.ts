@@ -15,11 +15,13 @@ import { EmailModule } from './modules/email/email.module';
 import { OrderModule } from './modules/order/order.module';
 import { OfferModule } from './modules/offer/offer.module';
 import { FootwearTabModule } from './modules/footwear-tab/footwear-tab.module';
+import { FootwearSubcategoryModule } from './modules/footwear-subcategory/footwear-subcategory.module';
 import { GuestModule } from './modules/guest/guest.module';
 import { ReviewModule } from './modules/review/review.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { HeroBannerModule } from './modules/hero-banner/hero-banner.module';
 import { CollectionModule } from './modules/collection/collection.module';
+import { ShopCategoryModule } from './modules/shop-category/shop-category.module';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
@@ -47,11 +49,13 @@ import imagekitConfig from './config/imagekit.config';
     OrderModule,
     OfferModule,
     FootwearTabModule,
+    FootwearSubcategoryModule,
     GuestModule,
     ReviewModule,
     SettingsModule,
     HeroBannerModule,
     CollectionModule,
+    ShopCategoryModule,
   ],
   controllers: [AppController],
   providers: [],

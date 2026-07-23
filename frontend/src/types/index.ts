@@ -196,6 +196,34 @@ export interface CreateFootwearTabDto {
   isActive?: boolean;
 }
 
+// A subcategory tile inside a homepage Footwear tab (e.g. tab "Men's Shoes" ->
+// subcategories "Running Shoes", "Sneakers"). Each tile has its own image + offer
+// text and links to a listing of its mapped products.
+export interface FootwearSubcategory {
+  _id: string;
+  name: string;
+  slug: string;
+  image?: string;
+  offerText?: string;
+  footwearTabId: string | FootwearTabItem;
+  productIds: string[] | Product[];
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateFootwearSubcategoryDto {
+  name: string;
+  slug?: string;
+  image?: string;
+  offerText?: string;
+  footwearTabId: string;
+  productIds?: string[];
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
 export interface Offer {
   _id: string;
   name: string;
@@ -356,6 +384,26 @@ export interface CreateCollectionDto {
   name: string;
   slug?: string;
   bannerImage?: string;
+  productIds?: string[];
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
+// Shop Category types (homepage "Shop by Category" tab: independent of each product's own category)
+export interface ShopCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  productIds: string[] | Product[];
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateShopCategoryDto {
+  name: string;
+  slug?: string;
   productIds?: string[];
   displayOrder?: number;
   isActive?: boolean;

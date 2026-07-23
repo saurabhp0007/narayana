@@ -4,8 +4,8 @@ import { useEffect, useState, useCallback, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { productApi } from '@/lib/api';
-import { Product, Category, PaginatedResponse } from '@/types';
+import { productApi, footwearSubcategoryApi } from '@/lib/api';
+import { Product, Category, PaginatedResponse, FootwearSubcategory } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
 import { useAuthStore } from '@/store/authStore';
@@ -69,6 +69,10 @@ function ProductsPageContent() {
   const [productIdsFilter, setProductIdsFilter] = useState<string>(
     searchParams.get('productIds') || ''
   );
+  const [subcategorySlug, setSubcategorySlug] = useState<string>(
+    searchParams.get('subcategorySlug') || ''
+  );
+  const [subcategoryBanner, setSubcategoryBanner] = useState<FootwearSubcategory | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Mobile filter toggle
@@ -97,6 +101,7 @@ function ProductsPageContent() {
     const newMinPrice = searchParams.get('minPrice') || '';
     const newMaxPrice = searchParams.get('maxPrice') || '';
     const newSearch = searchParams.get('search') || '';
+    const newSubcategorySlug = searchParams.get('subcategorySlug') || '';
 
     // Force refetch by clearing the cache
     lastFetchParams.current = '';
@@ -110,6 +115,8 @@ function ProductsPageContent() {
     setMinPrice(newMinPrice);
     setMaxPrice(newMaxPrice);
     setSearchQuery(newSearch);
+    setSubcategorySlug(newSubcategorySlug);
+    if (!newSubcategorySlug) setSubcategoryBanner(null);
 
     // Reset to page 1 when URL changes
     setCurrentPage(1);
@@ -145,6 +152,31 @@ function ProductsPageContent() {
 
     fetchCategories();
   }, [selectedGender, fetchCategoriesByGender]);
+
+  // Resolve the footwear subcategory (banner + mapped SKUs) when linked in via subcategorySlug
+  useEffect(() => {
+    if (!subcategorySlug) return;
+
+    let cancelled = false;
+    footwearSubcategoryApi
+      .getBySlug(subcategorySlug)
+      .then((res) => {
+        if (cancelled) return;
+        const subcategory: FootwearSubcategory = res.data;
+        setSubcategoryBanner(subcategory);
+        // Backend returns productIds unpopulated (raw ObjectId strings) for this endpoint
+        setProductIdsFilter((subcategory.productIds as string[]).join(','));
+        setCurrentPage(1);
+      })
+      .catch((err) => {
+        console.error('Failed to load footwear subcategory:', err);
+        if (!cancelled) setSubcategoryBanner(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [subcategorySlug]);
 
   // Debounced product fetch to prevent flickering
   const fetchProducts = useCallback(async () => {
@@ -292,12 +324,34 @@ function ProductsPageContent() {
       <main className="flex-grow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Shop</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Browse our collection of quality products
-            </p>
-          </div>
+          {subcategoryBanner ? (
+            <div className="mb-8 relative rounded-lg overflow-hidden bg-gray-100">
+              {subcategoryBanner.image && (
+                <Image
+                  src={subcategoryBanner.image}
+                  alt={subcategoryBanner.name}
+                  width={1200}
+                  height={300}
+                  className="w-full h-40 md:h-56 object-cover"
+                />
+              )}
+              <div className="absolute inset-0 bg-black/30 flex flex-col items-start justify-end p-6">
+                {subcategoryBanner.offerText && (
+                  <span className="bg-gray-900 text-white text-xs px-2 py-1 rounded font-medium mb-2">
+                    {subcategoryBanner.offerText}
+                  </span>
+                )}
+                <h1 className="text-2xl md:text-3xl font-bold text-white">{subcategoryBanner.name}</h1>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-8">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Shop</h1>
+              <p className="text-sm text-gray-600 mt-1">
+                Browse our collection of quality products
+              </p>
+            </div>
+          )}
 
           {/* Search Bar */}
           <div className="mb-6 relative">

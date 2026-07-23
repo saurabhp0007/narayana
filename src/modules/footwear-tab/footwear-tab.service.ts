@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { FootwearTab } from './schemas/footwear-tab.schema';
 import { Offer } from '../offer/schemas/offer.schema';
+import { FootwearSubcategory } from '../footwear-subcategory/schemas/footwear-subcategory.schema';
 import { CreateFootwearTabDto } from './dto/create-footwear-tab.dto';
 import { UpdateFootwearTabDto } from './dto/update-footwear-tab.dto';
 import { generateSlug } from '../../common/utils/slug.util';
@@ -14,6 +15,8 @@ export class FootwearTabService {
     private footwearTabModel: Model<FootwearTab>,
     @InjectModel(Offer.name)
     private offerModel: Model<Offer>,
+    @InjectModel(FootwearSubcategory.name)
+    private footwearSubcategoryModel: Model<FootwearSubcategory>,
   ) {}
 
   async create(createDto: CreateFootwearTabDto): Promise<FootwearTab> {
@@ -76,6 +79,13 @@ export class FootwearTabService {
     if (offerCount > 0) {
       throw new BadRequestException(
         `Cannot delete tab. It has ${offerCount} offer(s) assigned to it. Reassign or remove them first.`,
+      );
+    }
+
+    const subcategoryCount = await this.footwearSubcategoryModel.countDocuments({ footwearTabId: tab._id });
+    if (subcategoryCount > 0) {
+      throw new BadRequestException(
+        `Cannot delete tab. It has ${subcategoryCount} subcategory(ies) assigned to it. Reassign or remove them first.`,
       );
     }
 

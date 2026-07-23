@@ -183,6 +183,18 @@ export const footwearTabApi = {
   delete: (id: string) => api.delete(`/footwear-tabs/${id}`),
 };
 
+// Footwear Subcategory API (subcategory tiles inside a homepage Footwear tab)
+export const footwearSubcategoryApi = {
+  getAll: (params?: { isActive?: boolean; footwearTabId?: string }) =>
+    api.get('/footwear-subcategories', { params }),
+  getActive: () => api.get('/footwear-subcategories/active'),
+  getBySlug: (slug: string) => api.get(`/footwear-subcategories/slug/${slug}`),
+  getById: (id: string) => api.get(`/footwear-subcategories/${id}`),
+  create: (data: object) => api.post('/footwear-subcategories', data),
+  update: (id: string, data: object) => api.patch(`/footwear-subcategories/${id}`, data),
+  delete: (id: string) => api.delete(`/footwear-subcategories/${id}`),
+};
+
 // Hero Banner API (independent of Offers)
 export const heroBannerApi = {
   getAll: () => api.get('/hero-banners'),
@@ -201,6 +213,16 @@ export const collectionApi = {
   create: (data: object) => api.post('/collections', data),
   update: (id: string, data: object) => api.patch(`/collections/${id}`, data),
   delete: (id: string) => api.delete(`/collections/${id}`),
+};
+
+// Shop Category API (homepage "Shop by Category" tabs: independent of each product's own category)
+export const shopCategoryApi = {
+  getAll: () => api.get('/shop-categories'),
+  getActive: () => api.get('/shop-categories/active'),
+  getById: (id: string) => api.get(`/shop-categories/${id}`),
+  create: (data: object) => api.post('/shop-categories', data),
+  update: (id: string, data: object) => api.patch(`/shop-categories/${id}`, data),
+  delete: (id: string) => api.delete(`/shop-categories/${id}`),
 };
 
 // Settings API

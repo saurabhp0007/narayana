@@ -4,12 +4,14 @@ import { FootwearTabService } from './footwear-tab.service';
 import { FootwearTabController } from './footwear-tab.controller';
 import { FootwearTab, FootwearTabSchema } from './schemas/footwear-tab.schema';
 import { Offer, OfferSchema } from '../offer/schemas/offer.schema';
+import { FootwearSubcategory, FootwearSubcategorySchema } from '../footwear-subcategory/schemas/footwear-subcategory.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: FootwearTab.name, schema: FootwearTabSchema },
       { name: Offer.name, schema: OfferSchema },
+      { name: FootwearSubcategory.name, schema: FootwearSubcategorySchema },
     ]),
   ],
   controllers: [FootwearTabController],
