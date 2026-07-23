@@ -92,21 +92,6 @@ export class OfferService {
       .exec();
   }
 
-  async getFootwearOffers(): Promise<Offer[]> {
-    const now = new Date();
-    return this.offerModel
-      .find({
-        isActive: true,
-        footwearTabId: { $ne: null },
-        startDate: { $lte: now },
-        endDate: { $gte: now },
-      })
-      .populate('productIds', 'name images price discountPrice badge')
-      .populate('footwearTabId', 'name slug displayOrder')
-      .sort({ priority: -1 })
-      .exec();
-  }
-
   async getNavbarOffers(): Promise<Offer[]> {
     const now = new Date();
     return this.offerModel

@@ -22,10 +22,10 @@ export class CreateFootwearSubcategoryDto {
   @IsString()
   offerText?: string;
 
-  @ApiProperty({ description: 'The homepage Footwear tab this subcategory belongs to' })
-  @IsMongoId()
+  @ApiProperty({ description: 'Tab label this subcategory is grouped under on the homepage Footwear section', example: "Men's Shoes" })
+  @IsString()
   @IsNotEmpty()
-  footwearTabId: string;
+  tabName: string;
 
   @ApiPropertyOptional({ description: 'Product IDs mapped to this subcategory', type: [String] })
   @IsOptional()

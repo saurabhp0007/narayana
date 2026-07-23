@@ -7,7 +7,6 @@ import { UpdateFootwearSubcategoryDto } from './dto/update-footwear-subcategory.
 import { generateSlug } from '../../common/utils/slug.util';
 
 const PRODUCT_POPULATE_FIELDS = 'name images price discountPrice badge sku';
-const TAB_POPULATE_FIELDS = 'name slug displayOrder isActive';
 
 @Injectable()
 export class FootwearSubcategoryService {
@@ -16,12 +15,12 @@ export class FootwearSubcategoryService {
     private footwearSubcategoryModel: Model<FootwearSubcategory>,
   ) {}
 
-  private async ensureUnique(name: string, slug: string, footwearTabId: string, excludeId?: string): Promise<void> {
+  private async ensureUnique(name: string, slug: string, tabName: string, excludeId?: string): Promise<void> {
     const idFilter = excludeId ? { _id: { $ne: excludeId } } : {};
 
     const existingByName = await this.footwearSubcategoryModel.findOne({
       name,
-      footwearTabId,
+      tabName,
       ...idFilter,
     });
     if (existingByName) {
@@ -36,49 +35,39 @@ export class FootwearSubcategoryService {
 
   async create(dto: CreateFootwearSubcategoryDto): Promise<FootwearSubcategory> {
     const slug = dto.slug || generateSlug(dto.name);
-    await this.ensureUnique(dto.name, slug, dto.footwearTabId);
+    await this.ensureUnique(dto.name, slug, dto.tabName);
 
     const subcategory = new this.footwearSubcategoryModel({
       ...dto,
       slug,
-      footwearTabId: new Types.ObjectId(dto.footwearTabId),
       productIds: dto.productIds?.map((id) => new Types.ObjectId(id)) || [],
     });
     return subcategory.save();
   }
 
-  async findAll(isActive?: boolean, footwearTabId?: string): Promise<FootwearSubcategory[]> {
+  async findAll(isActive?: boolean, tabName?: string): Promise<FootwearSubcategory[]> {
     const filter: Record<string, unknown> = {};
     if (isActive !== undefined) filter.isActive = isActive;
-    if (footwearTabId) filter.footwearTabId = footwearTabId;
+    if (tabName) filter.tabName = tabName;
 
     return this.footwearSubcategoryModel
       .find(filter)
       .populate('productIds', PRODUCT_POPULATE_FIELDS)
-      .populate('footwearTabId', TAB_POPULATE_FIELDS)
-      .sort({ footwearTabId: 1, displayOrder: 1, createdAt: 1 })
+      .sort({ tabName: 1, displayOrder: 1, createdAt: 1 })
       .exec();
   }
 
   async findActive(): Promise<FootwearSubcategory[]> {
-    const subcategories = await this.footwearSubcategoryModel
+    return this.footwearSubcategoryModel
       .find({ isActive: true })
-      .populate('footwearTabId', TAB_POPULATE_FIELDS)
       .sort({ displayOrder: 1, createdAt: 1 })
       .exec();
-
-    // Only surface subcategories whose parent tab is populated and active
-    return subcategories.filter((s) => {
-      const tab = s.footwearTabId as unknown as { isActive?: boolean } | null;
-      return tab && typeof tab === 'object' && tab.isActive;
-    });
   }
 
   async findOne(id: string): Promise<FootwearSubcategory> {
     const subcategory = await this.footwearSubcategoryModel
       .findById(id)
       .populate('productIds', PRODUCT_POPULATE_FIELDS)
-      .populate('footwearTabId', TAB_POPULATE_FIELDS)
       .exec();
     if (!subcategory) {
       throw new NotFoundException(`Footwear subcategory with ID ${id} not found`);
@@ -87,10 +76,7 @@ export class FootwearSubcategoryService {
   }
 
   async findBySlug(slug: string): Promise<FootwearSubcategory> {
-    const subcategory = await this.footwearSubcategoryModel
-      .findOne({ slug, isActive: true })
-      .populate('footwearTabId', TAB_POPULATE_FIELDS)
-      .exec();
+    const subcategory = await this.footwearSubcategoryModel.findOne({ slug, isActive: true }).exec();
     if (!subcategory) {
       throw new NotFoundException(`Footwear subcategory with slug ${slug} not found`);
     }
@@ -105,15 +91,14 @@ export class FootwearSubcategoryService {
 
     const nextName = dto.name ?? subcategory.name;
     const nextSlug = dto.slug ?? subcategory.slug;
-    const nextTabId = dto.footwearTabId ?? subcategory.footwearTabId.toString();
+    const nextTabName = dto.tabName ?? subcategory.tabName;
 
-    if (dto.name || dto.slug || dto.footwearTabId) {
-      await this.ensureUnique(nextName, nextSlug, nextTabId, id);
+    if (dto.name || dto.slug || dto.tabName) {
+      await this.ensureUnique(nextName, nextSlug, nextTabName, id);
     }
 
     Object.assign(subcategory, {
       ...dto,
-      ...(dto.footwearTabId ? { footwearTabId: new Types.ObjectId(dto.footwearTabId) } : {}),
       ...(dto.productIds ? { productIds: dto.productIds.map((pid) => new Types.ObjectId(pid)) } : {}),
     });
     await subcategory.save();

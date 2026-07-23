@@ -14,7 +14,6 @@ import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { EmailModule } from './modules/email/email.module';
 import { OrderModule } from './modules/order/order.module';
 import { OfferModule } from './modules/offer/offer.module';
-import { FootwearTabModule } from './modules/footwear-tab/footwear-tab.module';
 import { FootwearSubcategoryModule } from './modules/footwear-subcategory/footwear-subcategory.module';
 import { GuestModule } from './modules/guest/guest.module';
 import { ReviewModule } from './modules/review/review.module';
@@ -48,7 +47,6 @@ import imagekitConfig from './config/imagekit.config';
     EmailModule,
     OrderModule,
     OfferModule,
-    FootwearTabModule,
     FootwearSubcategoryModule,
     GuestModule,
     ReviewModule,

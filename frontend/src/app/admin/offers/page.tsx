@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { offerApi, productApi, categoryApi, footwearTabApi } from '@/lib/api';
-import { Offer, Product, Category, CreateOfferDto, OfferRules, FootwearTabItem } from '@/types';
+import { offerApi, productApi, categoryApi } from '@/lib/api';
+import { Offer, Product, Category, CreateOfferDto, OfferRules } from '@/types';
 
 type OfferType = 'buyXgetY' | 'bundleDiscount' | 'percentageOff' | 'fixedAmountOff';
 
@@ -10,7 +10,6 @@ export default function OfferManagementPage() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [footwearTabs, setFootwearTabs] = useState<FootwearTabItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterActive, setFilterActive] = useState<string>('all');
@@ -40,7 +39,6 @@ export default function OfferManagementPage() {
     isActive: true,
     priority: 0,
     displayInNavbar: false,
-    footwearTabId: '',
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -66,10 +64,9 @@ export default function OfferManagementPage() {
 
   const fetchSupportData = useCallback(async () => {
     try {
-      const [productsRes, categoriesRes, footwearTabsRes] = await Promise.all([
+      const [productsRes, categoriesRes] = await Promise.all([
         productApi.getAll({ limit: 100, isActive: true }),
         categoryApi.getAll({ isActive: true }),
-        footwearTabApi.getAll({ isActive: true }),
       ]);
 
       const productsData = productsRes.data;
@@ -77,9 +74,6 @@ export default function OfferManagementPage() {
 
       const categoriesData = categoriesRes.data;
       setCategories(Array.isArray(categoriesData) ? categoriesData : categoriesData.data || []);
-
-      const footwearTabsData = footwearTabsRes.data;
-      setFootwearTabs(Array.isArray(footwearTabsData) ? footwearTabsData : footwearTabsData.data || []);
     } catch (err) {
       console.error('Failed to fetch support data:', err);
     }
@@ -103,7 +97,6 @@ export default function OfferManagementPage() {
       isActive: true,
       priority: 0,
       displayInNavbar: false,
-      footwearTabId: '',
     });
     setFormErrors({});
     setEditingOffer(null);
@@ -134,8 +127,6 @@ export default function OfferManagementPage() {
   const openEditModal = (offer: Offer) => {
     setEditingOffer(offer);
     const productIdList = (offer.productIds || []).map((p) => (typeof p === 'string' ? p : p._id));
-    const footwearTabId =
-      typeof offer.footwearTabId === 'string' ? offer.footwearTabId : offer.footwearTabId?._id || '';
     setFormData({
       name: offer.name,
       description: offer.description || '',
@@ -148,7 +139,6 @@ export default function OfferManagementPage() {
       isActive: offer.isActive,
       priority: offer.priority,
       displayInNavbar: offer.displayInNavbar || false,
-      footwearTabId,
     });
 
     // Initialize cascading selection for editing
@@ -235,11 +225,10 @@ export default function OfferManagementPage() {
 
     setIsSubmitting(true);
     try {
-      const payload = { ...formData, footwearTabId: formData.footwearTabId || undefined };
       if (editingOffer) {
-        await offerApi.update(editingOffer._id, payload);
+        await offerApi.update(editingOffer._id, formData);
       } else {
-        await offerApi.create(payload);
+        await offerApi.create(formData);
       }
       closeModal();
       fetchOffers();
@@ -374,9 +363,6 @@ export default function OfferManagementPage() {
                   Priority
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Footwear Tab
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -384,7 +370,7 @@ export default function OfferManagementPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-4 text-center">
+                  <td colSpan={7} className="px-6 py-4 text-center">
                     <div className="flex justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                     </div>
@@ -392,7 +378,7 @@ export default function OfferManagementPage() {
                 </tr>
               ) : offers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
                     No offers found.
                   </td>
                 </tr>
@@ -425,9 +411,6 @@ export default function OfferManagementPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {offer.priority}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {footwearTabs.find((t) => t._id === offer.footwearTabId)?.name || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-3">
@@ -733,37 +716,6 @@ export default function OfferManagementPage() {
                           </select>
                           <p className="mt-1 text-xs text-gray-500">Hold Ctrl/Cmd to select multiple products</p>
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Footwear Section */}
-                    <div className="md:col-span-2 bg-blue-50 p-4 rounded-md">
-                      <h4 className="text-sm font-medium text-gray-700 mb-1">Homepage Footwear Section</h4>
-                      <p className="text-xs text-gray-500 mb-3">
-                        Pick a tab to feature this offer&apos;s first selected product as a card in the homepage
-                        Footwear section. Image, name and price are pulled from that product automatically. Manage
-                        the list of tabs under{' '}
-                        <a href="/admin/footwear-tabs" className="underline">
-                          Footwear Tabs
-                        </a>
-                        .
-                      </p>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Footwear Tab</label>
-                        <select
-                          value={formData.footwearTabId || ''}
-                          onChange={(e) =>
-                            setFormData((prev) => ({ ...prev, footwearTabId: e.target.value }))
-                          }
-                          className="text-black w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                        >
-                          <option value="">Don&apos;t show in Footwear section</option>
-                          {footwearTabs.map((tab) => (
-                            <option key={tab._id} value={tab._id}>
-                              {tab.name}
-                            </option>
-                          ))}
-                        </select>
                       </div>
                     </div>
 

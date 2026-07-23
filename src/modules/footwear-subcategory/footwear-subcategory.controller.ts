@@ -56,10 +56,10 @@ export class FootwearSubcategoryController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get all footwear subcategories (admin)', description: 'Requires authentication.' })
   @ApiQuery({ name: 'isActive', required: false, enum: ['true', 'false'] })
-  @ApiQuery({ name: 'footwearTabId', required: false })
-  async findAll(@Query('isActive') isActive?: string, @Query('footwearTabId') footwearTabId?: string) {
+  @ApiQuery({ name: 'tabName', required: false })
+  async findAll(@Query('isActive') isActive?: string, @Query('tabName') tabName?: string) {
     const isActiveBool = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
-    return this.footwearSubcategoryService.findAll(isActiveBool, footwearTabId);
+    return this.footwearSubcategoryService.findAll(isActiveBool, tabName);
   }
 
   @Get(':id')

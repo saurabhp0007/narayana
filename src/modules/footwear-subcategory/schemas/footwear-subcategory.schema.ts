@@ -2,10 +2,11 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
 /**
- * A subcategory tile shown inside a homepage Footwear tab (e.g. tab "Men's Shoes"
- * contains subcategories "Running Shoes", "Sneakers"). Each tile has its own
- * image + offer text and links to a listing of its mapped products, instead of
- * the old behaviour where a tab tile pointed straight at a single product.
+ * A subcategory tile shown inside a homepage Footwear tab group (e.g. tab name
+ * "Men's Shoes" groups subcategories "Running Shoes", "Sneakers"). Tabs are not
+ * a separate managed entity — a subcategory just carries the tab label it
+ * belongs under, and the homepage groups tiles by that label. Each tile has its
+ * own image + offer text and links to a listing of its mapped products.
  */
 @Schema({ timestamps: true })
 export class FootwearSubcategory extends Document {
@@ -21,8 +22,8 @@ export class FootwearSubcategory extends Document {
   @Prop({ default: '' })
   offerText: string; // e.g. "Flat 40% Off"
 
-  @Prop({ type: Types.ObjectId, ref: 'FootwearTab', required: true })
-  footwearTabId: Types.ObjectId;
+  @Prop({ required: true, trim: true })
+  tabName: string; // e.g. "Men's Shoes" — groups tiles on the homepage Footwear section
 
   @Prop({ type: [Types.ObjectId], ref: 'Product', default: [] })
   productIds: Types.ObjectId[];
@@ -39,6 +40,6 @@ export class FootwearSubcategory extends Document {
 
 export const FootwearSubcategorySchema = SchemaFactory.createForClass(FootwearSubcategory);
 
-FootwearSubcategorySchema.index({ footwearTabId: 1, displayOrder: 1 });
+FootwearSubcategorySchema.index({ tabName: 1, displayOrder: 1 });
 FootwearSubcategorySchema.index({ isActive: 1 });
-FootwearSubcategorySchema.index({ footwearTabId: 1, name: 1 }, { unique: true });
+FootwearSubcategorySchema.index({ tabName: 1, name: 1 }, { unique: true });

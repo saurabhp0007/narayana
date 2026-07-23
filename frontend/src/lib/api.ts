@@ -164,7 +164,6 @@ export const offerApi = {
   getAll: (params?: { page?: number; limit?: number; isActive?: boolean }) =>
     api.get('/offers', { params }),
   getActive: () => api.get('/offers/active'),
-  getFootwear: () => api.get('/offers/footwear'),
   getNavbar: () => api.get('/offers/navbar'),
   getHeroBanners: () => api.get('/offers/hero-banners'),
   getById: (id: string) => api.get(`/offers/${id}`),
@@ -174,18 +173,9 @@ export const offerApi = {
   delete: (id: string) => api.delete(`/offers/${id}`),
 };
 
-// Footwear Tab API (tabs of the homepage Footwear section)
-export const footwearTabApi = {
-  getAll: (params?: { isActive?: boolean }) => api.get('/footwear-tabs', { params }),
-  getById: (id: string) => api.get(`/footwear-tabs/${id}`),
-  create: (data: object) => api.post('/footwear-tabs', data),
-  update: (id: string, data: object) => api.patch(`/footwear-tabs/${id}`, data),
-  delete: (id: string) => api.delete(`/footwear-tabs/${id}`),
-};
-
-// Footwear Subcategory API (subcategory tiles inside a homepage Footwear tab)
+// Footwear Subcategory API (subcategory tiles inside a homepage Footwear tab group)
 export const footwearSubcategoryApi = {
-  getAll: (params?: { isActive?: boolean; footwearTabId?: string }) =>
+  getAll: (params?: { isActive?: boolean; tabName?: string }) =>
     api.get('/footwear-subcategories', { params }),
   getActive: () => api.get('/footwear-subcategories/active'),
   getBySlug: (slug: string) => api.get(`/footwear-subcategories/slug/${slug}`),

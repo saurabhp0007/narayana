@@ -1,13 +1,12 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { footwearSubcategoryApi, footwearTabApi, productApi } from '@/lib/api';
-import { FootwearSubcategory, CreateFootwearSubcategoryDto, FootwearTabItem, Product } from '@/types';
+import { footwearSubcategoryApi, productApi } from '@/lib/api';
+import { FootwearSubcategory, CreateFootwearSubcategoryDto, Product } from '@/types';
 import ImageUploadField from '@/components/common/ImageUploadField';
 
 export default function FootwearSubcategoryManagementPage() {
   const [subcategories, setSubcategories] = useState<FootwearSubcategory[]>([]);
-  const [tabs, setTabs] = useState<FootwearTabItem[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +20,7 @@ export default function FootwearSubcategoryManagementPage() {
     name: '',
     image: '',
     offerText: '',
-    footwearTabId: '',
+    tabName: '',
     productIds: [],
     isActive: true,
     displayOrder: 0,
@@ -47,20 +46,16 @@ export default function FootwearSubcategoryManagementPage() {
 
   useEffect(() => {
     fetchSubcategories();
-    footwearTabApi
-      .getAll()
-      .then((res) => setTabs(res.data || []))
-      .catch((err) => console.error('Failed to fetch footwear tabs:', err));
     productApi
       .getAll({ isActive: true, limit: 200 })
       .then((res) => setAllProducts(res.data?.data || []))
       .catch((err) => console.error('Failed to fetch products:', err));
   }, [fetchSubcategories]);
 
-  const getTabName = (tabId: string | FootwearTabItem) => {
-    if (typeof tabId === 'object') return tabId.name;
-    return tabs.find((t) => t._id === tabId)?.name || 'Unknown';
-  };
+  const existingTabNames = useMemo(
+    () => Array.from(new Set(subcategories.map((s) => s.tabName))).sort(),
+    [subcategories]
+  );
 
   const resetForm = () => {
     setFormData(emptyForm);
@@ -82,7 +77,7 @@ export default function FootwearSubcategoryManagementPage() {
       name: subcategory.name,
       image: subcategory.image || '',
       offerText: subcategory.offerText || '',
-      footwearTabId: typeof subcategory.footwearTabId === 'object' ? subcategory.footwearTabId._id : subcategory.footwearTabId,
+      tabName: subcategory.tabName,
       isActive: subcategory.isActive,
       displayOrder: subcategory.displayOrder,
     });
@@ -100,7 +95,7 @@ export default function FootwearSubcategoryManagementPage() {
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
     if (!formData.name.trim()) errors.name = 'Name is required';
-    if (!formData.footwearTabId) errors.footwearTabId = 'Tab is required';
+    if (!formData.tabName.trim()) errors.tabName = 'Tab is required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -207,12 +202,6 @@ export default function FootwearSubcategoryManagementPage() {
         </div>
       )}
 
-      {!isLoading && tabs.length === 0 && (
-        <div className="mb-4 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded">
-          No footwear tabs yet. Create a tab under &quot;Footwear Tabs&quot; first, then add subcategories to it.
-        </div>
-      )}
-
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -256,7 +245,7 @@ export default function FootwearSubcategoryManagementPage() {
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">{subcategory.name}</div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{getTabName(subcategory.footwearTabId)}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{subcategory.tabName}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{subcategory.offerText || '—'}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {(subcategory.productIds as Product[])?.length || 0} product(s)
@@ -342,22 +331,27 @@ export default function FootwearSubcategoryManagementPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Footwear Tab *</label>
-                      <select
-                        value={formData.footwearTabId}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, footwearTabId: e.target.value }))}
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tab *</label>
+                      <input
+                        type="text"
+                        list="existing-tab-names"
+                        value={formData.tabName}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, tabName: e.target.value }))}
+                        placeholder="e.g. Men's Shoes"
                         className={`text-black w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                          formErrors.footwearTabId ? 'border-red-300' : 'border-gray-300'
+                          formErrors.tabName ? 'border-red-300' : 'border-gray-300'
                         }`}
-                      >
-                        <option value="">Select a tab...</option>
-                        {tabs.map((tab) => (
-                          <option key={tab._id} value={tab._id}>
-                            {tab.name}
-                          </option>
+                      />
+                      <datalist id="existing-tab-names">
+                        {existingTabNames.map((name) => (
+                          <option key={name} value={name} />
                         ))}
-                      </select>
-                      {formErrors.footwearTabId && <p className="mt-1 text-sm text-red-600">{formErrors.footwearTabId}</p>}
+                      </datalist>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Groups this tile under a tab on the homepage Footwear section. Reuse an existing tab name to
+                        add another tile to the same tab.
+                      </p>
+                      {formErrors.tabName && <p className="mt-1 text-sm text-red-600">{formErrors.tabName}</p>}
                     </div>
 
                     <div>

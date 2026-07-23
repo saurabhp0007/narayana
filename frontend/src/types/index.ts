@@ -178,34 +178,17 @@ export interface OfferRules {
   minQuantity?: number;
 }
 
-// A tab in the homepage Footwear section — fully admin-managed (see /admin/footwear-tabs).
-export interface FootwearTabItem {
-  _id: string;
-  name: string;
-  slug: string;
-  displayOrder: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateFootwearTabDto {
-  name: string;
-  slug?: string;
-  displayOrder?: number;
-  isActive?: boolean;
-}
-
-// A subcategory tile inside a homepage Footwear tab (e.g. tab "Men's Shoes" ->
-// subcategories "Running Shoes", "Sneakers"). Each tile has its own image + offer
-// text and links to a listing of its mapped products.
+// A subcategory tile inside a homepage Footwear tab group (e.g. tab "Men's Shoes" ->
+// subcategories "Running Shoes", "Sneakers"). Tabs aren't a separate managed entity —
+// each subcategory just carries the tab label it's grouped under. Each tile has its
+// own image + offer text and links to a listing of its mapped products.
 export interface FootwearSubcategory {
   _id: string;
   name: string;
   slug: string;
   image?: string;
   offerText?: string;
-  footwearTabId: string | FootwearTabItem;
+  tabName: string;
   productIds: string[] | Product[];
   displayOrder: number;
   isActive: boolean;
@@ -218,7 +201,7 @@ export interface CreateFootwearSubcategoryDto {
   slug?: string;
   image?: string;
   offerText?: string;
-  footwearTabId: string;
+  tabName: string;
   productIds?: string[];
   displayOrder?: number;
   isActive?: boolean;
@@ -238,7 +221,6 @@ export interface Offer {
   isActive: boolean;
   priority: number;
   displayInNavbar?: boolean;
-  footwearTabId?: string | FootwearTabItem;
   createdAt: string;
   updatedAt: string;
 }
@@ -340,7 +322,6 @@ export interface CreateOfferDto {
   isActive?: boolean;
   priority?: number;
   displayInNavbar?: boolean;
-  footwearTabId?: string;
 }
 
 // Hero banner types (independent of Offer)

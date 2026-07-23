@@ -61,7 +61,6 @@ export default function AdminLayout({
     { href: '/admin/shop-by-category', label: 'Shop by Category', icon: 'M7 7h3v3H7V7zm0 7h3v3H7v-3zm7-7h3v3h-3V7zm0 7h3v3h-3v-3z' },
     { href: '/admin/products', label: 'Products', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
     { href: '/admin/offers', label: 'Offers', icon: 'M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7' },
-    { href: '/admin/footwear-tabs', label: 'Footwear Tabs', icon: 'M7 21h10M9 3h6l-1 8h4l-9 10 2-8H7l2-10z' },
     { href: '/admin/footwear-subcategories', label: 'Footwear Subcategories', icon: 'M4 6h16M4 12h16M4 18h7' },
     { href: '/admin/hero-banners', label: 'Hero Banners', icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
     { href: '/admin/collections', label: 'Collections', icon: 'M19 11H5m14-4H5m14 8H5m14 4H5' },

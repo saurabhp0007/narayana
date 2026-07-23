@@ -162,12 +162,4 @@ export class CreateOfferDto {
   @IsOptional()
   @IsBoolean()
   displayInNavbar?: boolean;
-
-  @ApiPropertyOptional({
-    description: 'ID of the homepage Footwear section tab this offer should be surfaced in',
-    example: '507f1f77bcf86cd799439099',
-  })
-  @IsOptional()
-  @IsMongoId()
-  footwearTabId?: string;
 }

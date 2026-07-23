@@ -66,11 +66,6 @@ export class Offer extends Document {
   @Prop({ default: false })
   displayInNavbar: boolean;
 
-  // When set, this offer's first linked product is surfaced as a card in the
-  // referenced tab of the homepage "Footwear" section (see FootwearTab collection).
-  @Prop({ type: Types.ObjectId, ref: 'FootwearTab' })
-  footwearTabId: Types.ObjectId;
-
   createdAt: Date;
   updatedAt: Date;
 }
@@ -80,4 +75,3 @@ export const OfferSchema = SchemaFactory.createForClass(Offer);
 OfferSchema.index({ isActive: 1 });
 OfferSchema.index({ startDate: 1, endDate: 1 });
 OfferSchema.index({ priority: -1 });
-OfferSchema.index({ footwearTabId: 1 });

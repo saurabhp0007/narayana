@@ -89,19 +89,6 @@ export class OfferController {
     return this.offerService.getActiveOffers();
   }
 
-  @Get('footwear')
-  @ApiOperation({
-    summary: 'Get footwear section offers',
-    description: 'Retrieves offers to be displayed in the homepage Footwear section, grouped by tab',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Footwear section offers retrieved successfully',
-  })
-  async getFootwearOffers() {
-    return this.offerService.getFootwearOffers();
-  }
-
   @Get('navbar')
   @ApiOperation({
     summary: 'Get navbar offers',

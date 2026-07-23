@@ -4,41 +4,39 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { footwearSubcategoryApi } from '@/lib/api';
-import { FootwearSubcategory, FootwearTabItem } from '@/types';
+import { FootwearSubcategory } from '@/types';
 
 export default function FootwearSection() {
-  const [tabs, setTabs] = useState<FootwearTabItem[]>([]);
-  const [subcategoriesByTabId, setSubcategoriesByTabId] = useState<Record<string, FootwearSubcategory[]>>({});
+  const [tabNames, setTabNames] = useState<string[]>([]);
+  const [subcategoriesByTab, setSubcategoriesByTab] = useState<Record<string, FootwearSubcategory[]>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTabId, setActiveTabId] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<string>('');
 
   useEffect(() => {
     footwearSubcategoryApi
       .getActive()
       .then((res) => {
         const subcategories: FootwearSubcategory[] = res.data || [];
-        const tabById = new Map<string, FootwearTabItem>();
+        const seenTabs: string[] = [];
         const grouped: Record<string, FootwearSubcategory[]> = {};
 
         for (const subcategory of subcategories) {
-          const tab = subcategory.footwearTabId;
-          if (!tab || typeof tab === 'string') continue; // not populated — skip, nothing to group by
-
-          if (!tabById.has(tab._id)) tabById.set(tab._id, tab);
-          (grouped[tab._id] ||= []).push(subcategory);
+          if (!subcategory.tabName) continue;
+          if (!grouped[subcategory.tabName]) seenTabs.push(subcategory.tabName);
+          (grouped[subcategory.tabName] ||= []).push(subcategory);
         }
 
-        setTabs(Array.from(tabById.values()).sort((a, b) => a.displayOrder - b.displayOrder));
-        setSubcategoriesByTabId(grouped);
+        setTabNames(seenTabs);
+        setSubcategoriesByTab(grouped);
       })
       .catch((err) => console.error('Failed to load footwear subcategories:', err))
       .finally(() => setIsLoading(false));
   }, []);
 
-  if (!isLoading && tabs.length === 0) return null;
+  if (!isLoading && tabNames.length === 0) return null;
 
-  const currentTabId = tabs.some((t) => t._id === activeTabId) ? activeTabId : tabs[0]?._id;
-  const currentSubcategories = currentTabId ? subcategoriesByTabId[currentTabId] || [] : [];
+  const currentTab = tabNames.includes(activeTab) ? activeTab : tabNames[0];
+  const currentSubcategories = currentTab ? subcategoriesByTab[currentTab] || [] : [];
 
   return (
     <section className="py-12 md:py-16 bg-white">
@@ -48,17 +46,17 @@ export default function FootwearSection() {
         </h2>
 
         <div className="flex items-center justify-center gap-6 md:gap-10 border-b border-gray-200 mb-10 overflow-x-auto">
-          {tabs.map((tab) => (
+          {tabNames.map((tabName) => (
             <button
-              key={tab._id}
-              onClick={() => setActiveTabId(tab._id)}
+              key={tabName}
+              onClick={() => setActiveTab(tabName)}
               className={`pb-3 text-xs md:text-sm font-semibold uppercase tracking-wide whitespace-nowrap border-b-2 transition-colors ${
-                currentTabId === tab._id
+                currentTab === tabName
                   ? 'text-gray-900 border-gray-900'
                   : 'text-gray-400 border-transparent hover:text-gray-600'
               }`}
             >
-              {tab.name}
+              {tabName}
             </button>
           ))}
         </div>
@@ -68,7 +66,7 @@ export default function FootwearSection() {
             <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-900 border-t-transparent"></div>
           </div>
         ) : (
-          <div key={currentTabId} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-in-up">
+          <div key={currentTab} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-in-up">
             {currentSubcategories.map((subcategory) => (
               <Link
                 key={subcategory._id}
