@@ -215,6 +215,18 @@ export const shopCategoryApi = {
   delete: (id: string) => api.delete(`/shop-categories/${id}`),
 };
 
+// Shop Subcategory API (subcategory tiles inside a homepage Shop by Category tab)
+export const shopSubcategoryApi = {
+  getAll: (params?: { isActive?: boolean; shopCategoryId?: string }) =>
+    api.get('/shop-subcategories', { params }),
+  getActive: () => api.get('/shop-subcategories/active'),
+  getBySlug: (slug: string) => api.get(`/shop-subcategories/slug/${slug}`),
+  getById: (id: string) => api.get(`/shop-subcategories/${id}`),
+  create: (data: object) => api.post('/shop-subcategories', data),
+  update: (id: string, data: object) => api.patch(`/shop-subcategories/${id}`, data),
+  delete: (id: string) => api.delete(`/shop-subcategories/${id}`),
+};
+
 // Settings API
 export const settingsApi = {
   getHomepage: () => api.get('/settings/homepage'),

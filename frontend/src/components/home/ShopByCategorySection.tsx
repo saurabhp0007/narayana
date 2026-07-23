@@ -1,36 +1,44 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { shopCategoryApi } from '@/lib/api';
-import { ShopCategory, Product } from '@/types';
-import { productBadgeStyles, productBadgeLabels } from '@/lib/productBadge';
+import { shopSubcategoryApi } from '@/lib/api';
+import { ShopSubcategory, ShopCategory } from '@/types';
 
 export default function ShopByCategorySection() {
-  const [shopCategories, setShopCategories] = useState<ShopCategory[]>([]);
-  const [activeCategoryId, setActiveCategoryId] = useState<string>('');
+  const [categories, setCategories] = useState<ShopCategory[]>([]);
+  const [subcategoriesByCategoryId, setSubcategoriesByCategoryId] = useState<Record<string, ShopSubcategory[]>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [activeCategoryId, setActiveCategoryId] = useState<string>('');
 
   useEffect(() => {
-    shopCategoryApi
+    shopSubcategoryApi
       .getActive()
       .then((res) => {
-        const data: ShopCategory[] = res.data.data || res.data || [];
-        setShopCategories(data);
-        if (data.length > 0) setActiveCategoryId(data[0]._id);
+        const subcategories: ShopSubcategory[] = res.data || [];
+        const categoryById = new Map<string, ShopCategory>();
+        const grouped: Record<string, ShopSubcategory[]> = {};
+
+        for (const subcategory of subcategories) {
+          const category = subcategory.shopCategoryId;
+          if (!category || typeof category === 'string') continue; // not populated — skip, nothing to group by
+
+          if (!categoryById.has(category._id)) categoryById.set(category._id, category);
+          (grouped[category._id] ||= []).push(subcategory);
+        }
+
+        setCategories(Array.from(categoryById.values()).sort((a, b) => a.displayOrder - b.displayOrder));
+        setSubcategoriesByCategoryId(grouped);
       })
-      .catch((err) => console.error('Failed to load shop categories:', err))
+      .catch((err) => console.error('Failed to load shop subcategories:', err))
       .finally(() => setIsLoading(false));
   }, []);
 
-  const products = useMemo(() => {
-    const active = shopCategories.find((c) => c._id === activeCategoryId);
-    if (!active) return [];
-    return (active.productIds as Product[]).filter((p) => typeof p === 'object' && p.isActive);
-  }, [shopCategories, activeCategoryId]);
+  if (!isLoading && categories.length === 0) return null;
 
-  if (!isLoading && shopCategories.length === 0) return null;
+  const currentCategoryId = categories.some((c) => c._id === activeCategoryId) ? activeCategoryId : categories[0]?._id;
+  const currentSubcategories = currentCategoryId ? subcategoriesByCategoryId[currentCategoryId] || [] : [];
 
   return (
     <section className="py-12 md:py-16 bg-white">
@@ -41,12 +49,12 @@ export default function ShopByCategorySection() {
         </h2>
 
         <div className="flex items-center justify-center gap-6 md:gap-10 border-b border-gray-200 mb-10 overflow-x-auto">
-          {shopCategories.map((category) => (
+          {categories.map((category) => (
             <button
               key={category._id}
               onClick={() => setActiveCategoryId(category._id)}
               className={`pb-3 text-xs md:text-sm font-semibold uppercase tracking-wide border-b-2 whitespace-nowrap transition-colors ${
-                activeCategoryId === category._id
+                currentCategoryId === category._id
                   ? 'text-gray-900 border-gray-900'
                   : 'text-gray-400 border-transparent hover:text-gray-600'
               }`}
@@ -61,14 +69,18 @@ export default function ShopByCategorySection() {
             <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-900 border-t-transparent"></div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {products.map((product) => (
-              <Link key={product._id} href={`/products/${product._id}`} className="group block">
+          <div key={currentCategoryId} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-in-up">
+            {currentSubcategories.map((subcategory) => (
+              <Link
+                key={subcategory._id}
+                href={`/products?shopSubcategorySlug=${subcategory.slug}`}
+                className="group block"
+              >
                 <div className="relative aspect-[4/5] bg-gray-100 rounded-lg overflow-hidden mb-3">
-                  {product.images && product.images.length > 0 ? (
+                  {subcategory.image ? (
                     <Image
-                      src={product.images[0]}
-                      alt={product.name}
+                      src={subcategory.image}
+                      alt={subcategory.name}
                       fill
                       className="object-cover group-hover:scale-105 transition-transform duration-300"
                       sizes="(max-width: 768px) 50vw, 25vw"
@@ -80,25 +92,13 @@ export default function ShopByCategorySection() {
                       </svg>
                     </div>
                   )}
-                  {product.badge && (
-                    <span
-                      className={`absolute top-2 left-2 text-white text-xs px-2 py-1 rounded font-medium ${
-                        productBadgeStyles[product.badge] || 'bg-gray-900'
-                      }`}
-                    >
-                      {productBadgeLabels[product.badge] || product.badge}
+                  {subcategory.offerText && (
+                    <span className="absolute top-2 left-2 bg-gray-900 text-white text-xs px-2 py-1 rounded font-medium">
+                      {subcategory.offerText}
                     </span>
                   )}
                 </div>
-                <h3 className="text-sm font-medium text-gray-900 mb-1 line-clamp-1">{product.name}</h3>
-                {product.discountPrice ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-red-600">₹{product.discountPrice.toFixed(0)}</span>
-                    <span className="text-xs text-gray-400 line-through">₹{product.price.toFixed(0)}</span>
-                  </div>
-                ) : (
-                  <span className="text-sm font-semibold text-gray-900">₹{product.price.toFixed(0)}</span>
-                )}
+                <h3 className="text-sm font-medium text-gray-900 line-clamp-1">{subcategory.name}</h3>
               </Link>
             ))}
           </div>

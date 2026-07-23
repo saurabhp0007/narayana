@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsNumber, IsArray, IsMongoId } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsNumber } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateShopCategoryDto {
@@ -11,12 +11,6 @@ export class CreateShopCategoryDto {
   @IsOptional()
   @IsString()
   slug?: string;
-
-  @ApiPropertyOptional({ description: 'Product IDs mapped into this homepage category', type: [String] })
-  @IsOptional()
-  @IsArray()
-  @IsMongoId({ each: true })
-  productIds?: string[];
 
   @ApiPropertyOptional({ description: 'Sort order among tabs (lower shows first)', example: 0 })
   @IsOptional()

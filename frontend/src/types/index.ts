@@ -370,12 +370,12 @@ export interface CreateCollectionDto {
   isActive?: boolean;
 }
 
-// Shop Category types (homepage "Shop by Category" tab: independent of each product's own category)
+// Shop Category types (homepage "Shop by Category" tab label: independent of each
+// product's own category). Products aren't mapped here directly — see ShopSubcategory.
 export interface ShopCategory {
   _id: string;
   name: string;
   slug: string;
-  productIds: string[] | Product[];
   displayOrder: number;
   isActive: boolean;
   createdAt: string;
@@ -385,6 +385,33 @@ export interface ShopCategory {
 export interface CreateShopCategoryDto {
   name: string;
   slug?: string;
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
+// A subcategory tile inside a homepage "Shop by Category" tab (e.g. tab "Sneakers" ->
+// subcategories "Running", "Casual"). Each tile has its own image + offer text and
+// links to a listing of its mapped products.
+export interface ShopSubcategory {
+  _id: string;
+  name: string;
+  slug: string;
+  image?: string;
+  offerText?: string;
+  shopCategoryId: string | ShopCategory;
+  productIds: string[] | Product[];
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateShopSubcategoryDto {
+  name: string;
+  slug?: string;
+  image?: string;
+  offerText?: string;
+  shopCategoryId: string;
   productIds?: string[];
   displayOrder?: number;
   isActive?: boolean;

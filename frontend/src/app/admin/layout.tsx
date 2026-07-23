@@ -59,6 +59,7 @@ export default function AdminLayout({
     { href: '/admin/genders', label: 'Genders', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
     { href: '/admin/categories', label: 'Categories', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' },
     { href: '/admin/shop-by-category', label: 'Shop by Category', icon: 'M7 7h3v3H7V7zm0 7h3v3H7v-3zm7-7h3v3h-3V7zm0 7h3v3h-3v-3z' },
+    { href: '/admin/shop-subcategories', label: 'Shop Subcategories', icon: 'M4 6h16M4 12h16M4 18h7' },
     { href: '/admin/products', label: 'Products', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
     { href: '/admin/offers', label: 'Offers', icon: 'M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7' },
     { href: '/admin/footwear-subcategories', label: 'Footwear Subcategories', icon: 'M4 6h16M4 12h16M4 18h7' },

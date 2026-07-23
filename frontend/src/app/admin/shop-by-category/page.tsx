@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { shopCategoryApi, productApi } from '@/lib/api';
-import { ShopCategory, CreateShopCategoryDto, Product } from '@/types';
+import { useEffect, useState, useCallback } from 'react';
+import { shopCategoryApi } from '@/lib/api';
+import { ShopCategory, CreateShopCategoryDto } from '@/types';
 
 export default function ShopByCategoryManagementPage() {
   const [shopCategories, setShopCategories] = useState<ShopCategory[]>([]);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,12 +16,9 @@ export default function ShopByCategoryManagementPage() {
 
   const [formData, setFormData] = useState<CreateShopCategoryDto>({
     name: '',
-    productIds: [],
     isActive: true,
     displayOrder: 0,
   });
-  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
-  const [productSearch, setProductSearch] = useState('');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const fetchShopCategories = useCallback(async () => {
@@ -41,16 +37,10 @@ export default function ShopByCategoryManagementPage() {
 
   useEffect(() => {
     fetchShopCategories();
-    productApi
-      .getAll({ isActive: true, limit: 200 })
-      .then((res) => setAllProducts(res.data?.data || []))
-      .catch((err) => console.error('Failed to fetch products:', err));
   }, [fetchShopCategories]);
 
   const resetForm = () => {
-    setFormData({ name: '', productIds: [], isActive: true, displayOrder: 0 });
-    setSelectedProducts([]);
-    setProductSearch('');
+    setFormData({ name: '', isActive: true, displayOrder: 0 });
     setFormErrors({});
     setEditingShopCategory(null);
   };
@@ -62,14 +52,11 @@ export default function ShopByCategoryManagementPage() {
 
   const openEditModal = (shopCategory: ShopCategory) => {
     setEditingShopCategory(shopCategory);
-    const products = (shopCategory.productIds as Product[]).filter((p) => typeof p === 'object');
     setFormData({
       name: shopCategory.name,
       isActive: shopCategory.isActive,
       displayOrder: shopCategory.displayOrder,
     });
-    setSelectedProducts(products);
-    setProductSearch('');
     setFormErrors({});
     setIsModalOpen(true);
   };
@@ -92,11 +79,10 @@ export default function ShopByCategoryManagementPage() {
 
     setIsSubmitting(true);
     try {
-      const payload = { ...formData, productIds: selectedProducts.map((p) => p._id) };
       if (editingShopCategory) {
-        await shopCategoryApi.update(editingShopCategory._id, payload);
+        await shopCategoryApi.update(editingShopCategory._id, formData);
       } else {
-        await shopCategoryApi.create(payload);
+        await shopCategoryApi.create(formData);
       }
       closeModal();
       fetchShopCategories();
@@ -114,9 +100,10 @@ export default function ShopByCategoryManagementPage() {
       await shopCategoryApi.delete(id);
       setDeleteConfirm(null);
       fetchShopCategories();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to delete shop category:', err);
-      setError('Failed to delete category. Please try again.');
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error.response?.data?.message || 'Failed to delete category. Please try again.');
     }
   };
 
@@ -129,44 +116,18 @@ export default function ShopByCategoryManagementPage() {
     }
   };
 
-  const addProduct = (product: Product) => {
-    if (selectedProducts.some((p) => p._id === product._id)) return;
-    setSelectedProducts((prev) => [...prev, product]);
-    setProductSearch('');
-  };
-
-  const removeProduct = (productId: string) => {
-    setSelectedProducts((prev) => prev.filter((p) => p._id !== productId));
-  };
-
-  const moveProduct = (index: number, direction: -1 | 1) => {
-    setSelectedProducts((prev) => {
-      const next = [...prev];
-      const target = index + direction;
-      if (target < 0 || target >= next.length) return prev;
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
-    });
-  };
-
-  const searchResults = useMemo(() => {
-    if (!productSearch.trim()) return [];
-    const q = productSearch.trim().toLowerCase();
-    const selectedIds = new Set(selectedProducts.map((p) => p._id));
-    return allProducts
-      .filter((p) => !selectedIds.has(p._id) && (p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)))
-      .slice(0, 8);
-  }, [productSearch, allProducts, selectedProducts]);
-
   return (
     <div>
       <div className="mb-8 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Shop by Category</h1>
           <p className="mt-2 text-sm text-gray-600">
-            Manage the tabs shown in the homepage &quot;Shop by Category&quot; section. Create a category here and
-            map SKUs into it directly — this is independent of each product&apos;s own category in Product
-            Management.
+            Manage the tabs shown in the homepage &quot;Shop by Category&quot; section. Each tab groups a set of
+            subcategory tiles (image + offer text) — map SKUs onto those under{' '}
+            <a href="/admin/shop-subcategories" className="underline">
+              Shop Subcategories
+            </a>
+            .
           </p>
         </div>
         <button
@@ -195,7 +156,6 @@ export default function ShopByCategoryManagementPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKUs Mapped</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -204,7 +164,7 @@ export default function ShopByCategoryManagementPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center">
+                  <td colSpan={4} className="px-6 py-4 text-center">
                     <div className="flex justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                     </div>
@@ -212,7 +172,7 @@ export default function ShopByCategoryManagementPage() {
                 </tr>
               ) : shopCategories.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
                     No categories yet. Add one to populate the homepage &quot;Shop by Category&quot; section.
                   </td>
                 </tr>
@@ -221,9 +181,6 @@ export default function ShopByCategoryManagementPage() {
                   <tr key={shopCategory._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">{shopCategory.name}</div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {(shopCategory.productIds as Product[])?.length || 0} SKU(s)
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{shopCategory.displayOrder}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -322,82 +279,6 @@ export default function ShopByCategoryManagementPage() {
                           </label>
                         </div>
                       </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">SKUs in this category</label>
-                      <input
-                        type="text"
-                        value={productSearch}
-                        onChange={(e) => setProductSearch(e.target.value)}
-                        placeholder="Search products by name or SKU..."
-                        className="text-black w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                      />
-                      {searchResults.length > 0 && (
-                        <div className="mt-1 border border-gray-200 rounded-md divide-y divide-gray-100 max-h-48 overflow-y-auto">
-                          {searchResults.map((product) => (
-                            <button
-                              type="button"
-                              key={product._id}
-                              onClick={() => addProduct(product)}
-                              className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-50"
-                            >
-                              {product.images?.[0] ? (
-                                <img src={product.images[0]} alt={product.name} className="h-8 w-8 object-cover rounded" />
-                              ) : (
-                                <div className="h-8 w-8 bg-gray-100 rounded" />
-                              )}
-                              <span className="flex-1 text-sm text-gray-900">{product.name}</span>
-                              <span className="text-xs text-gray-400">{product.sku}</span>
-                              <span className="text-xs font-medium text-indigo-600">+ Add</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {selectedProducts.length > 0 && (
-                        <div className="mt-3 space-y-2">
-                          {selectedProducts.map((product, index) => (
-                            <div key={product._id} className="flex items-center gap-3 border border-gray-200 rounded-md px-3 py-2">
-                              {product.images?.[0] ? (
-                                <img src={product.images[0]} alt={product.name} className="h-10 w-10 object-cover rounded" />
-                              ) : (
-                                <div className="h-10 w-10 bg-gray-100 rounded" />
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
-                                <p className="text-xs text-gray-500">₹{(product.discountPrice || product.price).toFixed(0)}</p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => moveProduct(index, -1)}
-                                disabled={index === 0}
-                                className="text-gray-400 hover:text-gray-700 disabled:opacity-30"
-                                title="Move up"
-                              >
-                                ↑
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => moveProduct(index, 1)}
-                                disabled={index === selectedProducts.length - 1}
-                                className="text-gray-400 hover:text-gray-700 disabled:opacity-30"
-                                title="Move down"
-                              >
-                                ↓
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removeProduct(product._id)}
-                                className="text-red-500 hover:text-red-700 text-sm"
-                                title="Remove"
-                              >
-                                &times;
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
