@@ -14,6 +14,13 @@ async function createApp() {
   app.use(compression());
   app.setGlobalPrefix('api');
 
+  // Express auto-generates an ETag per JSON response by default. When a client resends the
+  // same request, this causes a 304 Not Modified carrying the OLD cached body instead of
+  // fresh data — invisible in most flows, but it breaks admin screens that need to see the
+  // result of a write immediately after making it. Disable it store-wide; the app already
+  // has its own Redis-backed caching for performance, so this isn't needed for that either.
+  app.getHttpAdapter().getInstance().set('etag', false);
+
   const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
   app.enableCors({
     origin: (origin, callback) => {
