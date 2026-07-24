@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { productApi } from '@/lib/api';
 import { Category, Product } from '@/types';
 
@@ -9,17 +9,26 @@ interface ProductMappingModalProps {
   onClose: () => void;
 }
 
+type HomepageField = 'isBestSeller' | 'showInLatestArrivals';
+type PendingChanges = Record<string, Partial<Record<HomepageField, boolean>>>;
+
 function ProductRow({
   product,
-  isSaving,
+  pending,
+  disabled,
   onToggle,
 }: {
   product: Product;
-  isSaving: boolean;
-  onToggle: (product: Product, field: 'isBestSeller' | 'showInLatestArrivals') => void;
+  pending: Partial<Record<HomepageField, boolean>> | undefined;
+  disabled: boolean;
+  onToggle: (product: Product, field: HomepageField) => void;
 }) {
+  const latestArrivals = pending?.showInLatestArrivals ?? product.showInLatestArrivals ?? false;
+  const bestSeller = pending?.isBestSeller ?? product.isBestSeller ?? false;
+  const isDirty = pending && Object.keys(pending).length > 0;
+
   return (
-    <tr className={isSaving ? 'opacity-50' : ''}>
+    <tr className={isDirty ? 'bg-amber-50' : ''}>
       <td className="px-3 py-2">
         <div className="flex items-center gap-3">
           {product.images?.[0] && (
@@ -39,8 +48,8 @@ function ProductRow({
       <td className="px-3 py-2 text-center">
         <input
           type="checkbox"
-          disabled={isSaving}
-          checked={product.showInLatestArrivals || false}
+          disabled={disabled}
+          checked={latestArrivals}
           onChange={() => onToggle(product, 'showInLatestArrivals')}
           className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:opacity-50"
         />
@@ -48,8 +57,8 @@ function ProductRow({
       <td className="px-3 py-2 text-center">
         <input
           type="checkbox"
-          disabled={isSaving}
-          checked={product.isBestSeller || false}
+          disabled={disabled}
+          checked={bestSeller}
           onChange={() => onToggle(product, 'isBestSeller')}
           className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:opacity-50"
         />
@@ -62,7 +71,6 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [savingIds, setSavingIds] = useState<string[]>([]);
 
   // Search-any-product state — lets an admin flag a product that isn't in this category
   const [searchQuery, setSearchQuery] = useState('');
@@ -71,21 +79,29 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
+  // Checkbox edits are staged here until "Save Changes" is clicked
+  const [pendingChanges, setPendingChanges] = useState<PendingChanges>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const fetchProducts = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await productApi.getAll({ categoryId: category._id, limit: 200 });
+      setProducts(response.data.data || response.data || []);
+    } catch (err) {
+      console.error('Failed to fetch products for category:', err);
+      setError('Failed to load products. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchProducts = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await productApi.getByCategory(category._id);
-        setProducts(response.data.data || response.data || []);
-      } catch (err) {
-        console.error('Failed to fetch products for category:', err);
-        setError('Failed to load products. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category._id]);
 
   const runSearch = async () => {
@@ -107,26 +123,85 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
     }
   };
 
-  const toggleFlag = async (product: Product, field: 'isBestSeller' | 'showInLatestArrivals') => {
-    const newValue = !product[field];
-    setSavingIds((prev) => [...prev, product._id]);
-    setError(null);
-    setSearchError(null);
+  const toggleFlag = (product: Product, field: HomepageField) => {
+    setSuccessMessage(null);
+    const currentValue = pendingChanges[product._id]?.[field] ?? product[field] ?? false;
+    setPendingChanges((prev) => ({
+      ...prev,
+      [product._id]: { ...prev[product._id], [field]: !currentValue },
+    }));
+  };
 
-    try {
-      await productApi.update(product._id, { [field]: newValue });
+  const pendingCount = Object.keys(pendingChanges).length;
+
+  // Products touched by pending edits but not already visible in either list
+  // (e.g. found via search, then the search box was cleared/changed)
+  const productLookup = useMemo(() => {
+    const map = new Map<string, Product>();
+    for (const p of products) map.set(p._id, p);
+    for (const p of searchResults) map.set(p._id, p);
+    return map;
+  }, [products, searchResults]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setSaveError(null);
+    setSuccessMessage(null);
+
+    const entries = Object.entries(pendingChanges);
+    const results = await Promise.allSettled(
+      entries.map(([productId, changes]) => productApi.update(productId, changes)),
+    );
+
+    const failedIds: string[] = [];
+    results.forEach((result, i) => {
+      if (result.status === 'rejected') {
+        failedIds.push(entries[i][0]);
+      }
+    });
+
+    if (failedIds.length === 0) {
+      // Apply saved changes onto local product lists and clear pending state
       setProducts((prev) =>
-        prev.map((p) => (p._id === product._id ? { ...p, [field]: newValue } : p)),
+        prev.map((p) => (pendingChanges[p._id] ? { ...p, ...pendingChanges[p._id] } : p)),
       );
       setSearchResults((prev) =>
-        prev.map((p) => (p._id === product._id ? { ...p, [field]: newValue } : p)),
+        prev.map((p) => (pendingChanges[p._id] ? { ...p, ...pendingChanges[p._id] } : p)),
       );
-    } catch (err) {
-      console.error(`Failed to update ${field}:`, err);
-      setError(`Failed to update product. Please try again.`);
-    } finally {
-      setSavingIds((prev) => prev.filter((id) => id !== product._id));
+      setPendingChanges({});
+      setSuccessMessage(`Saved ${entries.length} product${entries.length === 1 ? '' : 's'}.`);
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } else {
+      // Keep failed changes pending so the admin can retry; drop the ones that succeeded
+      const stillPending: PendingChanges = {};
+      failedIds.forEach((id) => {
+        stillPending[id] = pendingChanges[id];
+      });
+      const succeededChanges = { ...pendingChanges };
+      failedIds.forEach((id) => delete succeededChanges[id]);
+      setProducts((prev) =>
+        prev.map((p) => (succeededChanges[p._id] ? { ...p, ...succeededChanges[p._id] } : p)),
+      );
+      setSearchResults((prev) =>
+        prev.map((p) => (succeededChanges[p._id] ? { ...p, ...succeededChanges[p._id] } : p)),
+      );
+      setPendingChanges(stillPending);
+
+      const names = failedIds.map((id) => productLookup.get(id)?.name || id).join(', ');
+      setSaveError(`Failed to save: ${names}. Please try again.`);
     }
+
+    setIsSaving(false);
+  };
+
+  const handleClose = () => {
+    if (pendingCount > 0 && !isSaving) {
+      const discard = window.confirm(
+        `You have ${pendingCount} unsaved change${pendingCount === 1 ? '' : 's'}. Discard and close?`,
+      );
+      if (!discard) return;
+    }
+    onClose();
   };
 
   return (
@@ -139,7 +214,8 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
           <p className="mt-1 text-xs text-gray-500">
             Pick which products show in the homepage Latest Arrivals / Best Sellers sections. A
             product only appears under its own category&apos;s section, and Latest Arrivals only
-            takes effect while that category is toggled &quot;Show in Latest Arrivals&quot;.
+            takes effect while that category is toggled &quot;Show in Latest Arrivals&quot;. Check
+            the boxes below, then click <span className="font-medium">Save Changes</span>.
           </p>
         </div>
 
@@ -199,7 +275,8 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
                     <ProductRow
                       key={product._id}
                       product={product}
-                      isSaving={savingIds.includes(product._id)}
+                      pending={pendingChanges[product._id]}
+                      disabled={isSaving}
                       onToggle={toggleFlag}
                     />
                   ))}
@@ -209,8 +286,27 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
           </div>
 
           {error && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm flex items-center justify-between">
+              <span>{error}</span>
+              <button
+                type="button"
+                onClick={fetchProducts}
+                className="ml-3 underline hover:no-underline"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {saveError && (
             <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
-              {error}
+              {saveError}
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded text-sm">
+              {successMessage}
             </div>
           )}
 
@@ -224,7 +320,8 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
             </div>
           ) : products.length === 0 ? (
             <p className="text-sm text-gray-500 text-center py-8">
-              No products found in this category.
+              No products found in this category. Use the search above to map products from other
+              categories instead.
             </p>
           ) : (
             <table className="min-w-full divide-y divide-gray-200">
@@ -246,7 +343,8 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
                   <ProductRow
                     key={product._id}
                     product={product}
-                    isSaving={savingIds.includes(product._id)}
+                    pending={pendingChanges[product._id]}
+                    disabled={isSaving}
                     onToggle={toggleFlag}
                   />
                 ))}
@@ -255,14 +353,29 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
           )}
         </div>
 
-        <div className="px-6 py-4 bg-gray-50 flex justify-end rounded-b-lg">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Done
-          </button>
+        <div className="px-6 py-4 bg-gray-50 flex items-center justify-between rounded-b-lg">
+          <span className="text-xs text-gray-500">
+            {pendingCount > 0
+              ? `${pendingCount} unsaved change${pendingCount === 1 ? '' : 's'}`
+              : 'No unsaved changes'}
+          </span>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              {pendingCount > 0 ? 'Discard & Close' : 'Close'}
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={pendingCount === 0 || isSaving}
+              className="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
