@@ -319,7 +319,33 @@ export class ProductService {
       await this.validateRelatedProducts(updateProductDto.relatedProductIds);
     }
 
-    Object.assign(product, updateProductDto);
+    // ObjectId-typed fields are cast explicitly rather than left to Object.assign's implicit
+    // setter casting — that path does NOT reliably cast plain ID strings to BSON ObjectId here,
+    // so ID fields ended up persisted as strings, silently breaking every later query that
+    // matches against a real ObjectId (e.g. homepageCategoryId, populate()). Verified directly
+    // against the DB: this codebase already has legacy categoryId docs corrupted the same way.
+    const { genderId, categoryId, relatedProductIds, homepageCategoryId, ...rest } =
+      updateProductDto;
+    Object.assign(product, rest);
+
+    if (genderId !== undefined) {
+      product.genderId = new Types.ObjectId(genderId);
+    }
+    if (categoryId !== undefined) {
+      product.categoryId = new Types.ObjectId(categoryId);
+    }
+    if (relatedProductIds !== undefined) {
+      product.relatedProductIds = relatedProductIds.map((relatedId) => new Types.ObjectId(relatedId));
+    }
+    if (homepageCategoryId !== undefined) {
+      // Assigning undefined un-sets the path on save, which Mongo then matches the same as
+      // "field missing" — exactly what effectiveHomepageCategoryFilter's `{ field: null }`
+      // clause expects for "no override, fall back to the real categoryId".
+      product.homepageCategoryId = homepageCategoryId
+        ? new Types.ObjectId(homepageCategoryId)
+        : undefined;
+    }
+
     const savedProduct = await product.save();
     await this.invalidateCache();
     return savedProduct;
@@ -557,9 +583,17 @@ export class ProductService {
   // product's homepageCategoryId explicitly points here, or it has no override and its real
   // categoryId points here. `{ field: null }` also matches docs where the field was never set,
   // so this covers both "never overridden" and "override cleared" products in one query.
+  // Matches both the ObjectId and its raw hex-string form as a safety net — this schema has a
+  // history of ID fields getting persisted as plain strings instead of BSON ObjectId (found
+  // legacy categoryId docs with this exact corruption), which silently fails a strict ObjectId
+  // equality match.
   private effectiveHomepageCategoryFilter(categoryId: Types.ObjectId): Record<string, unknown> {
+    const idVariants = [categoryId, categoryId.toString()];
     return {
-      $or: [{ homepageCategoryId: categoryId }, { homepageCategoryId: null, categoryId }],
+      $or: [
+        { homepageCategoryId: { $in: idVariants } },
+        { homepageCategoryId: null, categoryId: { $in: idVariants } },
+      ],
     };
   }
 

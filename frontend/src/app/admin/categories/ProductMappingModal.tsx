@@ -98,9 +98,12 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
   // Search-any-product state — lets an admin flag a product that isn't in this category
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [searchTotal, setSearchTotal] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  // High enough to always cover the full catalog so search never silently truncates results.
+  const SEARCH_LIMIT = 5000;
 
   // Checkbox edits are staged here until "Save Changes" is clicked
   const [pendingChanges, setPendingChanges] = useState<PendingChanges>({});
@@ -135,9 +138,10 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
     setSearchError(null);
     setHasSearched(true);
     try {
-      const response = await productApi.getAll({ search: query, limit: 20 });
+      const response = await productApi.getAll({ search: query, limit: SEARCH_LIMIT });
       const results: Product[] = response.data.data || response.data || [];
       setSearchResults(results);
+      setSearchTotal(response.data.pagination?.total ?? results.length);
     } catch (err) {
       console.error('Failed to search products:', err);
       setSearchError('Failed to search products. Please try again.');
@@ -281,7 +285,13 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
             )}
 
             {searchResults.length > 0 && (
-              <table className="min-w-full divide-y divide-gray-200 mt-3">
+              <>
+                <p className="mt-2 text-xs text-gray-500">
+                  {searchTotal > searchResults.length
+                    ? `Showing ${searchResults.length} of ${searchTotal} matches — refine your search to narrow it down if you don't see the product you want.`
+                    : `${searchTotal} match${searchTotal === 1 ? '' : 'es'}.`}
+                </p>
+                <table className="min-w-full divide-y divide-gray-200 mt-1">
                 <thead>
                   <tr>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -307,7 +317,8 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
                     />
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </>
             )}
           </div>
 
