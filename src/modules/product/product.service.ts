@@ -78,6 +78,9 @@ export class ProductService {
       genderId: new Types.ObjectId(createProductDto.genderId),
       categoryId: new Types.ObjectId(createProductDto.categoryId),
       relatedProductIds: createProductDto.relatedProductIds?.map((id) => new Types.ObjectId(id)),
+      homepageCategoryId: createProductDto.homepageCategoryId
+        ? new Types.ObjectId(createProductDto.homepageCategoryId)
+        : undefined,
     });
 
     const savedProduct = await product.save();
@@ -405,6 +408,22 @@ export class ProductService {
     return products;
   }
 
+  // Admin view for the "Map Homepage Products" picker: every product that will actually
+  // render under this category's homepage card — its real categoryId, plus anything
+  // explicitly overridden here via homepageCategoryId. Deliberately not cached/isActive-filtered
+  // so admins can see and manage inactive products too.
+  async getProductsForHomepageCategory(categoryId: string): Promise<Product[]> {
+    await this.categoryService.findOne(categoryId);
+    const categoryObjectId = new Types.ObjectId(categoryId);
+
+    return this.productModel
+      .find(this.effectiveHomepageCategoryFilter(categoryObjectId))
+      .populate('genderId', 'name slug')
+      .populate('categoryId', 'name slug')
+      .sort({ name: 1 })
+      .exec();
+  }
+
   async autosuggest(query: string, limit: number = 10): Promise<any> {
     if (!query || query.trim().length < 2) {
       return {
@@ -534,6 +553,16 @@ export class ProductService {
     return products;
   }
 
+  // Matches products whose homepage card should be grouped under `categoryId`: either the
+  // product's homepageCategoryId explicitly points here, or it has no override and its real
+  // categoryId points here. `{ field: null }` also matches docs where the field was never set,
+  // so this covers both "never overridden" and "override cleared" products in one query.
+  private effectiveHomepageCategoryFilter(categoryId: Types.ObjectId): Record<string, unknown> {
+    return {
+      $or: [{ homepageCategoryId: categoryId }, { homepageCategoryId: null, categoryId }],
+    };
+  }
+
   async getLatestArrivalsSections(imagesPerCategory: number = 5): Promise<
     { categoryId: string; categoryName: string; categorySlug: string; images: string[] }[]
   > {
@@ -554,9 +583,10 @@ export class ProductService {
 
     const sections = await Promise.all(
       categories.map(async (category) => {
+        const categoryObjectId = new Types.ObjectId(String(category._id));
         const products = await this.productModel
           .find({
-            categoryId: new Types.ObjectId(String(category._id)),
+            ...this.effectiveHomepageCategoryFilter(categoryObjectId),
             isActive: true,
             stock: { $gt: 0 },
             images: { $exists: true, $ne: [] },
@@ -612,9 +642,10 @@ export class ProductService {
 
     const sections = await Promise.all(
       categories.map(async (category) => {
+        const categoryObjectId = new Types.ObjectId(String(category._id));
         const products = await this.productModel
           .find({
-            categoryId: new Types.ObjectId(String(category._id)),
+            ...this.effectiveHomepageCategoryFilter(categoryObjectId),
             isActive: true,
             stock: { $gt: 0 },
             images: { $exists: true, $ne: [] },

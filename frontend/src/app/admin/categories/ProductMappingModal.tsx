@@ -10,22 +10,40 @@ interface ProductMappingModalProps {
 }
 
 type HomepageField = 'isBestSeller' | 'showInLatestArrivals';
-type PendingChanges = Record<string, Partial<Record<HomepageField, boolean>>>;
+type PendingChange = Partial<Record<HomepageField, boolean>> & { homepageCategoryId?: string };
+type PendingChanges = Record<string, PendingChange>;
+
+function getCategoryId(product: Product): string | undefined {
+  const cat = product.categoryId;
+  if (!cat) return undefined;
+  return typeof cat === 'string' ? cat : cat._id;
+}
+
+function getCategoryName(product: Product): string | undefined {
+  const cat = product.categoryId;
+  if (!cat || typeof cat === 'string') return undefined;
+  return cat.name;
+}
 
 function ProductRow({
   product,
   pending,
   disabled,
+  currentCategoryId,
   onToggle,
 }: {
   product: Product;
-  pending: Partial<Record<HomepageField, boolean>> | undefined;
+  pending: PendingChange | undefined;
   disabled: boolean;
+  currentCategoryId: string;
   onToggle: (product: Product, field: HomepageField) => void;
 }) {
   const latestArrivals = pending?.showInLatestArrivals ?? product.showInLatestArrivals ?? false;
   const bestSeller = pending?.isBestSeller ?? product.isBestSeller ?? false;
   const isDirty = pending && Object.keys(pending).length > 0;
+  const realCategoryId = getCategoryId(product);
+  const realCategoryName = getCategoryName(product);
+  const isCrossMapped = realCategoryId && realCategoryId !== currentCategoryId;
 
   return (
     <tr className={isDirty ? 'bg-amber-50' : ''}>
@@ -41,7 +59,12 @@ function ProductRow({
           )}
           <div>
             <div className="text-sm font-medium text-gray-900">{product.name}</div>
-            <div className="text-xs text-gray-500">{product.sku}</div>
+            <div className="text-xs text-gray-500">
+              {product.sku}
+              {isCrossMapped && realCategoryName && (
+                <span className="ml-2 text-amber-600">· real category: {realCategoryName}</span>
+              )}
+            </div>
           </div>
         </div>
       </td>
@@ -89,7 +112,7 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
     setIsLoading(true);
     setError(null);
     try {
-      const response = await productApi.getAll({ categoryId: category._id, limit: 200 });
+      const response = await productApi.getByHomepageCategory(category._id);
       setProducts(response.data.data || response.data || []);
     } catch (err) {
       console.error('Failed to fetch products for category:', err);
@@ -126,9 +149,18 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
   const toggleFlag = (product: Product, field: HomepageField) => {
     setSuccessMessage(null);
     const currentValue = pendingChanges[product._id]?.[field] ?? product[field] ?? false;
+    const realCategoryId = getCategoryId(product);
+    const needsOverride = realCategoryId !== category._id;
+
     setPendingChanges((prev) => ({
       ...prev,
-      [product._id]: { ...prev[product._id], [field]: !currentValue },
+      [product._id]: {
+        ...prev[product._id],
+        [field]: !currentValue,
+        // Products that don't natively belong to this category need the override so they
+        // actually group under this category's homepage card once saved.
+        ...(needsOverride ? { homepageCategoryId: category._id } : {}),
+      },
     }));
   };
 
@@ -161,34 +193,26 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
     });
 
     if (failedIds.length === 0) {
-      // Apply saved changes onto local product lists and clear pending state
-      setProducts((prev) =>
-        prev.map((p) => (pendingChanges[p._id] ? { ...p, ...pendingChanges[p._id] } : p)),
-      );
-      setSearchResults((prev) =>
-        prev.map((p) => (pendingChanges[p._id] ? { ...p, ...pendingChanges[p._id] } : p)),
-      );
       setPendingChanges({});
       setSuccessMessage(`Saved ${entries.length} product${entries.length === 1 ? '' : 's'}.`);
       setTimeout(() => setSuccessMessage(null), 4000);
+      // Re-fetch rather than patch local state in place — a save can move a product into or
+      // out of this category's effective list (via the homepageCategoryId override), so the
+      // "Products in this category" list needs a fresh read, not just a field-level merge.
+      fetchProducts();
     } else {
-      // Keep failed changes pending so the admin can retry; drop the ones that succeeded
       const stillPending: PendingChanges = {};
       failedIds.forEach((id) => {
         stillPending[id] = pendingChanges[id];
       });
-      const succeededChanges = { ...pendingChanges };
-      failedIds.forEach((id) => delete succeededChanges[id]);
-      setProducts((prev) =>
-        prev.map((p) => (succeededChanges[p._id] ? { ...p, ...succeededChanges[p._id] } : p)),
-      );
-      setSearchResults((prev) =>
-        prev.map((p) => (succeededChanges[p._id] ? { ...p, ...succeededChanges[p._id] } : p)),
-      );
       setPendingChanges(stillPending);
 
       const names = failedIds.map((id) => productLookup.get(id)?.name || id).join(', ');
       setSaveError(`Failed to save: ${names}. Please try again.`);
+
+      if (failedIds.length < entries.length) {
+        fetchProducts();
+      }
     }
 
     setIsSaving(false);
@@ -212,10 +236,11 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
             Map Homepage Products &mdash; {category.name}
           </h3>
           <p className="mt-1 text-xs text-gray-500">
-            Pick which products show in the homepage Latest Arrivals / Best Sellers sections. A
-            product only appears under its own category&apos;s section, and Latest Arrivals only
-            takes effect while that category is toggled &quot;Show in Latest Arrivals&quot;. Check
-            the boxes below, then click <span className="font-medium">Save Changes</span>.
+            Pick which products show under this category&apos;s homepage Latest Arrivals / Best
+            Sellers card. Products found via search below get mapped here regardless of their
+            real category. Latest Arrivals also needs this category toggled &quot;Show in Latest
+            Arrivals&quot;. Check the boxes, then click{' '}
+            <span className="font-medium">Save Changes</span>.
           </p>
         </div>
 
@@ -277,6 +302,7 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
                       product={product}
                       pending={pendingChanges[product._id]}
                       disabled={isSaving}
+                      currentCategoryId={category._id}
                       onToggle={toggleFlag}
                     />
                   ))}
@@ -311,7 +337,7 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
           )}
 
           <h4 className="text-xs font-medium text-gray-700 uppercase tracking-wider mb-2">
-            Products in &quot;{category.name}&quot;
+            Products mapped to &quot;{category.name}&quot;
           </h4>
 
           {isLoading ? (
@@ -345,6 +371,7 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
                     product={product}
                     pending={pendingChanges[product._id]}
                     disabled={isSaving}
+                    currentCategoryId={category._id}
                     onToggle={toggleFlag}
                   />
                 ))}

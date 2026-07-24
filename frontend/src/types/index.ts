@@ -55,6 +55,7 @@ export interface Product {
   badge?: ProductBadge;
   isBestSeller?: boolean;
   showInLatestArrivals?: boolean;
+  homepageCategoryId?: Category | string | null;
   createdAt: string;
   updatedAt: string;
 }

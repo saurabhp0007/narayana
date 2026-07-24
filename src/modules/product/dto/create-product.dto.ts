@@ -184,4 +184,13 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   showInLatestArrivals?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Optional override category ID used only to group this product into a homepage Latest Arrivals / Best Sellers card. Lets a product be featured under a category other than its real one, without changing categoryId (which still drives shop listings/filters). Leave unset to group by categoryId as normal.',
+    example: '507f1f77bcf86cd799439011',
+  })
+  @IsOptional()
+  @IsMongoId({ message: 'Invalid homepage category ID' })
+  homepageCategoryId?: string;
 }

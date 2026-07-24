@@ -113,6 +113,7 @@ export const productApi = {
   getById: (id: string) => api.get(`/products/${id}`),
   getBySku: (sku: string) => api.get(`/products/sku/${sku}`),
   getByCategory: (categoryId: string) => api.get(`/products/by-category/${categoryId}`),
+  getByHomepageCategory: (categoryId: string) => api.get(`/products/homepage-category/${categoryId}`),
   getByFamily: (familySKU: string) => api.get(`/products/by-family/${familySKU}`),
   getFeatured: (limit?: number) => api.get('/products/featured', { params: { limit } }),
   getBestSellers: (limit?: number) => api.get('/products/best-sellers', { params: { limit } }),

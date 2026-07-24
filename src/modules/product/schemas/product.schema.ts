@@ -77,6 +77,13 @@ export class Product extends Document {
   @Prop({ default: false })
   showInLatestArrivals: boolean;
 
+  // Optional override used only to group this product into a homepage Latest Arrivals /
+  // Best Sellers card under a category other than its real categoryId (e.g. featuring a
+  // Dresses product under the Women's Lingerie tile). Doesn't affect shop listings/filters,
+  // which always use categoryId. Falls back to categoryId when unset.
+  @Prop({ type: Types.ObjectId, ref: 'Category' })
+  homepageCategoryId?: Types.ObjectId;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -95,3 +102,4 @@ ProductSchema.index({ stock: 1 });
 ProductSchema.index({ createdAt: -1 });
 ProductSchema.index({ showInLatestArrivals: 1 });
 ProductSchema.index({ isBestSeller: 1 });
+ProductSchema.index({ homepageCategoryId: 1 });

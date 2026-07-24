@@ -216,6 +216,25 @@ export class ProductController {
     return this.productService.getProductsByCategory(categoryId);
   }
 
+  @Get('homepage-category/:categoryId')
+  @ApiOperation({
+    summary: 'Get products mapped to a homepage category card',
+    description:
+      'Retrieves every product that will render under this category\'s homepage Latest Arrivals / Best Sellers card — products whose real categoryId is this category, plus any products explicitly mapped here via homepageCategoryId. Used by the admin "Map Homepage Products" picker.',
+  })
+  @ApiParam({ name: 'categoryId', description: 'Category ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Products retrieved successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Category not found',
+  })
+  async getProductsForHomepageCategory(@Param('categoryId') categoryId: string) {
+    return this.productService.getProductsForHomepageCategory(categoryId);
+  }
+
   @Get('by-family/:familySKU')
   @ApiOperation({
     summary: 'Get products by family SKU',
