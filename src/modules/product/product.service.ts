@@ -608,45 +608,35 @@ export class ProductService {
       this.logger.error('Cache read error:', error);
     }
 
-    const products = await this.productModel
-      .find({
-        isActive: true,
-        isBestSeller: true,
-        stock: { $gt: 0 },
-        images: { $exists: true, $ne: [] },
-      })
-      .populate('categoryId', 'name slug')
-      .sort({ createdAt: -1 })
-      .select('images categoryId')
-      .exec();
+    const categories = await this.categoryService.findBestSellersCategories();
 
-    const sectionsByCategory = new Map<
-      string,
-      { categoryId: string; categoryName: string; categorySlug: string; images: string[] }
-    >();
+    const sections = await Promise.all(
+      categories.map(async (category) => {
+        const products = await this.productModel
+          .find({
+            categoryId: new Types.ObjectId(String(category._id)),
+            isActive: true,
+            stock: { $gt: 0 },
+            images: { $exists: true, $ne: [] },
+            isBestSeller: true,
+          })
+          .sort({ createdAt: -1 })
+          .limit(imagesPerCategory)
+          .select('images')
+          .exec();
 
-    for (const product of products) {
-      const category = product.categoryId as unknown as { _id: Types.ObjectId; name: string; slug: string } | null;
-      if (!category?._id) continue;
+        const images = products.map((p) => p.images[0]).filter(Boolean);
 
-      const categoryId = category._id.toString();
-      if (!sectionsByCategory.has(categoryId)) {
-        sectionsByCategory.set(categoryId, {
-          categoryId,
+        return {
+          categoryId: category._id.toString(),
           categoryName: category.name,
           categorySlug: category.slug,
-          images: [],
-        });
-      }
+          images,
+        };
+      }),
+    );
 
-      const section = sectionsByCategory.get(categoryId)!;
-      const image = product.images[0];
-      if (image && section.images.length < imagesPerCategory) {
-        section.images.push(image);
-      }
-    }
-
-    const result = Array.from(sectionsByCategory.values());
+    const result = sections.filter((section) => section.images.length > 0);
 
     try {
       await this.redisService.set(cacheKey, JSON.stringify(result), CACHE_TTL_SHORT);

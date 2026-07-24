@@ -4,16 +4,20 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { categoryApi, genderApi } from '@/lib/api';
 import { Category, Gender, CreateCategoryDto } from '@/types';
+import ProductMappingModal from './ProductMappingModal';
 
 const MAX_LATEST_ARRIVALS = 4;
+const MAX_BEST_SELLERS = 4;
 
 export default function CategoryManagementPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [genders, setGenders] = useState<Gender[]>([]);
   const [latestArrivalsIds, setLatestArrivalsIds] = useState<string[]>([]);
+  const [bestSellersIds, setBestSellersIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [mappingCategory, setMappingCategory] = useState<Category | null>(null);
 
   // Filter state
   const [filterGenderId, setFilterGenderId] = useState<string>('');
@@ -30,6 +34,7 @@ export default function CategoryManagementPage() {
     tileLabel: '',
     displayOrder: 0,
     showInLatestArrivals: false,
+    showInBestSellers: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -96,9 +101,20 @@ export default function CategoryManagementPage() {
     }
   };
 
+  const fetchBestSellers = async () => {
+    try {
+      const response = await categoryApi.getBestSellers();
+      const data: Category[] = response.data.data || response.data || [];
+      setBestSellersIds(data.map((c) => c._id));
+    } catch (err) {
+      console.error('Failed to fetch best sellers categories:', err);
+    }
+  };
+
   useEffect(() => {
     fetchGenders();
     fetchLatestArrivals();
+    fetchBestSellers();
   }, []);
 
   useEffect(() => {
@@ -131,6 +147,7 @@ export default function CategoryManagementPage() {
       tileLabel: '',
       displayOrder: 0,
       showInLatestArrivals: false,
+    showInBestSellers: false,
     });
     setIsModalOpen(true);
   };
@@ -147,6 +164,7 @@ export default function CategoryManagementPage() {
       tileLabel: category.tileLabel || '',
       displayOrder: category.displayOrder || 0,
       showInLatestArrivals: category.showInLatestArrivals || false,
+      showInBestSellers: category.showInBestSellers || false,
     });
     setIsModalOpen(true);
   };
@@ -163,6 +181,7 @@ export default function CategoryManagementPage() {
       tileLabel: '',
       displayOrder: 0,
       showInLatestArrivals: false,
+    showInBestSellers: false,
     });
   };
 
@@ -194,6 +213,7 @@ export default function CategoryManagementPage() {
       closeModal();
       fetchCategories();
       fetchLatestArrivals();
+      fetchBestSellers();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: unknown) {
       const errorMessage = axios.isAxiosError(err)
@@ -215,6 +235,7 @@ export default function CategoryManagementPage() {
       setDeleteConfirmId(null);
       fetchCategories();
       fetchLatestArrivals();
+      fetchBestSellers();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete category. Please try again.';
@@ -232,6 +253,7 @@ export default function CategoryManagementPage() {
       setSuccessMessage(`Category ${!category.isActive ? 'activated' : 'deactivated'} successfully!`);
       fetchCategories();
       fetchLatestArrivals();
+      fetchBestSellers();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update status. Please try again.';
@@ -251,6 +273,10 @@ export default function CategoryManagementPage() {
     latestArrivalsIds.length >= MAX_LATEST_ARRIVALS &&
     !(editingCategory && latestArrivalsIds.includes(editingCategory._id));
 
+  const isBestSellersAtCapacity =
+    bestSellersIds.length >= MAX_BEST_SELLERS &&
+    !(editingCategory && bestSellersIds.includes(editingCategory._id));
+
   return (
     <div className="p-6">
       <div className="mb-6 flex justify-between items-center">
@@ -261,6 +287,8 @@ export default function CategoryManagementPage() {
           </p>
           <p className="mt-1 text-sm text-gray-600">
             <span className="font-medium text-gray-900">{latestArrivalsIds.length}/{MAX_LATEST_ARRIVALS}</span> categories shown in homepage Latest Arrivals
+            {' · '}
+            <span className="font-medium text-gray-900">{bestSellersIds.length}/{MAX_BEST_SELLERS}</span> categories shown in homepage Best Sellers
           </p>
         </div>
         <button
@@ -370,12 +398,23 @@ export default function CategoryManagementPage() {
                           </button>
                           {category.showInLatestArrivals && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                              Live on Homepage
+                              Live: Latest Arrivals
+                            </span>
+                          )}
+                          {category.showInBestSellers && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                              Live: Best Sellers
                             </span>
                           )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => setMappingCategory(category)}
+                          className="text-emerald-600 hover:text-emerald-900 mr-4"
+                        >
+                          Map Products
+                        </button>
                         <button
                           onClick={() => openEditModal(category)}
                           className="text-indigo-600 hover:text-indigo-900 mr-4"
@@ -562,6 +601,29 @@ export default function CategoryManagementPage() {
                     </p>
                   )}
                 </div>
+                <div>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="showInBestSellers"
+                      checked={formData.showInBestSellers || false}
+                      disabled={isBestSellersAtCapacity && !formData.showInBestSellers}
+                      onChange={(e) => setFormData(prev => ({ ...prev, showInBestSellers: e.target.checked }))}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <label htmlFor="showInBestSellers" className="ml-2 block text-sm text-gray-900">
+                      Show in Best Sellers (Homepage)
+                    </label>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Featured as an auto-sliding category card in the homepage &quot;Best Sellers&quot; section.
+                  </p>
+                  {isBestSellersAtCapacity && !formData.showInBestSellers && (
+                    <p className="mt-1 text-xs text-amber-600">
+                      {MAX_BEST_SELLERS} categories are already featured. Turn one off before enabling another.
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3 rounded-b-lg">
                 <button
@@ -612,6 +674,14 @@ export default function CategoryManagementPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Product Mapping Modal */}
+      {mappingCategory && (
+        <ProductMappingModal
+          category={mappingCategory}
+          onClose={() => setMappingCategory(null)}
+        />
       )}
     </div>
   );

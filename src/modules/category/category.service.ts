@@ -14,6 +14,7 @@ export class CategoryService {
   private readonly CACHE_PREFIX = 'category:';
   private readonly CACHE_TTL = 3600; // 1 hour
   private readonly MAX_LATEST_ARRIVALS_CATEGORIES = 4;
+  private readonly MAX_BEST_SELLERS_CATEGORIES = 4;
 
   constructor(
     @InjectModel(Category.name)
@@ -23,17 +24,40 @@ export class CategoryService {
     private redisService: RedisService,
   ) {}
 
-  private async assertLatestArrivalsCapacity(excludeId?: string): Promise<void> {
-    const filter: any = { showInLatestArrivals: true };
+  private async assertHomepageSectionCapacity(
+    field: 'showInLatestArrivals' | 'showInBestSellers',
+    max: number,
+    sectionLabel: string,
+    excludeId?: string,
+  ): Promise<void> {
+    const filter: any = { [field]: true };
     if (excludeId) {
       filter._id = { $ne: excludeId };
     }
     const count = await this.categoryModel.countDocuments(filter);
-    if (count >= this.MAX_LATEST_ARRIVALS_CATEGORIES) {
+    if (count >= max) {
       throw new BadRequestException(
-        `Only ${this.MAX_LATEST_ARRIVALS_CATEGORIES} categories can be shown in Latest Arrivals at a time. Turn one off before enabling another.`,
+        `Only ${max} categories can be shown in ${sectionLabel} at a time. Turn one off before enabling another.`,
       );
     }
+  }
+
+  private async assertLatestArrivalsCapacity(excludeId?: string): Promise<void> {
+    await this.assertHomepageSectionCapacity(
+      'showInLatestArrivals',
+      this.MAX_LATEST_ARRIVALS_CATEGORIES,
+      'Latest Arrivals',
+      excludeId,
+    );
+  }
+
+  private async assertBestSellersCapacity(excludeId?: string): Promise<void> {
+    await this.assertHomepageSectionCapacity(
+      'showInBestSellers',
+      this.MAX_BEST_SELLERS_CATEGORIES,
+      'Best Sellers',
+      excludeId,
+    );
   }
 
   async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
@@ -42,6 +66,10 @@ export class CategoryService {
 
     if (createCategoryDto.showInLatestArrivals) {
       await this.assertLatestArrivalsCapacity();
+    }
+
+    if (createCategoryDto.showInBestSellers) {
+      await this.assertBestSellersCapacity();
     }
 
     // Generate slug if not provided
@@ -317,6 +345,34 @@ export class CategoryService {
     return categories;
   }
 
+  async findBestSellersCategories(): Promise<Category[]> {
+    const cacheKey = `${this.CACHE_PREFIX}best-sellers`;
+
+    try {
+      const cached = await this.redisService.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (error) {
+      this.logger.error('Cache read error:', error);
+    }
+
+    const categories = await this.categoryModel
+      .find({ showInBestSellers: true, isActive: true })
+      .populate('genderId', 'name slug')
+      .sort({ displayOrder: 1, name: 1 })
+      .limit(this.MAX_BEST_SELLERS_CATEGORIES)
+      .exec();
+
+    try {
+      await this.redisService.set(cacheKey, JSON.stringify(categories), this.CACHE_TTL);
+    } catch (error) {
+      this.logger.error('Cache write error:', error);
+    }
+
+    return categories;
+  }
+
   async update(id: string, updateCategoryDto: UpdateCategoryDto): Promise<Category> {
     const category = await this.getDocumentOrThrow(id);
 
@@ -328,6 +384,10 @@ export class CategoryService {
     // Only re-check capacity when the flag is being turned on for a category that wasn't already on
     if (updateCategoryDto.showInLatestArrivals && !category.showInLatestArrivals) {
       await this.assertLatestArrivalsCapacity(id);
+    }
+
+    if (updateCategoryDto.showInBestSellers && !category.showInBestSellers) {
+      await this.assertBestSellersCapacity(id);
     }
 
     // If name is being updated, regenerate slug

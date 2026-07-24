@@ -67,4 +67,12 @@ export class CreateCategoryDto {
   @IsOptional()
   @IsBoolean()
   showInLatestArrivals?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Whether this category appears in the homepage "Best Sellers" section',
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  showInBestSellers?: boolean;
 }

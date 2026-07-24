@@ -78,6 +78,7 @@ export interface Category {
   tileLabel?: string;
   displayOrder?: number;
   showInLatestArrivals?: boolean;
+  showInBestSellers?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -307,6 +308,7 @@ export interface CreateCategoryDto {
   tileLabel?: string;
   displayOrder?: number;
   showInLatestArrivals?: boolean;
+  showInBestSellers?: boolean;
 }
 
 export interface CreateOfferDto {

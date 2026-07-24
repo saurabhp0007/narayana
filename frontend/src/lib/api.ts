@@ -85,9 +85,10 @@ export const categoryApi = {
   getByGender: (genderId: string) => api.get(`/category/gender/${genderId}`),
   getByTabGroup: (tabGroup: string) => api.get(`/category/tab-group/${tabGroup}`),
   getLatestArrivals: () => api.get('/category/latest-arrivals'),
-  create: (data: { name: string; slug?: string; genderId: string; isActive?: boolean; tabGroup?: string; tileLabel?: string; displayOrder?: number; showInLatestArrivals?: boolean }) =>
+  getBestSellers: () => api.get('/category/best-sellers'),
+  create: (data: { name: string; slug?: string; genderId: string; isActive?: boolean; tabGroup?: string; tileLabel?: string; displayOrder?: number; showInLatestArrivals?: boolean; showInBestSellers?: boolean }) =>
     api.post('/category', data),
-  update: (id: string, data: { name?: string; slug?: string; genderId?: string; isActive?: boolean; tabGroup?: string; tileLabel?: string; displayOrder?: number; showInLatestArrivals?: boolean }) =>
+  update: (id: string, data: { name?: string; slug?: string; genderId?: string; isActive?: boolean; tabGroup?: string; tileLabel?: string; displayOrder?: number; showInLatestArrivals?: boolean; showInBestSellers?: boolean }) =>
     api.patch(`/category/${id}`, data),
   delete: (id: string) => api.delete(`/category/${id}`),
 };

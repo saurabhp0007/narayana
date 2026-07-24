@@ -26,8 +26,6 @@ interface ProductFormData {
   images: string[];
   isActive: boolean;
   badge?: ProductBadge;
-  isBestSeller?: boolean;
-  showInLatestArrivals?: boolean;
 }
 
 export default function EditProductPage() {
@@ -101,8 +99,6 @@ export default function EditProductPage() {
           images: product.images || [],
           isActive: product.isActive,
           badge: product.badge,
-          isBestSeller: product.isBestSeller || false,
-          showInLatestArrivals: product.showInLatestArrivals || false,
         });
       } catch (err) {
         console.error('Failed to fetch data:', err);
@@ -134,8 +130,6 @@ export default function EditProductPage() {
       setFilteredCategories([]);
     }
   }, [formData.genderId, categories, formData.categoryId]);
-
-  const selectedCategory = filteredCategories.find((cat) => cat._id === formData.categoryId);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -405,28 +399,6 @@ export default function EditProductPage() {
               ))}
             </select>
             {errors.categoryId && <p className="mt-1 text-sm text-red-600">{errors.categoryId}</p>}
-            {selectedCategory?.showInLatestArrivals && (
-              <div className="mt-2 bg-emerald-50 border border-emerald-200 rounded px-2 py-1.5">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="showInLatestArrivals"
-                    checked={formData.showInLatestArrivals || false}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, showInLatestArrivals: e.target.checked }))
-                    }
-                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="showInLatestArrivals" className="ml-2 block text-sm text-emerald-900">
-                    Show in Latest Arrivals (Homepage)
-                  </label>
-                </div>
-                <p className="mt-1 text-xs text-emerald-700">
-                  &quot;{selectedCategory.name}&quot; is live on the homepage. Turn this on to feature this specific
-                  product in the Latest Arrivals slider — it won&apos;t show there until you do.
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Price */}
@@ -544,18 +516,6 @@ export default function EditProductPage() {
               />
               <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
                 Product is Active
-              </label>
-            </div>
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="isBestSeller"
-                checked={formData.isBestSeller || false}
-                onChange={(e) => setFormData((prev) => ({ ...prev, isBestSeller: e.target.checked }))}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-              />
-              <label htmlFor="isBestSeller" className="ml-2 block text-sm text-gray-900">
-                Best Seller (shows in homepage Best Sellers tab)
               </label>
             </div>
           </div>

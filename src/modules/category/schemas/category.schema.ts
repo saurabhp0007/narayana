@@ -31,6 +31,10 @@ export class Category extends Document {
   @Prop({ default: false })
   showInLatestArrivals: boolean;
 
+  // Whether this category appears in the homepage "Best Sellers" section
+  @Prop({ default: false })
+  showInBestSellers: boolean;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,3 +48,4 @@ CategorySchema.index({ genderId: 1 });
 CategorySchema.index({ isActive: 1 });
 CategorySchema.index({ tabGroup: 1 });
 CategorySchema.index({ showInLatestArrivals: 1 });
+CategorySchema.index({ showInBestSellers: 1 });

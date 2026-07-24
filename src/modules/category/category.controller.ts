@@ -124,6 +124,19 @@ export class CategoryController {
     return this.categoryService.findLatestArrivalsCategories();
   }
 
+  @Get('best-sellers')
+  @ApiOperation({
+    summary: 'Get categories featured in Best Sellers',
+    description: 'Retrieves the (max 4) categories currently toggled to show in the homepage "Best Sellers" section',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Categories retrieved successfully',
+  })
+  async findBestSellersCategories() {
+    return this.categoryService.findBestSellersCategories();
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: 'Get category by ID',
