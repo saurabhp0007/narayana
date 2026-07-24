@@ -8,7 +8,6 @@ import ImageUploadField from '@/components/common/ImageUploadField';
 export default function ShopSubcategoryManagementPage() {
   const [subcategories, setSubcategories] = useState<ShopSubcategory[]>([]);
   const [shopCategories, setShopCategories] = useState<ShopCategory[]>([]);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +28,8 @@ export default function ShopSubcategoryManagementPage() {
   const [formData, setFormData] = useState<CreateShopSubcategoryDto>(emptyForm);
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [productSearch, setProductSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [isSearchingProducts, setIsSearchingProducts] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const fetchSubcategories = useCallback(async () => {
@@ -51,11 +52,28 @@ export default function ShopSubcategoryManagementPage() {
       .getAll()
       .then((res) => setShopCategories(res.data || []))
       .catch((err) => console.error('Failed to fetch shop categories:', err));
-    productApi
-      .getAll({ isActive: true, limit: 200 })
-      .then((res) => setAllProducts(res.data?.data || []))
-      .catch((err) => console.error('Failed to fetch products:', err));
   }, [fetchSubcategories]);
+
+  // Search all products server-side (debounced) instead of filtering a fixed local batch,
+  // so results aren't capped to whatever page of products happened to be prefetched.
+  useEffect(() => {
+    const query = productSearch.trim();
+    if (!query) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearchingProducts(true);
+    const timeout = setTimeout(() => {
+      productApi
+        .getAll({ isActive: true, search: query, limit: 8 })
+        .then((res) => setSearchResults(res.data?.data || []))
+        .catch((err) => console.error('Failed to search products:', err))
+        .finally(() => setIsSearchingProducts(false));
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [productSearch]);
 
   const getCategoryName = (shopCategoryId: string | ShopCategory) => {
     if (typeof shopCategoryId === 'object') return shopCategoryId.name;
@@ -168,14 +186,10 @@ export default function ShopSubcategoryManagementPage() {
     });
   };
 
-  const searchResults = useMemo(() => {
-    if (!productSearch.trim()) return [];
-    const q = productSearch.trim().toLowerCase();
+  const visibleSearchResults = useMemo(() => {
     const selectedIds = new Set(selectedProducts.map((p) => p._id));
-    return allProducts
-      .filter((p) => !selectedIds.has(p._id) && (p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)))
-      .slice(0, 8);
-  }, [productSearch, allProducts, selectedProducts]);
+    return searchResults.filter((p) => !selectedIds.has(p._id));
+  }, [searchResults, selectedProducts]);
 
   return (
     <div>
@@ -406,9 +420,12 @@ export default function ShopSubcategoryManagementPage() {
                         placeholder="Search products by name or SKU..."
                         className="text-black w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                       />
-                      {searchResults.length > 0 && (
+                      {isSearchingProducts && (
+                        <p className="mt-1 text-xs text-gray-400">Searching...</p>
+                      )}
+                      {visibleSearchResults.length > 0 && (
                         <div className="mt-1 border border-gray-200 rounded-md divide-y divide-gray-100 max-h-48 overflow-y-auto">
-                          {searchResults.map((product) => (
+                          {visibleSearchResults.map((product) => (
                             <button
                               type="button"
                               key={product._id}
