@@ -95,15 +95,18 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Search-any-product state — lets an admin flag a product that isn't in this category
+  // Search-any-product state — lets an admin flag a product that isn't in this category.
+  // Results page in like the main Products list: 20 at a time, more loaded as you scroll.
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [searchTotal, setSearchTotal] = useState(0);
+  const [searchPage, setSearchPage] = useState(1);
+  const [searchHasMore, setSearchHasMore] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingMoreResults, setIsLoadingMoreResults] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
-  // High enough to always cover the full catalog so search never silently truncates results.
-  const SEARCH_LIMIT = 5000;
+  const SEARCH_PAGE_SIZE = 20;
 
   // Checkbox edits are staged here until "Save Changes" is clicked
   const [pendingChanges, setPendingChanges] = useState<PendingChanges>({});
@@ -138,15 +141,46 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
     setSearchError(null);
     setHasSearched(true);
     try {
-      const response = await productApi.getAll({ search: query, limit: SEARCH_LIMIT });
+      const response = await productApi.getAll({ search: query, page: 1, limit: SEARCH_PAGE_SIZE });
       const results: Product[] = response.data.data || response.data || [];
+      const pagination = response.data.pagination;
       setSearchResults(results);
-      setSearchTotal(response.data.pagination?.total ?? results.length);
+      setSearchTotal(pagination?.total ?? results.length);
+      setSearchPage(1);
+      setSearchHasMore(pagination ? pagination.page < pagination.totalPages : false);
     } catch (err) {
       console.error('Failed to search products:', err);
       setSearchError('Failed to search products. Please try again.');
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const loadMoreSearchResults = async () => {
+    const query = searchQuery.trim();
+    if (!query || isLoadingMoreResults || !searchHasMore) return;
+
+    setIsLoadingMoreResults(true);
+    try {
+      const nextPage = searchPage + 1;
+      const response = await productApi.getAll({ search: query, page: nextPage, limit: SEARCH_PAGE_SIZE });
+      const results: Product[] = response.data.data || response.data || [];
+      const pagination = response.data.pagination;
+      setSearchResults((prev) => [...prev, ...results]);
+      setSearchPage(nextPage);
+      setSearchHasMore(pagination ? pagination.page < pagination.totalPages : false);
+    } catch (err) {
+      console.error('Failed to load more search results:', err);
+      setSearchError('Failed to load more results. Please try again.');
+    } finally {
+      setIsLoadingMoreResults(false);
+    }
+  };
+
+  const handleSearchResultsScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) {
+      loadMoreSearchResults();
     }
   };
 
@@ -287,37 +321,43 @@ export default function ProductMappingModal({ category, onClose }: ProductMappin
             {searchResults.length > 0 && (
               <>
                 <p className="mt-2 text-xs text-gray-500">
-                  {searchTotal > searchResults.length
-                    ? `Showing ${searchResults.length} of ${searchTotal} matches — refine your search to narrow it down if you don't see the product you want.`
-                    : `${searchTotal} match${searchTotal === 1 ? '' : 'es'}.`}
+                  {searchTotal} match{searchTotal === 1 ? '' : 'es'} &mdash; scroll for more.
                 </p>
-                <table className="min-w-full divide-y divide-gray-200 mt-1">
-                <thead>
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Product
-                    </th>
-                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Latest Arrivals
-                    </th>
-                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Best Seller
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {searchResults.map((product) => (
-                    <ProductRow
-                      key={product._id}
-                      product={product}
-                      pending={pendingChanges[product._id]}
-                      disabled={isSaving}
-                      currentCategoryId={category._id}
-                      onToggle={toggleFlag}
-                    />
-                  ))}
-                </tbody>
-                </table>
+                <div
+                  className="max-h-64 overflow-y-auto mt-1 border border-gray-200 rounded-md"
+                  onScroll={handleSearchResultsScroll}
+                >
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="sticky top-0 bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Product
+                        </th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Latest Arrivals
+                        </th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Best Seller
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {searchResults.map((product) => (
+                        <ProductRow
+                          key={product._id}
+                          product={product}
+                          pending={pendingChanges[product._id]}
+                          disabled={isSaving}
+                          currentCategoryId={category._id}
+                          onToggle={toggleFlag}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                  {isLoadingMoreResults && (
+                    <p className="text-center text-xs text-gray-400 py-2">Loading more...</p>
+                  )}
+                </div>
               </>
             )}
           </div>

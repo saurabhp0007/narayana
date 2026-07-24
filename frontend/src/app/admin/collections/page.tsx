@@ -25,8 +25,13 @@ export default function CollectionManagementPage() {
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [searchTotal, setSearchTotal] = useState(0);
+  const [searchPage, setSearchPage] = useState(1);
+  const [searchHasMore, setSearchHasMore] = useState(false);
   const [isSearchingProducts, setIsSearchingProducts] = useState(false);
+  const [isLoadingMoreProducts, setIsLoadingMoreProducts] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const PRODUCT_SEARCH_PAGE_SIZE = 20;
 
   const fetchCollections = useCallback(async () => {
     setIsLoading(true);
@@ -46,26 +51,61 @@ export default function CollectionManagementPage() {
     fetchCollections();
   }, [fetchCollections]);
 
-  // Search all products server-side (debounced) instead of filtering a fixed local batch,
-  // so results aren't capped to whatever page of products happened to be prefetched.
+  // Search all products server-side (debounced) instead of filtering a fixed local batch, so
+  // results aren't capped to whatever page of products happened to be prefetched. Paginates
+  // like the main Products list — 20 at a time, more loaded as the results list is scrolled.
   useEffect(() => {
     const query = productSearch.trim();
     if (!query) {
       setSearchResults([]);
+      setSearchHasMore(false);
       return;
     }
 
     setIsSearchingProducts(true);
     const timeout = setTimeout(() => {
       productApi
-        .getAll({ isActive: true, search: query, limit: 8 })
-        .then((res) => setSearchResults(res.data?.data || []))
+        .getAll({ isActive: true, search: query, page: 1, limit: PRODUCT_SEARCH_PAGE_SIZE })
+        .then((res) => {
+          const results: Product[] = res.data?.data || [];
+          const pagination = res.data?.pagination;
+          setSearchResults(results);
+          setSearchTotal(pagination?.total ?? results.length);
+          setSearchPage(1);
+          setSearchHasMore(pagination ? pagination.page < pagination.totalPages : false);
+        })
         .catch((err) => console.error('Failed to search products:', err))
         .finally(() => setIsSearchingProducts(false));
     }, 300);
 
     return () => clearTimeout(timeout);
   }, [productSearch]);
+
+  const loadMoreProductResults = () => {
+    const query = productSearch.trim();
+    if (!query || isLoadingMoreProducts || !searchHasMore) return;
+
+    setIsLoadingMoreProducts(true);
+    const nextPage = searchPage + 1;
+    productApi
+      .getAll({ isActive: true, search: query, page: nextPage, limit: PRODUCT_SEARCH_PAGE_SIZE })
+      .then((res) => {
+        const results: Product[] = res.data?.data || [];
+        const pagination = res.data?.pagination;
+        setSearchResults((prev) => [...prev, ...results]);
+        setSearchPage(nextPage);
+        setSearchHasMore(pagination ? pagination.page < pagination.totalPages : false);
+      })
+      .catch((err) => console.error('Failed to load more products:', err))
+      .finally(() => setIsLoadingMoreProducts(false));
+  };
+
+  const handleProductResultsScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) {
+      loadMoreProductResults();
+    }
+  };
 
   const resetForm = () => {
     setFormData({ name: '', bannerImage: '', productIds: [], isActive: true, displayOrder: 0 });
@@ -368,25 +408,36 @@ export default function CollectionManagementPage() {
                         <p className="mt-1 text-xs text-gray-400">Searching...</p>
                       )}
                       {visibleSearchResults.length > 0 && (
-                        <div className="mt-1 border border-gray-200 rounded-md divide-y divide-gray-100 max-h-48 overflow-y-auto">
-                          {visibleSearchResults.map((product) => (
-                            <button
-                              type="button"
-                              key={product._id}
-                              onClick={() => addProduct(product)}
-                              className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-50"
-                            >
-                              {product.images?.[0] ? (
-                                <img src={product.images[0]} alt={product.name} className="h-8 w-8 object-cover rounded" />
-                              ) : (
-                                <div className="h-8 w-8 bg-gray-100 rounded" />
-                              )}
-                              <span className="flex-1 text-sm text-gray-900">{product.name}</span>
-                              <span className="text-xs text-gray-400">{product.sku}</span>
-                              <span className="text-xs font-medium text-indigo-600">+ Add</span>
-                            </button>
-                          ))}
-                        </div>
+                        <>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {searchTotal} match{searchTotal === 1 ? '' : 'es'} &mdash; scroll for more.
+                          </p>
+                          <div
+                            className="mt-1 border border-gray-200 rounded-md divide-y divide-gray-100 max-h-64 overflow-y-auto"
+                            onScroll={handleProductResultsScroll}
+                          >
+                            {visibleSearchResults.map((product) => (
+                              <button
+                                type="button"
+                                key={product._id}
+                                onClick={() => addProduct(product)}
+                                className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-50"
+                              >
+                                {product.images?.[0] ? (
+                                  <img src={product.images[0]} alt={product.name} className="h-8 w-8 object-cover rounded" />
+                                ) : (
+                                  <div className="h-8 w-8 bg-gray-100 rounded" />
+                                )}
+                                <span className="flex-1 text-sm text-gray-900">{product.name}</span>
+                                <span className="text-xs text-gray-400">{product.sku}</span>
+                                <span className="text-xs font-medium text-indigo-600">+ Add</span>
+                              </button>
+                            ))}
+                            {isLoadingMoreProducts && (
+                              <p className="text-center text-xs text-gray-400 py-2">Loading more...</p>
+                            )}
+                          </div>
+                        </>
                       )}
 
                       {selectedProducts.length > 0 && (
