@@ -236,6 +236,9 @@ export interface PaginatedResponse<T> {
     limit: number;
     totalPages: number;
   };
+  // Present only when a search returned zero exact matches — trending products to
+  // show instead of a dead end.
+  suggestions?: T[];
 }
 
 export interface AuthResponse {

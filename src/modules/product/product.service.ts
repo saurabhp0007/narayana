@@ -93,8 +93,11 @@ export class ProductService {
     limit: number = 10,
     filters?: {
       genderId?: string;
+      genderIds?: string[]; // Multi-select gender filter
       categoryId?: string;
+      categoryIds?: string[]; // Multi-select category filter
       categoryName?: string;
+      sizes?: string[]; // Multi-select size filter (e.g. ["6", "7", "8"])
       minPrice?: number;
       maxPrice?: number;
       underPriceAmount?: number;
@@ -103,6 +106,7 @@ export class ProductService {
       search?: string;
       familySKU?: string;
       productIds?: string[]; // Filter by specific product IDs
+      sortBy?: 'newest' | 'price_asc' | 'price_desc' | 'name_asc';
     },
   ): Promise<any> {
     // Generate cache key based on all parameters
@@ -123,16 +127,37 @@ export class ProductService {
     const filter: any = {};
 
     // Apply filters
-    if (filters?.genderId) {
-      filter.genderId = new Types.ObjectId(filters.genderId);
+    // Gender: single genderId and/or a genderIds array both feed the same $in clause,
+    // so a plain single-value query keeps working exactly as before.
+    const genderFilterIds = [
+      ...(filters?.genderId ? [filters.genderId] : []),
+      ...(filters?.genderIds || []),
+    ];
+    if (genderFilterIds.length > 0) {
+      filter.genderId = { $in: genderFilterIds.map((id) => new Types.ObjectId(id)) };
     }
-    if (filters?.categoryId) {
-      filter.categoryId = new Types.ObjectId(filters.categoryId);
+
+    // Category: same merge pattern as gender. categoryName additionally narrows the
+    // result to categories matching that name, ANDed with any explicit ID filter.
+    const categoryFilterIds = [
+      ...(filters?.categoryId ? [filters.categoryId] : []),
+      ...(filters?.categoryIds || []),
+    ];
+    if (categoryFilterIds.length > 0) {
+      filter.categoryId = { $in: categoryFilterIds.map((id) => new Types.ObjectId(id)) };
     }
     if (filters?.categoryName) {
       const matchingCategories = await this.categoryService.findAllByName(filters.categoryName);
       filter.categoryId = { $in: matchingCategories.map((c) => c._id) };
     }
+
+    // Size: sizes are stored as strings on the product (e.g. "6", "7", "M"), so this
+    // must send an array via $in — a bare `filter.sizes = value` only matches an exact
+    // single-element array and silently drops every multi-size selection.
+    if (filters?.sizes && filters.sizes.length > 0) {
+      filter.sizes = { $in: filters.sizes.map((s) => String(s).trim()) };
+    }
+
     if (filters?.minPrice !== undefined || filters?.maxPrice !== undefined) {
       filter.price = {};
       if (filters.minPrice !== undefined) {
@@ -151,18 +176,35 @@ export class ProductService {
     if (filters?.isActive !== undefined) {
       filter.isActive = filters.isActive;
     }
-    if (filters?.search) {
-      // Implement fuzzy search
-      const searchTerm = filters.search.trim();
-      const fuzzyRegex = this.createFuzzyRegex(searchTerm);
 
-      filter.$or = [
+    let searchTerm = '';
+    if (filters?.search) {
+      // Substring search across name/sku/description, plus a bounded-typo-tolerant
+      // match on name (e.g. "shrt" -> "shirt"), plus matching the search term against
+      // category names so "shoes" also surfaces the Shoes category's products.
+      //
+      // Fuzzy matching is deliberately NOT applied to `description`: description is
+      // free-form prose, and letting `.*?` gaps span an entire paragraph meant a query
+      // like "shirt" matched almost any product whose description happened to contain
+      // an s, then an h, then an i, then an r, then a t *anywhere* later in the text —
+      // in practice this matched ~40% of the catalog (verified against production data:
+      // luggage and shoe listings were surfacing for "shirt"). Substring-only on
+      // description avoids that false-positive explosion while still catching real matches.
+      searchTerm = filters.search.trim();
+      const escapedTerm = this.escapeRegex(searchTerm);
+      const fuzzyRegex = this.createFuzzyRegex(searchTerm);
+      const matchingCategories = await this.categoryService.search(searchTerm, 20);
+
+      const orConditions: Record<string, unknown>[] = [
+        { name: { $regex: escapedTerm, $options: 'i' } },
         { name: { $regex: fuzzyRegex, $options: 'i' } },
-        { sku: { $regex: searchTerm, $options: 'i' } },
-        { description: { $regex: fuzzyRegex, $options: 'i' } },
-        // Also search with exact match for better results
-        { name: { $regex: searchTerm, $options: 'i' } },
+        { sku: { $regex: escapedTerm, $options: 'i' } },
+        { description: { $regex: escapedTerm, $options: 'i' } },
       ];
+      if (matchingCategories.length > 0) {
+        orConditions.push({ categoryId: { $in: matchingCategories.map((c) => c._id) } });
+      }
+      filter.$or = orConditions;
     }
     if (filters?.familySKU) {
       filter.familySKU = filters.familySKU.toUpperCase();
@@ -172,6 +214,14 @@ export class ProductService {
       filter._id = { $in: filters.productIds.map(id => new Types.ObjectId(id)) };
     }
 
+    const sortMap: Record<string, Record<string, 1 | -1>> = {
+      newest: { createdAt: -1 },
+      price_asc: { price: 1 },
+      price_desc: { price: -1 },
+      name_asc: { name: 1 },
+    };
+    const sort = sortMap[filters?.sortBy || 'newest'] || sortMap.newest;
+
     const [data, total] = await Promise.all([
       this.productModel
         .find(filter)
@@ -179,12 +229,12 @@ export class ProductService {
         .populate('categoryId', 'name slug')
         .skip(skip)
         .limit(limit)
-        .sort({ createdAt: -1 })
+        .sort(sort)
         .exec(),
       this.productModel.countDocuments(filter),
     ]);
 
-    const result = {
+    const result: any = {
       data,
       pagination: {
         total,
@@ -193,6 +243,12 @@ export class ProductService {
         totalPages: Math.ceil(total / limit),
       },
     };
+
+    // No exact matches for a real search term: surface trending/best-selling products
+    // instead of a dead end, same as any other product data — never hardcoded.
+    if (total === 0 && searchTerm) {
+      result.suggestions = await this.getBestSellers(6);
+    }
 
     // Cache the result
     try {
@@ -239,6 +295,67 @@ export class ProductService {
     }
 
     return product;
+  }
+
+  // Powers the product detail page's "You may also like" section. Admin-curated
+  // relatedProductIds are used first (most intentional), then topped up with other
+  // active, in-stock products from the same category so the section is never empty
+  // just because nobody manually curated relations for this product.
+  async getRelatedProducts(id: string, limit: number = 6): Promise<Product[]> {
+    const cacheKey = `${this.CACHE_PREFIX}related:${id}:${limit}`;
+
+    try {
+      const cached = await this.redisService.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (error) {
+      this.logger.error('Cache read error:', error);
+    }
+
+    const product = await this.productModel.findById(id).select('categoryId relatedProductIds').exec();
+    if (!product) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+
+    const selectFields = 'name sku price discountPrice images stock badge isActive';
+    const related: Product[] = [];
+    const seenIds = new Set<string>([id]);
+
+    if (product.relatedProductIds && product.relatedProductIds.length > 0) {
+      const curated = await this.productModel
+        .find({ _id: { $in: product.relatedProductIds }, isActive: true })
+        .select(selectFields)
+        .limit(limit)
+        .exec();
+      for (const p of curated) {
+        related.push(p);
+        seenIds.add(p._id.toString());
+      }
+    }
+
+    if (related.length < limit) {
+      const fallback = await this.productModel
+        .find({
+          categoryId: product.categoryId,
+          isActive: true,
+          stock: { $gt: 0 },
+          _id: { $nin: Array.from(seenIds) },
+        })
+        .select(selectFields)
+        .sort({ isBestSeller: -1, createdAt: -1 })
+        .limit(limit - related.length)
+        .exec();
+      related.push(...fallback);
+    }
+
+    try {
+      await this.redisService.set(cacheKey, JSON.stringify(related), this.CACHE_TTL);
+    } catch (error) {
+      this.logger.error('Cache write error:', error);
+    }
+
+    return related;
   }
 
   // Always hits Mongo directly, bypassing the Redis cache — mutations need a live
@@ -359,16 +476,32 @@ export class ProductService {
   }
 
   async updateStock(id: string, quantity: number): Promise<Product> {
-    const product = await this.getDocumentOrThrow(id);
+    // Atomic read-modify-write via a conditioned findOneAndUpdate: the previous
+    // implementation loaded the document, changed `stock` in memory, then saved it,
+    // which is a classic check-then-act race — two concurrent orders decrementing the
+    // same product could both read the same starting stock and overwrite each other's
+    // update, overselling. The `stock: { $gte: -quantity } ` guard (only relevant for
+    // decrements, where quantity is negative) makes Mongo itself the single source of
+    // truth for whether enough stock remains, atomically.
+    const condition: Record<string, unknown> = { _id: id };
+    if (quantity < 0) {
+      condition.stock = { $gte: -quantity };
+    }
 
-    if (product.stock + quantity < 0) {
+    const updatedProduct = await this.productModel
+      .findOneAndUpdate(condition, { $inc: { stock: quantity } }, { new: true })
+      .exec();
+
+    if (!updatedProduct) {
+      const exists = await this.productModel.exists({ _id: id });
+      if (!exists) {
+        throw new NotFoundException(`Product with ID ${id} not found`);
+      }
       throw new BadRequestException('Insufficient stock for this operation');
     }
 
-    product.stock += quantity;
-    const savedProduct = await product.save();
     await this.invalidateCache();
-    return savedProduct;
+    return updatedProduct;
   }
 
   private async generateUniqueSKU(genderName: string, categoryName: string): Promise<string> {
@@ -388,6 +521,26 @@ export class ProductService {
     } while (attempts < maxAttempts);
 
     throw new Error('Unable to generate unique SKU after multiple attempts');
+  }
+
+  // Distinct sizes actually present in the catalog (optionally scoped to a gender/category),
+  // so the size filter UI always reflects real product data instead of a hardcoded list.
+  async getAvailableSizes(filters?: { genderId?: string; categoryId?: string }): Promise<string[]> {
+    const filter: any = { isActive: true };
+    if (filters?.genderId) {
+      filter.genderId = new Types.ObjectId(filters.genderId);
+    }
+    if (filters?.categoryId) {
+      filter.categoryId = new Types.ObjectId(filters.categoryId);
+    }
+
+    const sizes = await this.productModel.distinct('sizes', filter);
+    return (sizes as unknown as string[]).sort((a, b) => {
+      const numA = Number(a);
+      const numB = Number(b);
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+      return a.localeCompare(b);
+    });
   }
 
   private async validateRelatedProducts(productIds: string[]): Promise<void> {
@@ -713,28 +866,33 @@ export class ProductService {
     return result;
   }
 
+  private escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
   /**
-   * Creates a fuzzy regex pattern for search
-   * Allows for typos and partial matches
-   * e.g., "way" matches "sway", "wayward", etc.
-   * e.g., "shrt" matches "shirt"
+   * Typo-tolerant regex for a search term, e.g. "shrt" matches "shirt".
+   * The gap between each letter is capped at 2 stray characters (not `.*?`/unbounded) —
+   * an unbounded gap lets a short word's letters match scattered arbitrarily far apart,
+   * which turned into matching most of the catalog when applied to prose-length fields.
+   * Words under 4 characters skip fuzzy matching entirely (too short for it to add
+   * typo tolerance without just matching everything).
    */
   private createFuzzyRegex(searchTerm: string): string {
-    // Split search term into words
-    const words = searchTerm.toLowerCase().split(/\s+/);
+    const words = searchTerm.toLowerCase().split(/\s+/).filter(Boolean);
 
-    // Create patterns for each word
-    const patterns = words.map(word => {
-      // Allow any characters between each letter (fuzzy matching)
-      // This helps with typos like "shrt" matching "shirt"
-      const chars = word.split('');
-      const fuzzyPattern = chars.join('.*?');
-
-      // Also create a pattern that allows the word to be part of a larger word
-      return `(${fuzzyPattern}|${word})`;
+    const patterns = words.map((word) => {
+      const escapedWord = this.escapeRegex(word);
+      if (word.length < 4) {
+        return escapedWord;
+      }
+      const fuzzyPattern = word
+        .split('')
+        .map((char) => this.escapeRegex(char))
+        .join('.{0,2}');
+      return `(${fuzzyPattern}|${escapedWord})`;
     });
 
-    // Combine patterns - all words must match somewhere
     return patterns.join('.*');
   }
 }

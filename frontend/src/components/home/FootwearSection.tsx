@@ -39,13 +39,13 @@ export default function FootwearSection() {
   const currentSubcategories = currentTab ? subcategoriesByTab[currentTab] || [] : [];
 
   return (
-    <section className="py-12 md:py-16 bg-white">
+    <section className="py-8 md:py-12 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-8" style={{ fontFamily: 'Georgia, serif' }}>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-6" style={{ fontFamily: 'Georgia, serif' }}>
           Footwear
         </h2>
 
-        <div className="flex items-center justify-center gap-6 md:gap-10 border-b border-gray-200 mb-10 overflow-x-auto">
+        <div className="flex items-center justify-center gap-6 md:gap-10 border-b border-gray-200 mb-6 overflow-x-auto">
           {tabNames.map((tabName) => (
             <button
               key={tabName}

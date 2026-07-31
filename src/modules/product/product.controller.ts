@@ -61,16 +61,20 @@ export class ProductController {
   @ApiQuery({ name: 'page', required: false, description: 'Page number', example: '1' })
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page', example: '10' })
   @ApiQuery({ name: 'genderId', required: false, description: 'Filter by gender ID' })
+  @ApiQuery({ name: 'genderIds', required: false, description: 'Comma-separated list of gender IDs (multi-select)' })
   @ApiQuery({ name: 'categoryId', required: false, description: 'Filter by category ID' })
+  @ApiQuery({ name: 'categoryIds', required: false, description: 'Comma-separated list of category IDs (multi-select)' })
   @ApiQuery({ name: 'categoryName', required: false, description: 'Filter by category name (case-insensitive, matches across all genders)' })
+  @ApiQuery({ name: 'sizes', required: false, description: 'Comma-separated list of sizes (multi-select), e.g. "6,7,8"' })
   @ApiQuery({ name: 'minPrice', required: false, description: 'Minimum price filter' })
   @ApiQuery({ name: 'maxPrice', required: false, description: 'Maximum price filter' })
   @ApiQuery({ name: 'underPriceAmount', required: false, description: 'Filter products under specified price' })
   @ApiQuery({ name: 'inStock', required: false, description: 'Filter by stock availability', enum: ['true', 'false'] })
   @ApiQuery({ name: 'isActive', required: false, description: 'Filter by active status', enum: ['true', 'false'] })
-  @ApiQuery({ name: 'search', required: false, description: 'Search term for product name or description' })
+  @ApiQuery({ name: 'search', required: false, description: 'Search term for product name, sku, description or category' })
   @ApiQuery({ name: 'familySKU', required: false, description: 'Filter by family SKU' })
   @ApiQuery({ name: 'productIds', required: false, description: 'Comma-separated list of product IDs to filter by' })
+  @ApiQuery({ name: 'sortBy', required: false, description: 'Sort order', enum: ['newest', 'price_asc', 'price_desc', 'name_asc'] })
   @ApiResponse({
     status: 200,
     description: 'Products retrieved successfully',
@@ -79,8 +83,11 @@ export class ProductController {
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '10',
     @Query('genderId') genderId?: string,
+    @Query('genderIds') genderIds?: string,
     @Query('categoryId') categoryId?: string,
+    @Query('categoryIds') categoryIds?: string,
     @Query('categoryName') categoryName?: string,
+    @Query('sizes') sizes?: string,
     @Query('minPrice') minPrice?: string,
     @Query('maxPrice') maxPrice?: string,
     @Query('underPriceAmount') underPriceAmount?: string,
@@ -89,14 +96,18 @@ export class ProductController {
     @Query('search') search?: string,
     @Query('familySKU') familySKU?: string,
     @Query('productIds') productIds?: string,
+    @Query('sortBy') sortBy?: string,
   ) {
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
 
     const filters: any = {};
     if (genderId) filters.genderId = genderId;
+    if (genderIds) filters.genderIds = genderIds.split(',').filter((id) => id.trim());
     if (categoryId) filters.categoryId = categoryId;
+    if (categoryIds) filters.categoryIds = categoryIds.split(',').filter((id) => id.trim());
     if (categoryName) filters.categoryName = categoryName;
+    if (sizes) filters.sizes = sizes.split(',').map((s) => s.trim()).filter(Boolean);
     if (minPrice) filters.minPrice = parseFloat(minPrice);
     if (maxPrice) filters.maxPrice = parseFloat(maxPrice);
     if (underPriceAmount) filters.underPriceAmount = parseFloat(underPriceAmount);
@@ -106,8 +117,24 @@ export class ProductController {
     if (search) filters.search = search;
     if (familySKU) filters.familySKU = familySKU;
     if (productIds) filters.productIds = productIds.split(',').filter(id => id.trim());
+    if (sortBy) filters.sortBy = sortBy;
 
     return this.productService.findAll(pageNum, limitNum, filters);
+  }
+
+  @Get('sizes')
+  @ApiOperation({
+    summary: 'Get available sizes',
+    description: 'Retrieves the distinct sizes present in the active catalog, optionally scoped by gender/category, for populating the size filter',
+  })
+  @ApiQuery({ name: 'genderId', required: false, description: 'Scope to a gender' })
+  @ApiQuery({ name: 'categoryId', required: false, description: 'Scope to a category' })
+  @ApiResponse({
+    status: 200,
+    description: 'Available sizes retrieved successfully',
+  })
+  async getAvailableSizes(@Query('genderId') genderId?: string, @Query('categoryId') categoryId?: string) {
+    return this.productService.getAvailableSizes({ genderId, categoryId });
   }
 
   @Get('autosuggest')
@@ -269,6 +296,22 @@ export class ProductController {
   })
   async findBySKU(@Param('sku') sku: string) {
     return this.productService.findBySKU(sku);
+  }
+
+  @Get(':id/related')
+  @ApiOperation({
+    summary: 'Get related products',
+    description:
+      'Retrieves products to show on the product detail page: admin-curated relatedProductIds first, topped up with active in-stock products from the same category',
+  })
+  @ApiParam({ name: 'id', description: 'Product ID' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Maximum number of related products', example: '6' })
+  @ApiResponse({
+    status: 200,
+    description: 'Related products retrieved successfully',
+  })
+  async getRelatedProducts(@Param('id') id: string, @Query('limit') limit: string = '6') {
+    return this.productService.getRelatedProducts(id, parseInt(limit, 10));
   }
 
   @Get(':id')

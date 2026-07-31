@@ -36,9 +36,9 @@ export default function ReviewsSection() {
   const visible = reviews.slice(index, index + 2).length === 2 ? reviews.slice(index, index + 2) : reviews.slice(0, 2);
 
   return (
-    <section className="py-12 md:py-16 bg-white">
+    <section className="py-8 md:py-12 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-10">
+        <div className="text-center mb-6">
           <p className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">Customer Reviews</p>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">What Our Customers Say</h2>
           <div className="flex items-center justify-center gap-2">

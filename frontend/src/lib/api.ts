@@ -99,8 +99,11 @@ export const productApi = {
     page?: number;
     limit?: number;
     genderId?: string;
+    genderIds?: string; // Comma-separated list of gender IDs (multi-select)
     categoryId?: string;
+    categoryIds?: string; // Comma-separated list of category IDs (multi-select)
     categoryName?: string;
+    sizes?: string; // Comma-separated list of sizes (multi-select)
     minPrice?: number;
     maxPrice?: number;
     underPriceAmount?: number;
@@ -109,9 +112,11 @@ export const productApi = {
     search?: string;
     familySKU?: string;
     productIds?: string; // Comma-separated list of product IDs
+    sortBy?: 'newest' | 'price_asc' | 'price_desc' | 'name_asc';
   }) => api.get('/products', { params }),
   getById: (id: string) => api.get(`/products/${id}`),
   getBySku: (sku: string) => api.get(`/products/sku/${sku}`),
+  getRelated: (id: string, limit?: number) => api.get(`/products/${id}/related`, { params: { limit } }),
   getByCategory: (categoryId: string) => api.get(`/products/by-category/${categoryId}`),
   getByHomepageCategory: (categoryId: string) => api.get(`/products/homepage-category/${categoryId}`),
   getByFamily: (familySKU: string) => api.get(`/products/by-family/${familySKU}`),
@@ -120,6 +125,7 @@ export const productApi = {
   getLatestArrivals: () => api.get('/products/latest-arrivals'),
   getBestSellersSections: () => api.get('/products/best-sellers-sections'),
   getLowStock: (threshold?: number, limit?: number) => api.get('/products/low-stock', { params: { threshold, limit } }),
+  getSizes: (params?: { genderId?: string; categoryId?: string }) => api.get('/products/sizes', { params }),
   autosuggest: (q: string, limit?: number) => api.get('/products/autosuggest', { params: { q, limit } }),
   create: (data: object) => api.post('/products', data),
   update: (id: string, data: object) => api.patch(`/products/${id}`, data),

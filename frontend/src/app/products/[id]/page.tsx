@@ -12,6 +12,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useGuestStore } from '@/store/guestStore';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
+import ProductCard from '@/components/common/ProductCard';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -29,6 +30,7 @@ export default function ProductDetailPage() {
 
   // Image gallery state
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [galleryImageFailed, setGalleryImageFailed] = useState(false);
 
   // Size and quantity selection
   const [selectedSize, setSelectedSize] = useState<string>('');
@@ -54,17 +56,12 @@ export default function ProductDetailPage() {
           setSelectedSize(productData.sizes[0]);
         }
 
-        // Fetch related products if available
-        if (productData.relatedProductIds && productData.relatedProductIds.length > 0) {
-          const relatedPromises = productData.relatedProductIds.slice(0, 4).map((id) =>
-            productApi.getById(id).catch(() => null)
-          );
-          const relatedResults = await Promise.all(relatedPromises);
-          const validRelated = relatedResults
-            .filter((res) => res !== null)
-            .map((res) => res!.data as Product);
-          setRelatedProducts(validRelated);
-        }
+        // Related products: one call to the dedicated endpoint, which already handles
+        // curated relatedProductIds + a same-category fallback server-side.
+        productApi
+          .getRelated(productId, 6)
+          .then((res) => setRelatedProducts(res.data || []))
+          .catch((err) => console.error('Failed to fetch related products:', err));
       } catch (err) {
         console.error('Failed to fetch product:', err);
         const error = err as { response?: { status?: number } };
@@ -277,7 +274,7 @@ export default function ProductDetailPage() {
             {/* Image Gallery */}
             <div>
               <div className="relative h-96 bg-gray-100 rounded-lg overflow-hidden mb-4">
-                {product.images && product.images.length > 0 ? (
+                {product.images && product.images.length > 0 && !galleryImageFailed ? (
                   <Image
                     src={product.images[selectedImageIndex]}
                     alt={product.name}
@@ -285,6 +282,7 @@ export default function ProductDetailPage() {
                     className="object-contain"
                     sizes="(max-width: 1024px) 100vw, 50vw"
                     priority
+                    onError={() => setGalleryImageFailed(true)}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400">
@@ -312,8 +310,11 @@ export default function ProductDetailPage() {
                   {product.images.map((image, index) => (
                     <button
                       key={index}
-                      onClick={() => setSelectedImageIndex(index)}
-                      className={`relative w-20 h-20 flex-shrink-0 rounded border-2 overflow-hidden ${
+                      onClick={() => {
+                        setSelectedImageIndex(index);
+                        setGalleryImageFailed(false);
+                      }}
+                      className={`relative w-20 h-20 flex-shrink-0 rounded border-2 bg-gray-50 overflow-hidden ${
                         selectedImageIndex === index ? 'border-blue-500' : 'border-gray-200'
                       }`}
                     >
@@ -321,7 +322,7 @@ export default function ProductDetailPage() {
                         src={image}
                         alt={`${product.name} ${index + 1}`}
                         fill
-                        className="object-cover"
+                        className="object-contain p-1"
                         sizes="80px"
                       />
                     </button>
@@ -511,63 +512,20 @@ export default function ProductDetailPage() {
           {/* Related Products */}
           {relatedProducts.length > 0 && (
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Related Products</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {relatedProducts.map((relatedProduct) => (
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">You May Also Like</h2>
+                {getCategoryName(product.categoryId) && (
                   <Link
-                    key={relatedProduct._id}
-                    href={`/products/${relatedProduct._id}`}
-                    className="card hover:shadow-lg transition-shadow"
+                    href={`/products?categoryId=${typeof product.categoryId === 'string' ? product.categoryId : product.categoryId._id}`}
+                    className="text-sm font-medium text-gray-900 hover:text-gray-600"
                   >
-                    <div className="relative h-48 bg-gray-100">
-                      {relatedProduct.images && relatedProduct.images.length > 0 ? (
-                        <Image
-                          src={relatedProduct.images[0]}
-                          alt={relatedProduct.name}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400">
-                          <svg
-                            className="w-16 h-16"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                            />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
-                        {relatedProduct.name}
-                      </h3>
-                      <div>
-                        {relatedProduct.discountPrice ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-bold text-green-600">
-                              ₹{relatedProduct.discountPrice.toFixed(2)}
-                            </span>
-                            <span className="text-sm text-gray-500 line-through">
-                              ₹{relatedProduct.price.toFixed(2)}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-lg font-bold">
-                            ₹{relatedProduct.price.toFixed(2)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    View All &rarr;
                   </Link>
+                )}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                {relatedProducts.map((relatedProduct) => (
+                  <ProductCard key={relatedProduct._id} product={relatedProduct} />
                 ))}
               </div>
             </div>

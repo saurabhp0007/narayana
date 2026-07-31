@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo \"=== Find PDF ===\" && find /Users/saurabh/Desktop/narayana -iname \"*Naryan*\" -o -iname \"*Narayan*change*\" 2>/dev/null | grep -v node_modules | grep -v .git; find /Users/saurabh -maxdepth 3 -iname \"*.pdf\" 2>/dev/null)",
+      "Read(//Users/saurabh/**)",
+      "Read(//Users/saurabh/Downloads/**)",
+      "Bash(npx tsc *)",
+      "Bash(npx nest *)",
+      "Bash(npx eslint *)",
+      "Bash(npx next *)",
+      "Bash(npm run *)",
+      "Read(//private/tmp/**)",
+      "Bash(curl -s \"http://localhost:3000/api/products?search=shirt&limit=8&isActive=true\")",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s \"http://localhost:3000/api/products?search=shirt&limit=97&isActive=true\")",
+      "Bash(curl -s \"http://localhost:3000/api/category?limit=100\")",
+      "Bash(curl -s \"http://localhost:3000/api/products/sizes\")",
+      "Bash(curl -s \"http://localhost:3000/api/products?limit=3&isActive=true\")",
+      "Bash(curl -s \"http://localhost:3001/products?search=shirt\")",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" \"http://localhost:3000/api/products?sizes=6,7,8&limit=3\")",
+      "Bash(curl -s \"http://localhost:3000/api/products?limit=3&sortBy=price_asc&isActive=true\")"
+    ]
+  }
+}

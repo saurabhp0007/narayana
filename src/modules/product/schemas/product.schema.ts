@@ -103,3 +103,4 @@ ProductSchema.index({ createdAt: -1 });
 ProductSchema.index({ showInLatestArrivals: 1 });
 ProductSchema.index({ isBestSeller: 1 });
 ProductSchema.index({ homepageCategoryId: 1 });
+ProductSchema.index({ sizes: 1 });

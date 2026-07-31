@@ -41,14 +41,14 @@ export default function ShopByCategorySection() {
   const currentSubcategories = currentCategoryId ? subcategoriesByCategoryId[currentCategoryId] || [] : [];
 
   return (
-    <section className="py-12 md:py-16 bg-white">
+    <section className="py-8 md:py-12 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <p className="text-center text-xs tracking-widest text-gray-400 uppercase mb-2">Narayan Enterprises</p>
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-8" style={{ fontFamily: 'Georgia, serif' }}>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-6" style={{ fontFamily: 'Georgia, serif' }}>
           Shop by Category
         </h2>
 
-        <div className="flex items-center justify-center gap-6 md:gap-10 border-b border-gray-200 mb-10 overflow-x-auto">
+        <div className="flex items-center justify-center gap-6 md:gap-10 border-b border-gray-200 mb-6 overflow-x-auto">
           {categories.map((category) => (
             <button
               key={category._id}
