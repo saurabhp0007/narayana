@@ -28,7 +28,10 @@
       "Bash(python3 -m json.tool)",
       "Bash(node -e ' *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost:3001/admin/footwear-subcategories\")",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost:3001/\")"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost:3001/\")",
+      "Bash(tail -6 /tmp/frontend.log)",
+      "Bash(git fetch *)",
+      "Bash(curl -s \"http://localhost:3000/api/products/autosuggest?q=shoes&limit=6\")"
     ]
   }
 }

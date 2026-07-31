@@ -311,21 +311,25 @@ export default function SearchDropdown({
             </h3>
 
             {searchResults.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3">
+              // Same grid-cols-4 / square-image treatment as the Trending and Featured
+              // Products sections below, so every card in this dropdown is the same
+              // fixed size regardless of container width (compact header vs full-width
+              // on the Products page) or how long an individual product's name is.
+              <div className="grid grid-cols-4 gap-3">
                 {searchResults.map((product) => (
                   <button
                     key={product._id}
                     onClick={() => handleProductClick(product._id)}
                     className="flex flex-col text-left hover:bg-gray-50 p-2 rounded-lg transition-colors"
                   >
-                    <div className="relative aspect-square bg-gray-50 rounded overflow-hidden mb-2">
+                    <div className="relative w-full aspect-square bg-gray-50 rounded overflow-hidden mb-2">
                       {product.images && product.images.length > 0 ? (
                         <Image
                           src={product.images[0]}
                           alt={product.name}
                           fill
                           className="object-contain p-1"
-                          sizes="150px"
+                          sizes="120px"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-300">
@@ -335,20 +339,22 @@ export default function SearchDropdown({
                         </div>
                       )}
                     </div>
-                    <h4 className="text-sm font-medium text-gray-900 line-clamp-2 mb-0.5">
+                    {/* Fixed 2-line height reserved regardless of actual name length, so
+                        the price row lines up at the same vertical position in every card */}
+                    <h4 className="text-xs font-medium text-gray-900 line-clamp-2 min-h-[2rem] mb-0.5">
                       {product.name}
                     </h4>
                     {product.discountPrice ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-gray-900">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-semibold text-gray-900">
                           ₹{product.discountPrice.toFixed(0)}
                         </span>
-                        <span className="text-xs text-gray-500 line-through">
+                        <span className="text-[11px] text-gray-500 line-through">
                           ₹{product.price.toFixed(0)}
                         </span>
                       </div>
                     ) : (
-                      <span className="text-sm font-semibold text-gray-900">
+                      <span className="text-xs font-semibold text-gray-900">
                         ₹{product.price.toFixed(0)}
                       </span>
                     )}
@@ -372,20 +378,20 @@ export default function SearchDropdown({
                     <button
                       key={product._id}
                       onClick={() => handleProductClick(product._id)}
-                      className="flex flex-col items-center text-center hover:bg-gray-50 px-2 rounded-lg transition-colors"
+                      className="flex flex-col text-left hover:bg-gray-50 p-2 rounded-lg transition-colors"
                     >
-                      <div className="relative w-full aspect-square bg-gray-100 rounded overflow-hidden mb-2">
+                      <div className="relative w-full aspect-square bg-gray-50 rounded overflow-hidden mb-2">
                         {product.images && product.images.length > 0 ? (
-                          <Image src={product.images[0]} alt={product.name} fill className="object-contain" sizes="80px" />
+                          <Image src={product.images[0]} alt={product.name} fill className="object-contain p-1" sizes="120px" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-300">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                           </div>
                         )}
                       </div>
-                      <h4 className="text-xs font-medium text-gray-900 line-clamp-1">{product.name}</h4>
+                      <h4 className="text-xs font-medium text-gray-900 line-clamp-2 min-h-[2rem]">{product.name}</h4>
                     </button>
                   ))}
                 </div>
@@ -463,19 +469,20 @@ export default function SearchDropdown({
                     <button
                       key={product._id}
                       onClick={() => handleProductClick(product._id)}
-                      className="flex flex-col items-center text-center hover:bg-gray-50 px-2 rounded-lg transition-colors"
+                      className="flex flex-col text-left hover:bg-gray-50 p-2 rounded-lg transition-colors"
                     >
-                      <div className="relative w-28 h-28 bg-gray-100 rounded overflow-hidden mb-2">
+                      <div className="relative w-full aspect-square bg-gray-50 rounded overflow-hidden mb-2">
                         {product.images && product.images.length > 0 ? (
                           <Image
                             src={product.images[0]}
                             alt={product.name}
                             fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            className="object-contain p-1"
+                            sizes="120px"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-300">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                           </div>
@@ -486,20 +493,18 @@ export default function SearchDropdown({
                           </span>
                         )}
                       </div>
-                      <h4 className="text-xs font-medium text-gray-900 line-clamp-1 group-hover:text-gray-600">
+                      <h4 className="text-xs font-medium text-gray-900 line-clamp-2 min-h-[2rem] mb-0.5">
                         {product.name}
                       </h4>
-                      <div className="mt-0.5">
-                        {product.discountPrice ? (
-                          <span className="text-xs font-semibold text-gray-900">
-                            ₹{product.discountPrice.toFixed(0)}
-                          </span>
-                        ) : (
-                          <span className="text-xs font-semibold text-gray-900">
-                            ₹{product.price.toFixed(0)}
-                          </span>
-                        )}
-                      </div>
+                      {product.discountPrice ? (
+                        <span className="text-xs font-semibold text-gray-900">
+                          ₹{product.discountPrice.toFixed(0)}
+                        </span>
+                      ) : (
+                        <span className="text-xs font-semibold text-gray-900">
+                          ₹{product.price.toFixed(0)}
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
