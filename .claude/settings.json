@@ -18,7 +18,15 @@
       "Bash(curl -s \"http://localhost:3000/api/products?limit=3&isActive=true\")",
       "Bash(curl -s \"http://localhost:3001/products?search=shirt\")",
       "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" \"http://localhost:3000/api/products?sizes=6,7,8&limit=3\")",
-      "Bash(curl -s \"http://localhost:3000/api/products?limit=3&sortBy=price_asc&isActive=true\")"
+      "Bash(curl -s \"http://localhost:3000/api/products?limit=3&sortBy=price_asc&isActive=true\")",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(curl -s \"http://localhost:3001/\")",
+      "Bash(curl -s -o /dev/null -w \"admin/shop-subcategories -> %{http_code}\\\\n\" \"http://localhost:3001/admin/shop-subcategories\")",
+      "Bash(sleep 2; tail -5 /tmp/frontend.log)",
+      "Bash(curl -s \"http://localhost:3000/api/footwear-subcategories\")",
+      "Bash(curl -s \"http://localhost:3000/api/footwear-subcategories/active\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(node -e ' *)"
     ]
   }
 }

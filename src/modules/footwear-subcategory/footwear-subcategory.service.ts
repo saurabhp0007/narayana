@@ -15,16 +15,18 @@ export class FootwearSubcategoryService {
     private footwearSubcategoryModel: Model<FootwearSubcategory>,
   ) {}
 
-  private async ensureUnique(name: string, slug: string, tabName: string, excludeId?: string): Promise<void> {
+  // Uniqueness is scoped per-tab: a name only conflicts with another subcategory that
+  // shares at least one of the same tabs (querying tabNames with $in matches on overlap).
+  private async ensureUnique(name: string, slug: string, tabNames: string[], excludeId?: string): Promise<void> {
     const idFilter = excludeId ? { _id: { $ne: excludeId } } : {};
 
     const existingByName = await this.footwearSubcategoryModel.findOne({
       name,
-      tabName,
+      tabNames: { $in: tabNames },
       ...idFilter,
     });
     if (existingByName) {
-      throw new ConflictException('A subcategory with this name already exists in this tab');
+      throw new ConflictException('A subcategory with this name already exists in one of these tabs');
     }
 
     const existingBySlug = await this.footwearSubcategoryModel.findOne({ slug, ...idFilter });
@@ -35,7 +37,7 @@ export class FootwearSubcategoryService {
 
   async create(dto: CreateFootwearSubcategoryDto): Promise<FootwearSubcategory> {
     const slug = dto.slug || generateSlug(dto.name);
-    await this.ensureUnique(dto.name, slug, dto.tabName);
+    await this.ensureUnique(dto.name, slug, dto.tabNames);
 
     const subcategory = new this.footwearSubcategoryModel({
       ...dto,
@@ -48,12 +50,12 @@ export class FootwearSubcategoryService {
   async findAll(isActive?: boolean, tabName?: string): Promise<FootwearSubcategory[]> {
     const filter: Record<string, unknown> = {};
     if (isActive !== undefined) filter.isActive = isActive;
-    if (tabName) filter.tabName = tabName;
+    if (tabName) filter.tabNames = tabName; // matches docs whose tabNames array contains this tab
 
     return this.footwearSubcategoryModel
       .find(filter)
       .populate('productIds', PRODUCT_POPULATE_FIELDS)
-      .sort({ tabName: 1, displayOrder: 1, createdAt: 1 })
+      .sort({ displayOrder: 1, createdAt: 1 })
       .exec();
   }
 
@@ -91,10 +93,10 @@ export class FootwearSubcategoryService {
 
     const nextName = dto.name ?? subcategory.name;
     const nextSlug = dto.slug ?? subcategory.slug;
-    const nextTabName = dto.tabName ?? subcategory.tabName;
+    const nextTabNames = dto.tabNames ?? subcategory.tabNames;
 
-    if (dto.name || dto.slug || dto.tabName) {
-      await this.ensureUnique(nextName, nextSlug, nextTabName, id);
+    if (dto.name || dto.slug || dto.tabNames) {
+      await this.ensureUnique(nextName, nextSlug, nextTabNames, id);
     }
 
     Object.assign(subcategory, {

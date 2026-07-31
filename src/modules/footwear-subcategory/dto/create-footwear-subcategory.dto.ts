@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsNumber, IsArray, IsMongoId } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsNumber, IsArray, IsMongoId, ArrayMinSize } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateFootwearSubcategoryDto {
@@ -22,10 +22,15 @@ export class CreateFootwearSubcategoryDto {
   @IsString()
   offerText?: string;
 
-  @ApiProperty({ description: 'Tab label this subcategory is grouped under on the homepage Footwear section', example: "Men's Shoes" })
-  @IsString()
-  @IsNotEmpty()
-  tabName: string;
+  @ApiProperty({
+    description: 'Tab labels this subcategory is grouped under on the homepage Footwear section — a tile can belong to more than one tab',
+    example: ["Men's Shoes", 'Sports'],
+    type: [String],
+  })
+  @IsArray()
+  @ArrayMinSize(1, { message: 'At least one tab is required' })
+  @IsString({ each: true })
+  tabNames: string[];
 
   @ApiPropertyOptional({ description: 'Product IDs mapped to this subcategory', type: [String] })
   @IsOptional()

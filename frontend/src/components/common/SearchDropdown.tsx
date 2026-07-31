@@ -311,54 +311,47 @@ export default function SearchDropdown({
             </h3>
 
             {searchResults.length > 0 ? (
-              <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 {searchResults.map((product) => (
                   <button
                     key={product._id}
                     onClick={() => handleProductClick(product._id)}
-                    className="w-full flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                    className="flex flex-col text-left hover:bg-gray-50 p-2 rounded-lg transition-colors"
                   >
-                    <div className="relative w-12 h-14 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                    <div className="relative aspect-square bg-gray-50 rounded overflow-hidden mb-2">
                       {product.images && product.images.length > 0 ? (
                         <Image
                           src={product.images[0]}
                           alt={product.name}
                           fill
-                          className="object-cover"
-                          sizes="48px"
+                          className="object-contain p-1"
+                          sizes="150px"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-300">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
                         </div>
                       )}
                     </div>
-                    <div className="flex-grow min-w-0">
-                      <h4 className="text-sm font-medium text-gray-900 truncate">
-                        {product.name}
-                      </h4>
-                      <div className="mt-0.5">
-                        {product.discountPrice ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-gray-900">
-                              ₹{product.discountPrice.toFixed(0)}
-                            </span>
-                            <span className="text-xs text-gray-500 line-through">
-                              ₹{product.price.toFixed(0)}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-sm font-semibold text-gray-900">
-                            ₹{product.price.toFixed(0)}
-                          </span>
-                        )}
+                    <h4 className="text-sm font-medium text-gray-900 line-clamp-2 mb-0.5">
+                      {product.name}
+                    </h4>
+                    {product.discountPrice ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-gray-900">
+                          ₹{product.discountPrice.toFixed(0)}
+                        </span>
+                        <span className="text-xs text-gray-500 line-through">
+                          ₹{product.price.toFixed(0)}
+                        </span>
                       </div>
-                    </div>
-                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
+                    ) : (
+                      <span className="text-sm font-semibold text-gray-900">
+                        ₹{product.price.toFixed(0)}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>

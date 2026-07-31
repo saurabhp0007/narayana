@@ -115,9 +115,43 @@ export default function ShopSubcategoryManagementPage() {
     }
   };
 
-  const getCategoryName = (shopCategoryId: string | ShopCategory) => {
-    if (typeof shopCategoryId === 'object') return shopCategoryId.name;
-    return shopCategories.find((c) => c._id === shopCategoryId)?.name || 'Unknown';
+  // Subcategories grouped under their mapped Shop Category, in the same order the
+  // homepage renders them (category displayOrder, then subcategory displayOrder —
+  // findAll() already sorts subcategories that way). Categories with no subcategories
+  // yet still get a group, so admins see where mappings are still needed.
+  const groupedSubcategories = useMemo(() => {
+    const byCategory = new Map<string, ShopSubcategory[]>();
+    for (const sub of subcategories) {
+      const categoryId = typeof sub.shopCategoryId === 'object' ? sub.shopCategoryId._id : sub.shopCategoryId;
+      if (!byCategory.has(categoryId)) byCategory.set(categoryId, []);
+      byCategory.get(categoryId)!.push(sub);
+    }
+    return [...shopCategories]
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+      .map((category) => ({ category, items: byCategory.get(category._id) || [] }));
+  }, [subcategories, shopCategories]);
+
+  // Reorders within a single category group by renumbering displayOrder 0..n-1 to
+  // match the new position — swapping the raw displayOrder field directly is unreliable
+  // since new subcategories default to 0 and ties don't visibly reorder.
+  const moveSubcategory = async (items: ShopSubcategory[], index: number, direction: -1 | 1) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+
+    const reordered = [...items];
+    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+
+    try {
+      await Promise.all(
+        reordered.map((sub, position) =>
+          sub.displayOrder === position ? null : shopSubcategoryApi.update(sub._id, { displayOrder: position })
+        )
+      );
+      fetchSubcategories();
+    } catch (err) {
+      console.error('Failed to reorder subcategories:', err);
+      setError('Failed to reorder subcategories. Please try again.');
+    }
   };
 
   const resetForm = () => {
@@ -128,8 +162,11 @@ export default function ShopSubcategoryManagementPage() {
     setEditingSubcategory(null);
   };
 
-  const openCreateModal = () => {
+  const openCreateModal = (shopCategoryId?: string) => {
     resetForm();
+    if (shopCategoryId) {
+      setFormData((prev) => ({ ...prev, shopCategoryId }));
+    }
     setIsModalOpen(true);
   };
 
@@ -209,7 +246,10 @@ export default function ShopSubcategoryManagementPage() {
   const addProduct = (product: Product) => {
     if (selectedProducts.some((p) => p._id === product._id)) return;
     setSelectedProducts((prev) => [...prev, product]);
-    setProductSearch('');
+    // Deliberately keep the search query and results open (don't reset productSearch)
+    // so an admin can add several matching products in a row without retyping the
+    // search each time — the just-added product drops out of visibleSearchResults
+    // automatically since it's now in selectedProducts.
   };
 
   const removeProduct = (productId: string) => {
@@ -242,7 +282,7 @@ export default function ShopSubcategoryManagementPage() {
           </p>
         </div>
         <button
-          onClick={openCreateModal}
+          onClick={() => openCreateModal()}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
         >
           <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -267,91 +307,125 @@ export default function ShopSubcategoryManagementPage() {
         </div>
       )}
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Offer Text</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Products</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="px-6 py-4 text-center">
-                    <div className="flex justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                    </div>
-                  </td>
-                </tr>
-              ) : subcategories.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
-                    No subcategories yet. Add one to populate a Shop by Category tab.
-                  </td>
-                </tr>
-              ) : (
-                subcategories.map((subcategory) => (
-                  <tr key={subcategory._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      {subcategory.image ? (
-                        <img src={subcategory.image} alt={subcategory.name} className="h-12 w-12 object-cover rounded" />
-                      ) : (
-                        <div className="h-12 w-12 bg-gray-100 rounded" />
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{subcategory.name}</div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{getCategoryName(subcategory.shopCategoryId)}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{subcategory.offerText || '—'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {(subcategory.productIds as Product[])?.length || 0} product(s)
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{subcategory.displayOrder}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => handleToggleActive(subcategory)}
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          subcategory.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {subcategory.isActive ? 'Active' : 'Inactive'}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => openEditModal(subcategory)} className="text-indigo-600 hover:text-indigo-900 mr-4">
-                        Edit
-                      </button>
-                      {deleteConfirm === subcategory._id ? (
-                        <span className="space-x-2">
-                          <button onClick={() => handleDelete(subcategory._id)} className="text-red-600 hover:text-red-900 font-medium">
-                            Confirm
-                          </button>
-                          <button onClick={() => setDeleteConfirm(null)} className="text-gray-600 hover:text-gray-900">
-                            Cancel
-                          </button>
-                        </span>
-                      ) : (
-                        <button onClick={() => setDeleteConfirm(subcategory._id)} className="text-red-600 hover:text-red-900">
-                          Delete
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {isLoading ? (
+        <div className="bg-white shadow rounded-lg p-8 flex justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
         </div>
-      </div>
+      ) : groupedSubcategories.length === 0 ? (
+        <div className="bg-white shadow rounded-lg p-8 text-center text-gray-500">
+          No shop categories yet. Create one under &quot;Shop by Category&quot; first, then add subcategories to it.
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {groupedSubcategories.map(({ category, items }) => (
+            <div key={category._id} className="bg-white shadow rounded-lg overflow-hidden">
+              <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">{category.name}</h2>
+                  <p className="text-xs text-gray-500">
+                    {items.length} subcategor{items.length === 1 ? 'y' : 'ies'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => openCreateModal(category._id)}
+                  className="text-xs font-medium text-indigo-600 hover:text-indigo-900"
+                >
+                  + Add to {category.name}
+                </button>
+              </div>
+
+              {items.length === 0 ? (
+                <div className="px-6 py-6 text-center text-sm text-gray-500">
+                  No subcategories mapped to this category yet.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
+                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Offer Text</th>
+                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Products</th>
+                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {items.map((subcategory, index) => (
+                        <tr key={subcategory._id} className="hover:bg-gray-50">
+                          <td className="px-6 py-3">
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => moveSubcategory(items, index, -1)}
+                                disabled={index === 0}
+                                className="text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                                title="Move up"
+                              >
+                                ↑
+                              </button>
+                              <button
+                                onClick={() => moveSubcategory(items, index, 1)}
+                                disabled={index === items.length - 1}
+                                className="text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                                title="Move down"
+                              >
+                                ↓
+                              </button>
+                            </div>
+                          </td>
+                          <td className="px-6 py-3">
+                            {subcategory.image ? (
+                              <img src={subcategory.image} alt={subcategory.name} className="h-10 w-10 object-cover rounded" />
+                            ) : (
+                              <div className="h-10 w-10 bg-gray-100 rounded" />
+                            )}
+                          </td>
+                          <td className="px-6 py-3 text-sm font-medium text-gray-900">{subcategory.name}</td>
+                          <td className="px-6 py-3 text-sm text-gray-500">{subcategory.offerText || '—'}</td>
+                          <td className="px-6 py-3 text-sm text-gray-500">
+                            {(subcategory.productIds as Product[])?.length || 0} product(s)
+                          </td>
+                          <td className="px-6 py-3 whitespace-nowrap">
+                            <button
+                              onClick={() => handleToggleActive(subcategory)}
+                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                subcategory.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              {subcategory.isActive ? 'Active' : 'Inactive'}
+                            </button>
+                          </td>
+                          <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
+                            <button onClick={() => openEditModal(subcategory)} className="text-indigo-600 hover:text-indigo-900 mr-4">
+                              Edit
+                            </button>
+                            {deleteConfirm === subcategory._id ? (
+                              <span className="space-x-2">
+                                <button onClick={() => handleDelete(subcategory._id)} className="text-red-600 hover:text-red-900 font-medium">
+                                  Confirm
+                                </button>
+                                <button onClick={() => setDeleteConfirm(null)} className="text-gray-600 hover:text-gray-900">
+                                  Cancel
+                                </button>
+                              </span>
+                            ) : (
+                              <button onClick={() => setDeleteConfirm(subcategory._id)} className="text-red-600 hover:text-red-900">
+                                Delete
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto">

@@ -19,12 +19,13 @@ export default function FootwearSubcategoryManagementPage() {
     name: '',
     image: '',
     offerText: '',
-    tabName: '',
+    tabNames: [],
     productIds: [],
     isActive: true,
     displayOrder: 0,
   };
   const [formData, setFormData] = useState<CreateFootwearSubcategoryDto>(emptyForm);
+  const [newTabName, setNewTabName] = useState('');
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
@@ -111,20 +112,61 @@ export default function FootwearSubcategoryManagementPage() {
   };
 
   const existingTabNames = useMemo(
-    () => Array.from(new Set(subcategories.map((s) => s.tabName))).sort(),
+    () => Array.from(new Set(subcategories.flatMap((s) => s.tabNames))).sort(),
     [subcategories]
   );
 
+  // Subcategories grouped under each tab they belong to. A subcategory mapped to
+  // multiple tabs appears in more than one group here, matching how the homepage
+  // Footwear section renders it.
+  const groupedSubcategories = useMemo(
+    () =>
+      existingTabNames.map((tabName) => ({
+        tabName,
+        items: subcategories.filter((s) => s.tabNames.includes(tabName)),
+      })),
+    [existingTabNames, subcategories]
+  );
+
+  // Reorders within a single tab group by renumbering displayOrder 0..n-1 to match
+  // the new position. displayOrder is shared across every tab a subcategory belongs
+  // to (there's no per-tab ordering), so reordering here also shifts its position in
+  // any other tab it's mapped to — an accepted tradeoff for tiles that are rarely
+  // mapped to more than one tab.
+  const moveSubcategory = async (items: FootwearSubcategory[], index: number, direction: -1 | 1) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+
+    const reordered = [...items];
+    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+
+    try {
+      await Promise.all(
+        reordered.map((sub, position) =>
+          sub.displayOrder === position ? null : footwearSubcategoryApi.update(sub._id, { displayOrder: position })
+        )
+      );
+      fetchSubcategories();
+    } catch (err) {
+      console.error('Failed to reorder subcategories:', err);
+      setError('Failed to reorder subcategories. Please try again.');
+    }
+  };
+
   const resetForm = () => {
     setFormData(emptyForm);
+    setNewTabName('');
     setSelectedProducts([]);
     setProductSearch('');
     setFormErrors({});
     setEditingSubcategory(null);
   };
 
-  const openCreateModal = () => {
+  const openCreateModal = (tabName?: string) => {
     resetForm();
+    if (tabName) {
+      setFormData((prev) => ({ ...prev, tabNames: [tabName] }));
+    }
     setIsModalOpen(true);
   };
 
@@ -135,7 +177,7 @@ export default function FootwearSubcategoryManagementPage() {
       name: subcategory.name,
       image: subcategory.image || '',
       offerText: subcategory.offerText || '',
-      tabName: subcategory.tabName,
+      tabNames: subcategory.tabNames,
       isActive: subcategory.isActive,
       displayOrder: subcategory.displayOrder,
     });
@@ -150,10 +192,26 @@ export default function FootwearSubcategoryManagementPage() {
     resetForm();
   };
 
+  const toggleTabName = (tabName: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      tabNames: prev.tabNames.includes(tabName)
+        ? prev.tabNames.filter((t) => t !== tabName)
+        : [...prev.tabNames, tabName],
+    }));
+  };
+
+  const addNewTabName = () => {
+    const trimmed = newTabName.trim();
+    if (!trimmed || formData.tabNames.includes(trimmed)) return;
+    setFormData((prev) => ({ ...prev, tabNames: [...prev.tabNames, trimmed] }));
+    setNewTabName('');
+  };
+
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
     if (!formData.name.trim()) errors.name = 'Name is required';
-    if (!formData.tabName.trim()) errors.tabName = 'Tab is required';
+    if (formData.tabNames.length === 0) errors.tabNames = 'At least one tab is required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -204,7 +262,8 @@ export default function FootwearSubcategoryManagementPage() {
   const addProduct = (product: Product) => {
     if (selectedProducts.some((p) => p._id === product._id)) return;
     setSelectedProducts((prev) => [...prev, product]);
-    setProductSearch('');
+    // Deliberately keep the search query and results open so an admin can add several
+    // matching products in a row without retyping the search each time.
   };
 
   const removeProduct = (productId: string) => {
@@ -237,7 +296,7 @@ export default function FootwearSubcategoryManagementPage() {
           </p>
         </div>
         <button
-          onClick={openCreateModal}
+          onClick={() => openCreateModal()}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
         >
           <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -256,91 +315,124 @@ export default function FootwearSubcategoryManagementPage() {
         </div>
       )}
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tab</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Offer Text</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Products</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="px-6 py-4 text-center">
-                    <div className="flex justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                    </div>
-                  </td>
-                </tr>
-              ) : subcategories.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
-                    No subcategories yet. Add one to populate a Footwear tab.
-                  </td>
-                </tr>
-              ) : (
-                subcategories.map((subcategory) => (
-                  <tr key={subcategory._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      {subcategory.image ? (
-                        <img src={subcategory.image} alt={subcategory.name} className="h-12 w-12 object-cover rounded" />
-                      ) : (
-                        <div className="h-12 w-12 bg-gray-100 rounded" />
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{subcategory.name}</div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{subcategory.tabName}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{subcategory.offerText || '—'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {(subcategory.productIds as Product[])?.length || 0} product(s)
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{subcategory.displayOrder}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => handleToggleActive(subcategory)}
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          subcategory.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {subcategory.isActive ? 'Active' : 'Inactive'}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => openEditModal(subcategory)} className="text-indigo-600 hover:text-indigo-900 mr-4">
-                        Edit
-                      </button>
-                      {deleteConfirm === subcategory._id ? (
-                        <span className="space-x-2">
-                          <button onClick={() => handleDelete(subcategory._id)} className="text-red-600 hover:text-red-900 font-medium">
-                            Confirm
-                          </button>
-                          <button onClick={() => setDeleteConfirm(null)} className="text-gray-600 hover:text-gray-900">
-                            Cancel
-                          </button>
-                        </span>
-                      ) : (
-                        <button onClick={() => setDeleteConfirm(subcategory._id)} className="text-red-600 hover:text-red-900">
-                          Delete
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {isLoading ? (
+        <div className="bg-white shadow rounded-lg p-8 flex justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
         </div>
-      </div>
+      ) : groupedSubcategories.length === 0 ? (
+        <div className="bg-white shadow rounded-lg p-8 text-center text-gray-500">
+          No subcategories yet. Add one to populate a Footwear tab.
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {groupedSubcategories.map(({ tabName, items }) => (
+            <div key={tabName} className="bg-white shadow rounded-lg overflow-hidden">
+              <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">{tabName}</h2>
+                  <p className="text-xs text-gray-500">
+                    {items.length} subcategor{items.length === 1 ? 'y' : 'ies'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => openCreateModal(tabName)}
+                  className="text-xs font-medium text-indigo-600 hover:text-indigo-900"
+                >
+                  + Add to {tabName}
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead>
+                    <tr>
+                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
+                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Also In</th>
+                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Offer Text</th>
+                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Products</th>
+                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {items.map((subcategory, index) => {
+                      const otherTabs = subcategory.tabNames.filter((t) => t !== tabName);
+                      return (
+                        <tr key={subcategory._id} className="hover:bg-gray-50">
+                          <td className="px-6 py-3">
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => moveSubcategory(items, index, -1)}
+                                disabled={index === 0}
+                                className="text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                                title="Move up"
+                              >
+                                ↑
+                              </button>
+                              <button
+                                onClick={() => moveSubcategory(items, index, 1)}
+                                disabled={index === items.length - 1}
+                                className="text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                                title="Move down"
+                              >
+                                ↓
+                              </button>
+                            </div>
+                          </td>
+                          <td className="px-6 py-3">
+                            {subcategory.image ? (
+                              <img src={subcategory.image} alt={subcategory.name} className="h-10 w-10 object-cover rounded" />
+                            ) : (
+                              <div className="h-10 w-10 bg-gray-100 rounded" />
+                            )}
+                          </td>
+                          <td className="px-6 py-3 text-sm font-medium text-gray-900">{subcategory.name}</td>
+                          <td className="px-6 py-3 text-xs text-gray-500">{otherTabs.join(', ') || '—'}</td>
+                          <td className="px-6 py-3 text-sm text-gray-500">{subcategory.offerText || '—'}</td>
+                          <td className="px-6 py-3 text-sm text-gray-500">
+                            {(subcategory.productIds as Product[])?.length || 0} product(s)
+                          </td>
+                          <td className="px-6 py-3 whitespace-nowrap">
+                            <button
+                              onClick={() => handleToggleActive(subcategory)}
+                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                subcategory.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              {subcategory.isActive ? 'Active' : 'Inactive'}
+                            </button>
+                          </td>
+                          <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
+                            <button onClick={() => openEditModal(subcategory)} className="text-indigo-600 hover:text-indigo-900 mr-4">
+                              Edit
+                            </button>
+                            {deleteConfirm === subcategory._id ? (
+                              <span className="space-x-2">
+                                <button onClick={() => handleDelete(subcategory._id)} className="text-red-600 hover:text-red-900 font-medium">
+                                  Confirm
+                                </button>
+                                <button onClick={() => setDeleteConfirm(null)} className="text-gray-600 hover:text-gray-900">
+                                  Cancel
+                                </button>
+                              </span>
+                            ) : (
+                              <button onClick={() => setDeleteConfirm(subcategory._id)} className="text-red-600 hover:text-red-900">
+                                Delete
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -385,27 +477,81 @@ export default function FootwearSubcategoryManagementPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Tab *</label>
-                      <input
-                        type="text"
-                        list="existing-tab-names"
-                        value={formData.tabName}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, tabName: e.target.value }))}
-                        placeholder="e.g. Men's Shoes"
-                        className={`text-black w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                          formErrors.tabName ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                      />
-                      <datalist id="existing-tab-names">
-                        {existingTabNames.map((name) => (
-                          <option key={name} value={name} />
-                        ))}
-                      </datalist>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Groups this tile under a tab on the homepage Footwear section. Reuse an existing tab name to
-                        add another tile to the same tab.
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tabs *</label>
+                      <p className="mb-2 text-xs text-gray-500">
+                        Groups this tile under one or more tabs on the homepage Footwear section — check as many as
+                        apply.
                       </p>
-                      {formErrors.tabName && <p className="mt-1 text-sm text-red-600">{formErrors.tabName}</p>}
+
+                      {existingTabNames.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {existingTabNames.map((tabName) => (
+                            <label
+                              key={tabName}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-full text-xs font-medium cursor-pointer ${
+                                formData.tabNames.includes(tabName)
+                                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                                  : 'bg-white border-gray-300 text-gray-700'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={formData.tabNames.includes(tabName)}
+                                onChange={() => toggleTabName(tabName)}
+                                className="h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                              />
+                              {tabName}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newTabName}
+                          onChange={(e) => setNewTabName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              addNewTabName();
+                            }
+                          }}
+                          placeholder="Add a new tab, e.g. Sports"
+                          className="text-black flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={addNewTabName}
+                          className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        >
+                          Add
+                        </button>
+                      </div>
+
+                      {formData.tabNames.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {formData.tabNames
+                            .filter((t) => !existingTabNames.includes(t))
+                            .map((tabName) => (
+                              <span
+                                key={tabName}
+                                className="flex items-center gap-1.5 pl-3 pr-2 py-1.5 bg-indigo-50 border border-indigo-300 text-indigo-700 rounded-full text-xs font-medium"
+                              >
+                                {tabName}
+                                <button
+                                  type="button"
+                                  onClick={() => toggleTabName(tabName)}
+                                  className="text-indigo-400 hover:text-indigo-700"
+                                >
+                                  &times;
+                                </button>
+                              </span>
+                            ))}
+                        </div>
+                      )}
+
+                      {formErrors.tabNames && <p className="mt-1 text-sm text-red-600">{formErrors.tabNames}</p>}
                     </div>
 
                     <div>

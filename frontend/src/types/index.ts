@@ -180,17 +180,17 @@ export interface OfferRules {
   minQuantity?: number;
 }
 
-// A subcategory tile inside a homepage Footwear tab group (e.g. tab "Men's Shoes" ->
-// subcategories "Running Shoes", "Sneakers"). Tabs aren't a separate managed entity —
-// each subcategory just carries the tab label it's grouped under. Each tile has its
-// own image + offer text and links to a listing of its mapped products.
+// A subcategory tile inside one or more homepage Footwear tab groups (e.g. "Running
+// Shoes" can appear under both "Men's Shoes" and "Sports"). Tabs aren't a separate
+// managed entity — each subcategory just carries the tab labels it's grouped under.
+// Each tile has its own image + offer text and links to a listing of its mapped products.
 export interface FootwearSubcategory {
   _id: string;
   name: string;
   slug: string;
   image?: string;
   offerText?: string;
-  tabName: string;
+  tabNames: string[];
   productIds: string[] | Product[];
   displayOrder: number;
   isActive: boolean;
@@ -203,7 +203,7 @@ export interface CreateFootwearSubcategoryDto {
   slug?: string;
   image?: string;
   offerText?: string;
-  tabName: string;
+  tabNames: string[];
   productIds?: string[];
   displayOrder?: number;
   isActive?: boolean;

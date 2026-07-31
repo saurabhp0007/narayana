@@ -21,9 +21,12 @@ export default function FootwearSection() {
         const grouped: Record<string, FootwearSubcategory[]> = {};
 
         for (const subcategory of subcategories) {
-          if (!subcategory.tabName) continue;
-          if (!grouped[subcategory.tabName]) seenTabs.push(subcategory.tabName);
-          (grouped[subcategory.tabName] ||= []).push(subcategory);
+          // A subcategory can be mapped to more than one tab — add it to each group
+          // it belongs to instead of only the first.
+          for (const tabName of subcategory.tabNames || []) {
+            if (!grouped[tabName]) seenTabs.push(tabName);
+            (grouped[tabName] ||= []).push(subcategory);
+          }
         }
 
         setTabNames(seenTabs);

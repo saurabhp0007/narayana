@@ -13,6 +13,7 @@
     "seed": "ts-node -r tsconfig-paths/register src/database/seed.ts",
     "seed:admin": "ts-node -r tsconfig-paths/register src/database/seed-admin.ts",
     "fix:product-id-types": "ts-node -r tsconfig-paths/register src/database/fix-product-id-types.ts",
+    "migrate:footwear-subcategory-tabnames": "ts-node -r tsconfig-paths/register src/database/migrate-footwear-subcategory-tabnames.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
