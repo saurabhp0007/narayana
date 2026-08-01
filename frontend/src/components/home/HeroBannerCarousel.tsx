@@ -162,7 +162,7 @@ export default function HeroBannerCarousel({ banners, announcementText }: HeroBa
                   transition={{ duration: 0.5, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
                 >
                   <Link
-                    href={banner.linkUrl}
+                    href={banner.linkUrl || '/products'}
                     className="inline-block border border-white bg-black/10 backdrop-blur-sm text-white text-xs md:text-sm font-medium tracking-widest uppercase px-6 py-3 hover:bg-white hover:text-gray-900 transition-colors"
                   >
                     {banner.buttonText || 'Shop Now'}

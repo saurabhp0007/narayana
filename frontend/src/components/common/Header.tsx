@@ -169,7 +169,7 @@ export default function Header() {
     >
       {/* Main Header — icon-only at every breakpoint */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-3 items-center h-20">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center h-20 gap-2">
           {/* Left: Menu (mobile/tablet) + Search */}
           <div className="flex items-center gap-1 md:gap-3">
             <motion.button
