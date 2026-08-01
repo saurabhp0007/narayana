@@ -9,15 +9,16 @@ import {
   Dimensions,
   FlatList,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../lib/theme';
-import api from '../lib/api';
+import api, { productApi } from '../lib/api';
 import { Product } from '../types';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ProductCard } from '../components/common/ProductCard';
+import { ScreenHeader } from '../components/common/ScreenHeader';
 import { useCartStore } from '../store/cartStore';
 import { useWishlistStore } from '../store/wishlistStore';
+import { useToastStore } from '../store/toastStore';
 
 const { width } = Dimensions.get('window');
 
@@ -32,6 +33,7 @@ export const ProductDetailScreen = ({ navigation, route }: any) => {
 
   const { addToCart } = useCartStore();
   const { addToWishlist } = useWishlistStore();
+  const showToast = useToastStore((s) => s.show);
 
   useEffect(() => {
     fetchProduct();
@@ -41,12 +43,19 @@ export const ProductDetailScreen = ({ navigation, route }: any) => {
     setIsLoading(true);
     try {
       const response = await api.get(`/products/${productId}`);
-      setProduct(response.data.data || response.data);
+      const fetchedProduct = response.data.data || response.data;
+      setProduct(fetchedProduct);
 
-      // Fetch related products
-      if ((response.data.data || response.data).relatedProductIds?.length > 0) {
-        const relatedResponse = await api.get(`/products/featured?limit=4`);
+      // Fetch the product's actual related products (falls back to featured
+      // products if none are configured, so the section isn't empty)
+      if (fetchedProduct.relatedProductIds?.length > 0) {
+        const relatedResponse = await productApi.getAll({
+          productIds: fetchedProduct.relatedProductIds.join(','),
+        });
         setRelatedProducts(relatedResponse.data.data || relatedResponse.data);
+      } else {
+        const featuredResponse = await api.get('/products/featured', { params: { limit: 4 } });
+        setRelatedProducts(featuredResponse.data.data || featuredResponse.data);
       }
     } catch (error) {
       console.error('Error fetching product:', error);
@@ -58,14 +67,14 @@ export const ProductDetailScreen = ({ navigation, route }: any) => {
   const handleAddToCart = async () => {
     try {
       await addToCart(productId, quantity);
-      alert('Added to cart!');
+      showToast('Added to cart!', 'success');
     } catch (error: any) {
       console.error('Error adding to cart:', error);
-      if (error.response?.status === 401 || error.message?.includes('401')) {
-        alert('Please login to add items to cart');
+      if (error.response?.status === 401) {
+        showToast('Please login to add items to cart', 'info');
         navigation.navigate('Login');
       } else {
-        alert('Failed to add to cart. Please try again.');
+        showToast('Failed to add to cart. Please try again.', 'error');
       }
     }
   };
@@ -73,14 +82,14 @@ export const ProductDetailScreen = ({ navigation, route }: any) => {
   const handleAddToWishlist = async () => {
     try {
       await addToWishlist(productId);
-      alert('Added to wishlist!');
+      showToast('Added to wishlist!', 'success');
     } catch (error: any) {
       console.error('Error adding to wishlist:', error);
-      if (error.response?.status === 401 || error.message?.includes('401')) {
-        alert('Please login to add items to wishlist');
+      if (error.response?.status === 401) {
+        showToast('Please login to add items to wishlist', 'info');
         navigation.navigate('Login');
       } else {
-        alert('Failed to add to wishlist. Please try again.');
+        showToast('Failed to add to wishlist. Please try again.', 'error');
       }
     }
   };
@@ -96,28 +105,26 @@ export const ProductDetailScreen = ({ navigation, route }: any) => {
   const savings = hasDiscount ? product.price - product.discountPrice! : 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Product Details</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => navigation.navigate('Wishlist')}>
-            <Ionicons name="heart-outline" size={24} color={colors.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('Cart')}>
-            <Ionicons name="cart-outline" size={24} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
-      </View>
+    <View style={styles.container}>
+      <ScreenHeader
+        title="Product Details"
+        rightSlot={
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => navigation.navigate('Wishlist')} hitSlop={8}>
+              <Ionicons name="heart-outline" size={22} color={colors.white} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Cart')} hitSlop={8}>
+              <Ionicons name="cart-outline" size={22} color={colors.white} />
+            </TouchableOpacity>
+          </View>
+        }
+      />
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Breadcrumb */}
         <View style={styles.breadcrumb}>
           <Text style={styles.breadcrumbText}>
-            Home {'>'} Products {'>'} {product.categoryId?.name || 'Category'} {'>'} {product.name}
+            Home {'>'} Products {'>'} {typeof product.categoryId === 'object' ? product.categoryId.name : 'Category'} {'>'} {product.name}
           </Text>
         </View>
 
@@ -278,7 +285,7 @@ export const ProductDetailScreen = ({ navigation, route }: any) => {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -286,20 +293,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.primary,
   },
   headerActions: {
     flexDirection: 'row',

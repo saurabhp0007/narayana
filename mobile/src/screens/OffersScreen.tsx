@@ -4,13 +4,13 @@ import {
     Text,
     StyleSheet,
     FlatList,
-    SafeAreaView,
     RefreshControl,
 } from 'react-native';
 import { offerApi } from '../lib/api';
 import { Offer } from '../types';
 import { OfferCard } from '../components/offers/OfferCard';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { ScreenHeader } from '../components/common/ScreenHeader';
 import { colors } from '../lib/theme';
 
 export const OffersScreen = ({ navigation }: any) => {
@@ -59,18 +59,19 @@ export const OffersScreen = ({ navigation }: any) => {
 
     if (error) {
         return (
-            <SafeAreaView style={styles.container}>
+            <View style={styles.container}>
+                <ScreenHeader title="Special Offers" />
                 <View style={styles.errorContainer}>
                     <Text style={styles.errorText}>{error}</Text>
                 </View>
-            </SafeAreaView>
+            </View>
         );
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>Special Offers</Text>
+        <View style={styles.container}>
+            <ScreenHeader title="Special Offers" />
+            <View style={styles.subtitleBar}>
                 <Text style={styles.subtitle}>Exclusive deals just for you</Text>
             </View>
 
@@ -101,7 +102,7 @@ export const OffersScreen = ({ navigation }: any) => {
                     )}
                 />
             )}
-        </SafeAreaView>
+        </View>
     );
 };
 
@@ -110,17 +111,12 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: colors.background,
     },
-    header: {
-        padding: 20,
+    subtitleBar: {
+        paddingHorizontal: 20,
+        paddingVertical: 12,
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: colors.borderLight,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: colors.primary,
-        marginBottom: 4,
     },
     subtitle: {
         fontSize: 14,

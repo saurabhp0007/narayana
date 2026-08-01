@@ -74,8 +74,126 @@ export interface Product {
   videos: string[];
   sliders: string[];
   isActive: boolean;
+  badge?: ProductBadge;
+  isBestSeller?: boolean;
+  showInLatestArrivals?: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export type ProductBadge =
+  | 'NEW'
+  | 'SALE'
+  | 'PREMIUM'
+  | 'TRENDING'
+  | 'COMBO'
+  | 'BEST_VALUE'
+  | 'LIMITED_SALE'
+  | 'CASUAL'
+  | 'OFFER'
+  | 'UNDER_1K'
+  | 'BUDGET_PICK'
+  | 'LUXURY';
+
+// Homepage "Latest Arrivals" / "Best Sellers" tab card (one per category)
+export interface LatestArrivalsCategory {
+  categoryId: string;
+  categoryName: string;
+  categorySlug: string;
+  images: string[];
+}
+
+// Hero banner (independent of Offer)
+export interface HeroBanner {
+  _id: string;
+  image: string;
+  subtitle?: string;
+  title: string;
+  buttonText?: string;
+  linkUrl: string;
+  isActive: boolean;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Curated homepage product showcase: banner + hand-picked products
+export interface Collection {
+  _id: string;
+  name: string;
+  slug: string;
+  bannerImage?: string;
+  productIds: string[] | Product[];
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Homepage "Shop by Category" tab label (independent of each product's own category)
+export interface ShopCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// A subcategory tile inside a homepage "Shop by Category" tab
+export interface ShopSubcategory {
+  _id: string;
+  name: string;
+  slug: string;
+  image?: string;
+  offerText?: string;
+  shopCategoryId: string | ShopCategory;
+  productIds: string[] | Product[];
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// A subcategory tile inside one or more homepage Footwear tab groups
+export interface FootwearSubcategory {
+  _id: string;
+  name: string;
+  slug: string;
+  image?: string;
+  offerText?: string;
+  tabNames: string[];
+  productIds: string[] | Product[];
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Review {
+  _id: string;
+  customerName: string;
+  location?: string;
+  rating: number;
+  text: string;
+  verifiedPurchase: boolean;
+  productId?: string;
+  categoryId?: string;
+  productLabel?: string;
+  isApproved: boolean;
+  displayOnHomepage: boolean;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HomepageSettings {
+  countdownEnabled?: boolean;
+  countdownEndDate?: string;
+  countdownLabel?: string;
+  announcementBarEnabled?: boolean;
+  announcementBarText?: string;
 }
 
 // Cart types

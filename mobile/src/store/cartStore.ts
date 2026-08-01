@@ -21,10 +21,12 @@ export const useCartStore = create<CartState>((set, get) => ({
   items: [],
   summary: {
     subtotal: 0,
-    productDiscounts: 0,
-    offerDiscounts: 0,
+    totalProductDiscount: 0,
+    totalOfferDiscount: 0,
     totalDiscount: 0,
     total: 0,
+    totalItems: 0,
+    itemCount: 0,
   },
   count: 0,
   isLoading: false,
@@ -67,7 +69,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   updateQuantity: async (itemId: string, quantity: number) => {
     set({ isLoading: true, error: null });
     try {
-      await api.patch(`/cart/item/${itemId}`, { quantity });
+      await api.patch(`/cart/${itemId}`, { quantity });
       await get().fetchCart();
     } catch (error: any) {
       set({
@@ -80,7 +82,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   removeFromCart: async (itemId: string) => {
     set({ isLoading: true, error: null });
     try {
-      await api.delete(`/cart/item/${itemId}`);
+      await api.delete(`/cart/${itemId}`);
       await get().fetchCart();
     } catch (error: any) {
       set({
@@ -98,10 +100,12 @@ export const useCartStore = create<CartState>((set, get) => ({
         items: [],
         summary: {
           subtotal: 0,
-          productDiscounts: 0,
-          offerDiscounts: 0,
+          totalProductDiscount: 0,
+          totalOfferDiscount: 0,
           totalDiscount: 0,
           total: 0,
+          totalItems: 0,
+          itemCount: 0,
         },
         count: 0,
         isLoading: false,

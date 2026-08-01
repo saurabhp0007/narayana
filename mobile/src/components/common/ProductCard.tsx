@@ -129,12 +129,14 @@ const styles = StyleSheet.create({
     color: colors.primary,
     marginBottom: 8,
     lineHeight: 20,
+    minHeight: 40,
   },
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
     gap: 8,
+    minHeight: 22,
   },
   price: {
     fontSize: 16,

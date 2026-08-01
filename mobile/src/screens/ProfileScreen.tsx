@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../lib/theme';
 import { useAuthStore } from '../store/authStore';
+import { ScreenHeader } from '../components/common/ScreenHeader';
 
 export const ProfileScreen = ({ navigation }: any) => {
   const { user, logout } = useAuthStore();
@@ -18,7 +18,7 @@ export const ProfileScreen = ({ navigation }: any) => {
           await logout();
           navigation.reset({
             index: 0,
-            routes: [{ name: 'Main' }],
+            routes: [{ name: 'Home' }],
           });
         },
       },
@@ -27,14 +27,8 @@ export const ProfileScreen = ({ navigation }: any) => {
 
   if (!user) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={colors.primary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Profile</Text>
-          <View style={{ width: 24 }} />
-        </View>
+      <View style={styles.container}>
+        <ScreenHeader title="Profile" />
         <View style={styles.notLoggedIn}>
           <Ionicons name="person-circle-outline" size={80} color={colors.secondary} />
           <Text style={styles.notLoggedInTitle}>Not Logged In</Text>
@@ -46,20 +40,13 @@ export const ProfileScreen = ({ navigation }: any) => {
             <Text style={styles.registerButtonText}>Create Account</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profile</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <View style={styles.container}>
+      <ScreenHeader title="Profile" />
 
       {/* User Info */}
       <View style={styles.userInfoSection}>
@@ -129,7 +116,7 @@ export const ProfileScreen = ({ navigation }: any) => {
           </Text>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -137,20 +124,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.primary,
   },
   notLoggedIn: {
     flex: 1,

@@ -106,6 +106,8 @@ export const productApi = {
   getBySubcategory: (subcategoryId: string) => api.get(`/products/by-subcategory/${subcategoryId}`),
   getByFamily: (familySKU: string) => api.get(`/products/by-family/${familySKU}`),
   getFeatured: (limit?: number) => api.get('/products/featured', { params: { limit } }),
+  getLatestArrivals: () => api.get('/products/latest-arrivals'),
+  getBestSellersSections: () => api.get('/products/best-sellers-sections'),
   autosuggest: (q: string, limit?: number) => api.get('/products/autosuggest', { params: { q, limit } }),
 };
 
@@ -150,5 +152,46 @@ export const offerApi = {
   getNavbar: () => api.get('/offers/navbar'),
   getById: (id: string) => api.get(`/offers/${id}`),
   getForProduct: (productId: string) => api.get(`/offers/product/${productId}`),
+};
+
+// Footwear Subcategory API (subcategory tiles inside a homepage Footwear tab group)
+export const footwearSubcategoryApi = {
+  getAll: (params?: { isActive?: boolean; tabName?: string }) => api.get('/footwear-subcategories', { params }),
+  getActive: () => api.get('/footwear-subcategories/active'),
+  getBySlug: (slug: string) => api.get(`/footwear-subcategories/slug/${slug}`),
+};
+
+// Hero Banner API (independent of Offers)
+export const heroBannerApi = {
+  getAll: () => api.get('/hero-banners'),
+  getActive: () => api.get('/hero-banners/active'),
+};
+
+// Collection API (curated homepage product showcase: banner + hand-picked products)
+export const collectionApi = {
+  getAll: () => api.get('/collections'),
+  getActive: () => api.get('/collections/active'),
+};
+
+// Shop Category API (homepage "Shop by Category" tabs)
+export const shopCategoryApi = {
+  getAll: () => api.get('/shop-categories'),
+  getActive: () => api.get('/shop-categories/active'),
+};
+
+// Shop Subcategory API (subcategory tiles inside a homepage Shop by Category tab)
+export const shopSubcategoryApi = {
+  getAll: (params?: { isActive?: boolean; shopCategoryId?: string }) => api.get('/shop-subcategories', { params }),
+  getActive: () => api.get('/shop-subcategories/active'),
+};
+
+// Settings API
+export const settingsApi = {
+  getHomepage: () => api.get('/settings/homepage'),
+};
+
+// Review API
+export const reviewApi = {
+  getHomepage: (limit?: number) => api.get('/reviews/homepage', { params: { limit } }),
 };
 

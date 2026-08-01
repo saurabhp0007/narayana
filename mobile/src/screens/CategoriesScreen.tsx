@@ -4,7 +4,6 @@ import {
     Text,
     StyleSheet,
     FlatList,
-    SafeAreaView,
     TouchableOpacity,
     ScrollView,
 } from 'react-native';
@@ -12,6 +11,7 @@ import { useDataStore } from '../store/dataStore';
 import { Gender, Subcategory } from '../types';
 import { CategoryCard } from '../components/common/CategoryCard';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { ScreenHeader } from '../components/common/ScreenHeader';
 import { colors } from '../lib/theme';
 
 export const CategoriesScreen = ({ navigation }: any) => {
@@ -64,10 +64,8 @@ export const CategoriesScreen = ({ navigation }: any) => {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>Browse Categories</Text>
-            </View>
+        <View style={styles.container}>
+            <ScreenHeader title="Browse Categories" />
 
             {/* Gender Tabs */}
             <ScrollView
@@ -118,7 +116,7 @@ export const CategoriesScreen = ({ navigation }: any) => {
                     )}
                 />
             )}
-        </SafeAreaView>
+        </View>
     );
 };
 
@@ -126,17 +124,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background,
-    },
-    header: {
-        padding: 20,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: colors.borderLight,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: colors.primary,
     },
     tabsContainer: {
         backgroundColor: '#fff',

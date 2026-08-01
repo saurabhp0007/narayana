@@ -8,7 +8,6 @@ import {
   Dimensions,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../lib/theme';
 import { productApi } from '../lib/api';
@@ -18,9 +17,11 @@ import { SearchBar } from '../components/common/SearchBar';
 import { CustomBottomSheet } from '../components/common/CustomBottomSheet';
 import { CustomDropdown } from '../components/common/CustomDropdown';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { ScreenHeader } from '../components/common/ScreenHeader';
 import { useCartStore } from '../store/cartStore';
 import { useWishlistStore } from '../store/wishlistStore';
 import { useDataStore } from '../store/dataStore';
+import { useToastStore } from '../store/toastStore';
 
 const { width } = Dimensions.get('window');
 
@@ -44,6 +45,7 @@ export const ProductsScreen = ({ navigation, route }: any) => {
   const { genders, allSubcategories, categoriesByGender, fetchGenders, fetchAllSubcategories, fetchCategoriesByGender } = useDataStore();
   const { addToCart } = useCartStore();
   const { addToWishlist } = useWishlistStore();
+  const showToast = useToastStore((s) => s.show);
 
   useEffect(() => {
     fetchGenders();
@@ -113,14 +115,14 @@ export const ProductsScreen = ({ navigation, route }: any) => {
   const handleAddToCart = async (productId: string) => {
     try {
       await addToCart(productId, 1);
-      alert('Added to cart successfully!');
+      showToast('Added to cart successfully!', 'success');
     } catch (error: any) {
       console.error('Error adding to cart:', error);
-      if (error.response?.status === 401 || error.message?.includes('401')) {
-        alert('Please login to add items to cart');
+      if (error.response?.status === 401) {
+        showToast('Please login to add items to cart', 'info');
         navigation.navigate('Login');
       } else {
-        alert('Failed to add to cart. Please try again.');
+        showToast('Failed to add to cart. Please try again.', 'error');
       }
     }
   };
@@ -128,14 +130,14 @@ export const ProductsScreen = ({ navigation, route }: any) => {
   const handleAddToWishlist = async (productId: string) => {
     try {
       await addToWishlist(productId);
-      alert('Added to wishlist successfully!');
+      showToast('Added to wishlist successfully!', 'success');
     } catch (error: any) {
       console.error('Error adding to wishlist:', error);
-      if (error.response?.status === 401 || error.message?.includes('401')) {
-        alert('Please login to add items to wishlist');
+      if (error.response?.status === 401) {
+        showToast('Please login to add items to wishlist', 'info');
         navigation.navigate('Login');
       } else {
-        alert('Failed to add to wishlist. Please try again.');
+        showToast('Failed to add to wishlist. Please try again.', 'error');
       }
     }
   };
@@ -174,17 +176,15 @@ export const ProductsScreen = ({ navigation, route }: any) => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{route.params?.title || 'Products'}</Text>
-        <TouchableOpacity onPress={() => setShowFilters(true)}>
-          <Ionicons name="filter-outline" size={24} color={colors.primary} />
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <ScreenHeader
+        title={route.params?.title || 'Products'}
+        rightSlot={
+          <TouchableOpacity onPress={() => setShowFilters(true)} hitSlop={10}>
+            <Ionicons name="filter-outline" size={22} color={colors.white} />
+          </TouchableOpacity>
+        }
+      />
 
       {/* Search */}
       <View style={styles.searchContainer}>
@@ -276,7 +276,7 @@ export const ProductsScreen = ({ navigation, route }: any) => {
           </TouchableOpacity>
         </View>
       </CustomBottomSheet>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -284,20 +284,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.primary,
   },
   searchContainer: {
     paddingHorizontal: 16,

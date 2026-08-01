@@ -8,13 +8,13 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../lib/theme';
 import api from '../lib/api';
 import { Order } from '../types';
 import { CustomDropdown } from '../components/common/CustomDropdown';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { ScreenHeader } from '../components/common/ScreenHeader';
 import { useAuthStore } from '../store/authStore';
 
 const statusColors: Record<string, { bg: string; text: string }> = {
@@ -35,9 +35,10 @@ export const OrdersScreen = ({ navigation }: any) => {
 
   const fetchOrders = async () => {
     try {
-      const response = await api.get('/order');
-      setOrders(response.data);
-      setFilteredOrders(response.data);
+      const response = await api.get('/orders/my-orders', { params: { limit: 100 } });
+      const data = response.data.data || response.data;
+      setOrders(data);
+      setFilteredOrders(data);
     } catch (error) {
       console.error('Error fetching orders:', error);
     } finally {
@@ -76,14 +77,8 @@ export const OrdersScreen = ({ navigation }: any) => {
 
   if (!user) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={colors.primary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>My Orders</Text>
-          <View style={{ width: 24 }} />
-        </View>
+      <View style={styles.container}>
+        <ScreenHeader title="My Orders" />
         <View style={styles.emptyState}>
           <Ionicons name="person-outline" size={64} color={colors.secondary} />
           <Text style={styles.emptyTitle}>Please Login</Text>
@@ -92,7 +87,7 @@ export const OrdersScreen = ({ navigation }: any) => {
             <Text style={styles.loginButtonText}>Login</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -101,15 +96,8 @@ export const OrdersScreen = ({ navigation }: any) => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Orders</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <View style={styles.container}>
+      <ScreenHeader title="My Orders" />
 
       {/* Status Filter */}
       <View style={styles.filterContainer}>
@@ -158,12 +146,12 @@ export const OrdersScreen = ({ navigation }: any) => {
               <View style={styles.orderItems}>
                 {order.items.map((item, index) => (
                   <View key={index} style={styles.orderItem}>
-                    <Image source={{ uri: item.product.images[0] }} style={styles.itemImage} />
+                    <Image source={{ uri: item.images?.[0] }} style={styles.itemImage} />
                     <View style={styles.itemInfo}>
                       <Text style={styles.itemName} numberOfLines={1}>
-                        {item.product.name}
+                        {item.productName}
                       </Text>
-                      <Text style={styles.itemSku}>SKU: {item.product.sku}</Text>
+                      <Text style={styles.itemSku}>SKU: {item.sku}</Text>
                       <Text style={styles.itemQty}>Qty: {item.quantity}</Text>
                     </View>
                     <Text style={styles.itemPrice}>₹{item.price.toFixed(2)}</Text>
@@ -222,7 +210,7 @@ export const OrdersScreen = ({ navigation }: any) => {
           ))}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -230,20 +218,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.primary,
   },
   filterContainer: {
     paddingHorizontal: 16,

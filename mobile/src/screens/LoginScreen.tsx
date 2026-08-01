@@ -8,83 +8,70 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../lib/theme';
+import { colors, radius, shadow, spacing } from '../lib/theme';
 import { useAuthStore } from '../store/authStore';
+import { AuthHeader } from '../components/common/AuthHeader';
 
 export const LoginScreen = ({ navigation }: any) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
   const { login, isLoading, error, clearError } = useAuthStore();
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      return;
-    }
+    if (!email || !password) return;
     try {
       await login(email, password);
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Main' }],
-      });
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
     } catch (err) {
-      // Error is handled by store
+      // Error is surfaced via the store's `error` state below
     }
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={24} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
+    <View style={styles.container}>
+      <AuthHeader title="Welcome Back" subtitle="Sign in to continue shopping" onBack={() => navigation.goBack()} />
 
-          {/* Form */}
-          <View style={styles.formContainer}>
-            <Text style={styles.title}>Sign In</Text>
-            <Text style={styles.subtitle}>Welcome back to Narayana Enterprises</Text>
-
-            {error && (
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <View style={styles.formCard}>
+            {error ? (
               <View style={styles.errorContainer}>
-                <Ionicons name="alert-circle" size={20} color={colors.danger} />
+                <Ionicons name="alert-circle" size={18} color={colors.danger} />
                 <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity onPress={clearError}>
-                  <Ionicons name="close" size={20} color={colors.danger} />
+                <TouchableOpacity onPress={clearError} hitSlop={8}>
+                  <Ionicons name="close" size={18} color={colors.danger} />
                 </TouchableOpacity>
               </View>
-            )}
+            ) : null}
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Email Address</Text>
-              <View style={styles.inputContainer}>
-                <Ionicons name="mail-outline" size={20} color={colors.secondary} />
+              <View style={[styles.inputContainer, focusedField === 'email' && styles.inputContainerFocused]}>
+                <Ionicons name="mail-outline" size={19} color={colors.secondary} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter your email"
+                  placeholder="you@example.com"
                   placeholderTextColor={colors.placeholder}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  onFocus={() => setFocusedField('email')}
+                  onBlur={() => setFocusedField(null)}
                 />
               </View>
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Password</Text>
-              <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color={colors.secondary} />
+              <View style={[styles.inputContainer, focusedField === 'password' && styles.inputContainerFocused]}>
+                <Ionicons name="lock-closed-outline" size={19} color={colors.secondary} />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your password"
@@ -92,138 +79,94 @@ export const LoginScreen = ({ navigation }: any) => {
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
+                  onFocus={() => setFocusedField('password')}
+                  onBlur={() => setFocusedField(null)}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Ionicons
-                    name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                    size={20}
-                    color={colors.secondary}
-                  />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={19} color={colors.secondary} />
                 </TouchableOpacity>
               </View>
             </View>
 
             <TouchableOpacity
-              style={[styles.loginButton, isLoading && styles.disabledButton]}
+              style={[styles.submitButton, (isLoading || !email || !password) && styles.disabledButton]}
               onPress={handleLogin}
-              disabled={isLoading}
+              disabled={isLoading || !email || !password}
+              activeOpacity={0.85}
             >
-              <Text style={styles.loginButtonText}>
-                {isLoading ? 'Signing in...' : 'Sign In'}
-              </Text>
+              {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Sign In</Text>}
             </TouchableOpacity>
 
-            <View style={styles.registerContainer}>
-              <Text style={styles.registerText}>Don't have an account?</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                <Text style={styles.registerLink}>Create a new account</Text>
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <View style={styles.footerRow}>
+              <Text style={styles.footerText}>Don't have an account?</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Register')} hitSlop={6}>
+                <Text style={styles.footerLink}>Create one</Text>
               </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  formContainer: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: colors.primary,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: colors.secondary,
-    marginBottom: 32,
+  container: { flex: 1, backgroundColor: colors.primary },
+  keyboardView: { flex: 1, backgroundColor: colors.lightBackground },
+  scrollContent: { flexGrow: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xl },
+  formCard: {
+    backgroundColor: colors.white,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    ...shadow.md,
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fef2f2',
     padding: 12,
-    borderRadius: 8,
-    marginBottom: 20,
+    borderRadius: radius.md,
+    marginBottom: spacing.lg,
     gap: 8,
   },
-  errorText: {
-    flex: 1,
-    color: colors.danger,
-    fontSize: 14,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary,
-    marginBottom: 8,
-  },
+  errorText: { flex: 1, color: colors.danger, fontSize: 13 },
+  inputGroup: { marginBottom: spacing.md },
+  label: { fontSize: 13, fontWeight: '600', color: colors.primary, marginBottom: 8 },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    backgroundColor: colors.lightBackground,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    borderRadius: radius.md,
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    gap: 8,
+    gap: 10,
   },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: colors.primary,
+  inputContainerFocused: {
+    borderColor: colors.primary,
+    backgroundColor: colors.white,
   },
-  loginButton: {
+  input: { flex: 1, fontSize: 15, color: colors.primary, padding: 0 },
+  submitButton: {
     backgroundColor: colors.primary,
-    paddingVertical: 14,
-    borderRadius: 8,
+    paddingVertical: 15,
+    borderRadius: radius.md,
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: spacing.sm,
   },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  registerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 24,
-    gap: 4,
-  },
-  registerText: {
-    fontSize: 14,
-    color: colors.secondary,
-  },
-  registerLink: {
-    fontSize: 14,
-    color: colors.info,
-    fontWeight: '600',
-  },
+  disabledButton: { opacity: 0.5 },
+  submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: spacing.lg },
+  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.borderLight },
+  dividerText: { fontSize: 12, color: colors.placeholder },
+  footerRow: { flexDirection: 'row', justifyContent: 'center', gap: 4 },
+  footerText: { fontSize: 14, color: colors.secondary },
+  footerLink: { fontSize: 14, color: colors.info, fontWeight: '700' },
 });

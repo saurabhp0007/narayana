@@ -9,13 +9,13 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../lib/theme';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { orderApi } from '../lib/api';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { ScreenHeader } from '../components/common/ScreenHeader';
 
 export const CartScreen = ({ navigation }: any) => {
   const { items, summary, isLoading, fetchCart, updateQuantity, removeFromCart, clearCart } = useCartStore();
@@ -106,14 +106,8 @@ export const CartScreen = ({ navigation }: any) => {
 
   if (!user) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={colors.primary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Shopping Cart</Text>
-          <View style={{ width: 24 }} />
-        </View>
+      <View style={styles.container}>
+        <ScreenHeader title="Shopping Cart" />
         <View style={styles.emptyState}>
           <Ionicons name="person-outline" size={64} color={colors.secondary} />
           <Text style={styles.emptyTitle}>Please Login</Text>
@@ -122,7 +116,7 @@ export const CartScreen = ({ navigation }: any) => {
             <Text style={styles.loginButtonText}>Login</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -131,15 +125,8 @@ export const CartScreen = ({ navigation }: any) => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Shopping Cart</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <View style={styles.container}>
+      <ScreenHeader title="Shopping Cart" />
 
       {items.length === 0 ? (
         <View style={styles.emptyState}>
@@ -225,7 +212,7 @@ export const CartScreen = ({ navigation }: any) => {
           </View>
         </>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -233,20 +220,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.primary,
   },
   emptyState: {
     flex: 1,

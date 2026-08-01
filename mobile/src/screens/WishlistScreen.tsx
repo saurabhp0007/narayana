@@ -8,13 +8,13 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../lib/theme';
 import { useWishlistStore } from '../store/wishlistStore';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { ScreenHeader } from '../components/common/ScreenHeader';
 
 const { width } = Dimensions.get('window');
 
@@ -40,14 +40,8 @@ export const WishlistScreen = ({ navigation }: any) => {
 
   if (!user) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={colors.primary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Wishlist</Text>
-          <View style={{ width: 24 }} />
-        </View>
+      <View style={styles.container}>
+        <ScreenHeader title="Wishlist" />
         <View style={styles.emptyState}>
           <Ionicons name="person-outline" size={64} color={colors.secondary} />
           <Text style={styles.emptyTitle}>Please Login</Text>
@@ -56,7 +50,7 @@ export const WishlistScreen = ({ navigation }: any) => {
             <Text style={styles.loginButtonText}>Login</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -65,15 +59,8 @@ export const WishlistScreen = ({ navigation }: any) => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Wishlist</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <View style={styles.container}>
+      <ScreenHeader title="Wishlist" />
 
       {items.length === 0 ? (
         <View style={styles.emptyState}>
@@ -92,7 +79,7 @@ export const WishlistScreen = ({ navigation }: any) => {
           contentContainerStyle={styles.wishlistGrid}
           columnWrapperStyle={styles.row}
           renderItem={({ item }) => {
-            const product = item.product;
+            const product = item.productId;
             const hasDiscount = product.discountPrice && product.discountPrice < product.price;
             return (
               <View style={styles.wishlistCard}>
@@ -133,7 +120,7 @@ export const WishlistScreen = ({ navigation }: any) => {
           }}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -141,20 +128,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.primary,
   },
   emptyState: {
     flex: 1,
