@@ -12,9 +12,9 @@ function CollectionRowSkeleton() {
   return (
     <div className="mb-1 last:mb-0">
       <Skeleton className="w-full aspect-[4/5] sm:aspect-[16/9] md:aspect-[21/9] rounded-none" />
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-px bg-gray-100">
+      <div className="flex gap-2 overflow-x-hidden px-4 pt-3 pb-1 sm:grid sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 sm:gap-px sm:p-0 sm:bg-gray-100">
         {[...Array(7)].map((_, i) => (
-          <Skeleton key={i} className="aspect-[4/5] rounded-none" />
+          <Skeleton key={i} className="w-[44%] flex-shrink-0 aspect-[4/5] rounded-none sm:w-auto sm:flex-shrink" />
         ))}
       </div>
     </div>
@@ -71,9 +71,11 @@ function CollectionRow({ collection }: { collection: Collection }) {
           <Image src={collection.bannerImage} alt={collection.name} fill className="object-cover" sizes="100vw" />
         </div>
       )}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-px bg-gray-100">
+      <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 pt-3 pb-1 sm:grid sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 sm:gap-px sm:overflow-visible sm:p-0 sm:bg-gray-100">
         {products.map((product) => (
-          <ProductTile key={product._id} product={product} />
+          <div key={product._id} className="w-[44%] flex-shrink-0 snap-start sm:w-auto sm:flex-shrink">
+            <ProductTile product={product} />
+          </div>
         ))}
       </div>
     </div>

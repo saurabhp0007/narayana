@@ -17,6 +17,7 @@ export default function HeroBannerManagementPage() {
 
   const [formData, setFormData] = useState<CreateHeroBannerDto>({
     image: '',
+    mobileImage: '',
     subtitle: '',
     title: '',
     buttonText: 'Shop Now',
@@ -47,6 +48,7 @@ export default function HeroBannerManagementPage() {
   const resetForm = () => {
     setFormData({
       image: '',
+      mobileImage: '',
       subtitle: '',
       title: '',
       buttonText: 'Shop Now',
@@ -67,6 +69,7 @@ export default function HeroBannerManagementPage() {
     setEditingBanner(banner);
     setFormData({
       image: banner.image,
+      mobileImage: banner.mobileImage || '',
       subtitle: banner.subtitle || '',
       title: banner.title,
       buttonText: banner.buttonText || 'Shop Now',
@@ -272,6 +275,19 @@ export default function HeroBannerManagementPage() {
                       folder="hero-banners"
                     />
                     {formErrors.image && <p className="text-sm text-red-600">{formErrors.image}</p>}
+
+                    <div>
+                      <ImageUploadField
+                        label="Mobile Banner Image"
+                        value={formData.mobileImage || ''}
+                        onChange={(url) => setFormData((prev) => ({ ...prev, mobileImage: url }))}
+                        folder="hero-banners"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Optional. Shown instead of the banner image above on mobile-sized screens. Falls back to the
+                        banner image if left empty.
+                      </p>
+                    </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Subtitle</label>

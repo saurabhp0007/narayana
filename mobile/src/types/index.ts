@@ -107,6 +107,7 @@ export interface LatestArrivalsCategory {
 export interface HeroBanner {
   _id: string;
   image: string;
+  mobileImage?: string;
   subtitle?: string;
   title: string;
   buttonText?: string;

@@ -117,15 +117,38 @@ export default function HeroBannerCarousel({ banners, announcementText }: HeroBa
               animate={shouldReduceMotion ? undefined : { scale: 1.08 }}
               transition={{ duration: 5, ease: 'linear' }}
             >
-              <Image
-                src={banner.image}
-                alt={banner.title}
-                fill
-                priority={activeIndex === 0}
-                className="object-cover pointer-events-none"
-                sizes="100vw"
-                draggable={false}
-              />
+              {banner.mobileImage ? (
+                <>
+                  <Image
+                    src={banner.mobileImage}
+                    alt={banner.title}
+                    fill
+                    priority={activeIndex === 0}
+                    className="object-cover pointer-events-none block sm:hidden"
+                    sizes="100vw"
+                    draggable={false}
+                  />
+                  <Image
+                    src={banner.image}
+                    alt={banner.title}
+                    fill
+                    priority={activeIndex === 0}
+                    className="object-cover pointer-events-none hidden sm:block"
+                    sizes="100vw"
+                    draggable={false}
+                  />
+                </>
+              ) : (
+                <Image
+                  src={banner.image}
+                  alt={banner.title}
+                  fill
+                  priority={activeIndex === 0}
+                  className="object-cover pointer-events-none"
+                  sizes="100vw"
+                  draggable={false}
+                />
+              )}
             </motion.div>
 
             {/* Dark gradient for text legibility */}

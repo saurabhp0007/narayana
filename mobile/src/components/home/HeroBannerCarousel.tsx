@@ -190,7 +190,11 @@ export function HeroBannerCarousel({
           <View style={styles.imageArea}>
             <Animated.View style={[StyleSheet.absoluteFill, fadeStyle]}>
               <Animated.View style={[StyleSheet.absoluteFill, kenBurnsStyle]}>
-                <Image source={{ uri: banner.image }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                <Image
+                  source={{ uri: banner.mobileImage || banner.image }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                />
               </Animated.View>
 
               <LinearGradient

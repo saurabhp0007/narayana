@@ -7,6 +7,11 @@ export class CreateHeroBannerDto {
   @IsNotEmpty({ message: 'Image is required' })
   image: string;
 
+  @ApiPropertyOptional({ description: 'ImageKit URL shown instead of `image` on mobile-sized screens' })
+  @IsOptional()
+  @IsString()
+  mobileImage?: string;
+
   @ApiPropertyOptional({ description: 'Small text shown above the headline', example: 'New Arrivals' })
   @IsOptional()
   @IsString()

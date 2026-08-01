@@ -216,3 +216,14 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
+
+/* Hides the scrollbar on swipeable mobile carousels (product rows, category
+   chips) while keeping the element natively scrollable/swipeable. */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

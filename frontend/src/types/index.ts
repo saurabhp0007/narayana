@@ -334,6 +334,7 @@ export interface CreateOfferDto {
 export interface HeroBanner {
   _id: string;
   image: string;
+  mobileImage?: string;
   subtitle?: string;
   title: string;
   buttonText?: string;
@@ -346,6 +347,7 @@ export interface HeroBanner {
 
 export interface CreateHeroBannerDto {
   image: string;
+  mobileImage?: string;
   subtitle?: string;
   title: string;
   buttonText?: string;
