@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useDataStore } from '@/store/dataStore';
 
 export default function Footer() {
@@ -18,12 +19,14 @@ export default function Footer() {
   return (
     <footer className="bg-white border-t border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <Link href="/" className="inline-block mb-8">
+          <Image src="/brand/logo.png" alt="Narayan Enterprises" width={156} height={70} className="h-10 w-auto" />
+        </Link>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Store Information */}
           <div>
             <h3 className="text-base font-semibold text-gray-900 mb-4">Visit our Store</h3>
             <div className="text-sm text-gray-600 space-y-2">
-              <p>Narayan Enterprises</p>
               <p>Everyday: 9:00am – 8:00pm</p>
               <Link href="/contact" className="text-gray-900 hover:underline block mt-3">
                 Get Location

@@ -6,6 +6,20 @@ import Image from 'next/image';
 import { collectionApi } from '@/lib/api';
 import { Collection, Product } from '@/types';
 import { productBadgeStyles, productBadgeLabels } from '@/lib/productBadge';
+import { Skeleton } from '@/components/common/Skeleton';
+
+function CollectionRowSkeleton() {
+  return (
+    <div className="mb-1 last:mb-0">
+      <Skeleton className="w-full aspect-[4/5] sm:aspect-[16/9] md:aspect-[21/9] rounded-none" />
+      <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-px bg-gray-100">
+        {[...Array(7)].map((_, i) => (
+          <Skeleton key={i} className="aspect-[4/5] rounded-none" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function ProductTile({ product }: { product: Product }) {
   const price = product.discountPrice || product.price;
@@ -86,8 +100,8 @@ export default function CollectionsSection() {
     <section className="bg-white">
       <div className="max-w-7xl mx-auto">
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-900 border-t-transparent"></div>
+          <div className="space-y-8">
+            <CollectionRowSkeleton />
           </div>
         ) : (
           <div className="space-y-8">

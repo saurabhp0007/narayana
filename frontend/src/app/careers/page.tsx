@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import Header from '@/components/common/Header';
-import Footer from '@/components/common/Footer';
 
 export default function CareersPage() {
   const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
@@ -68,10 +66,8 @@ export default function CareersPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Hero Section */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-sm p-8 mb-8 text-white">
           <h1 className="text-4xl font-bold mb-4">Join Our Team</h1>
@@ -227,9 +223,7 @@ export default function CareersPage() {
             </Link>
           </div>
         </div>
-      </main>
-
-      <Footer />
+      </div>
     </div>
   );
 }

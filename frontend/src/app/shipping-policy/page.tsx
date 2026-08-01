@@ -1,13 +1,9 @@
 import Link from 'next/link';
-import Header from '@/components/common/Header';
-import Footer from '@/components/common/Footer';
 
 export default function ShippingPolicyPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="bg-white rounded-lg shadow-sm p-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-8">Shipping Policy</h1>
 
@@ -95,9 +91,7 @@ export default function ShippingPolicyPage() {
             </Link>
           </div>
         </div>
-      </main>
-
-      <Footer />
+      </div>
     </div>
   );
 }

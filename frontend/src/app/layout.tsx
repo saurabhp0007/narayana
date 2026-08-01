@@ -3,6 +3,9 @@ import './globals.css';
 import { AuthProvider } from './providers';
 import DataPreloader from '@/components/common/DataPreloader';
 import EmailUsButton from '@/components/common/EmailUsButton';
+import Toast from '@/components/common/Toast';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
+import SiteChrome from '@/components/common/SiteChrome';
 
 export const metadata: Metadata = {
   title: 'Narayana eCommerce',
@@ -19,8 +22,10 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <DataPreloader />
-          {children}
+          <SiteChrome>{children}</SiteChrome>
           <EmailUsButton />
+          <Toast />
+          <ConfirmDialog />
         </AuthProvider>
       </body>
     </html>

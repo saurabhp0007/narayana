@@ -7,8 +7,6 @@ import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/store/cartStore';
 import { useGuestStore } from '@/store/guestStore';
 import { guestApi } from '@/lib/api';
-import Header from '@/components/common/Header';
-import Footer from '@/components/common/Footer';
 
 interface GuestCheckoutForm {
   name: string;
@@ -151,12 +149,9 @@ export default function GuestCheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      <Header />
-
-      <main className="flex-grow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">Guest Checkout</h1>
+    <div className="bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">Guest Checkout</h1>
 
           {error && (
             <div className="rounded-md bg-red-50 p-4 mb-6">
@@ -417,9 +412,6 @@ export default function GuestCheckoutPage() {
             </div>
           )}
         </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
   );
 }

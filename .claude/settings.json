@@ -31,7 +31,15 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost:3001/\")",
       "Bash(tail -6 /tmp/frontend.log)",
       "Bash(git fetch *)",
-      "Bash(curl -s \"http://localhost:3000/api/products/autosuggest?q=shoes&limit=6\")"
+      "Bash(curl -s \"http://localhost:3000/api/products/autosuggest?q=shoes&limit=6\")",
+      "Bash(npm install *)",
+      "Bash(mkdir -p public/brand)",
+      "Bash(curl -sL \"https://narayanenterprise.in/wp-content/uploads/2025/06/NARAYAN-Enterprise-Logo-01-Copy.png\" -o public/brand/logo.png --max-time 20 -w \"HTTP %{http_code}, %{size_download} bytes\\\\n\")",
+      "Bash(sips -g pixelWidth -g pixelHeight public/brand/logo.png)",
+      "Bash(identify public/brand/logo.png)",
+      "Bash(python3 -c \"from PIL import Image; print\\('PIL available'\\)\")",
+      "Bash(python3)",
+      "Read(//tmp/**)"
     ]
   }
 }

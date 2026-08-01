@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { productApi } from '@/lib/api';
 import { LatestArrivalsSection as SectionCardData } from '@/types';
 import SlideCard from '@/components/common/SlideCard';
+import { ProductGridSkeleton } from '@/components/common/Skeleton';
 
 type TabKey = 'latest' | 'bestSellers';
 
@@ -60,9 +61,7 @@ export default function LatestArrivalsSection() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-900 border-t-transparent"></div>
-          </div>
+          <ProductGridSkeleton count={8} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6" />
         ) : (
           <div key={currentTab} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-in-up">
             {currentSections.map((section) => (

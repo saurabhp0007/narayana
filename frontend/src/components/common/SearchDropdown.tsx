@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useDataStore } from '@/store/dataStore';
 import { productApi } from '@/lib/api';
@@ -66,6 +67,7 @@ export default function SearchDropdown({
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
   // Use external query if provided, otherwise use internal
   const searchQuery = onExternalQueryChange ? externalQuery : internalQuery;
@@ -174,6 +176,7 @@ export default function SearchDropdown({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
+    setHighlightedIndex(-1);
 
     // Clear previous timeout
     if (debounceRef.current) {
@@ -233,15 +236,35 @@ export default function SearchDropdown({
     onClose();
   };
 
-  if (!isOpen) return null;
-
   const displayedCategories = allCategories.slice(0, 5);
   const displayedFeaturedProducts = featuredProducts.slice(0, 4);
   const hasNoResults = showResults && !isSearching && searchResults.length === 0 && matchingCategories.length === 0;
+  const isSearchingActiveQuery = showResults && searchQuery.trim().length >= 2;
+  const activeList = isSearchingActiveQuery ? searchResults : displayedFeaturedProducts;
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (activeList.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex((i) => Math.min(i + 1, activeList.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+      e.preventDefault();
+      handleProductClick(activeList[highlightedIndex]._id);
+    }
+  };
 
   return (
-    <div
+    <AnimatePresence>
+      {isOpen && (
+    <motion.div
       ref={dropdownRef}
+      initial={{ opacity: 0, y: -6, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -6, scale: 0.98 }}
+      transition={{ duration: 0.15 }}
       className={`absolute ${align === 'left' ? 'left-0' : 'right-0'} top-full mt-2 ${fullWidth ? 'w-full min-w-[300px]' : 'w-[calc(100vw-2rem)] max-w-[400px] md:max-w-[600px]'} bg-white rounded-lg shadow-2xl border border-gray-200 z-[9999]`}
     >
       {/* Search Input - Only show if showInput is true */}
@@ -253,9 +276,13 @@ export default function SearchDropdown({
               type="text"
               value={searchQuery}
               onChange={handleInputChange}
+              onKeyDown={handleInputKeyDown}
               placeholder="Search for products, categories and more..."
               className="w-full px-4 py-2.5 pl-10 text-sm border border-gray-300 rounded-lg  bg-gray-50"
               autoComplete="off"
+              role="combobox"
+              aria-expanded={activeList.length > 0}
+              aria-controls="search-results-listbox"
             />
             <svg
               className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
@@ -315,12 +342,16 @@ export default function SearchDropdown({
               // Products sections below, so every card in this dropdown is the same
               // fixed size regardless of container width (compact header vs full-width
               // on the Products page) or how long an individual product's name is.
-              <div className="grid grid-cols-4 gap-3">
-                {searchResults.map((product) => (
+              <div id="search-results-listbox" role="listbox" className="grid grid-cols-4 gap-3">
+                {searchResults.map((product, index) => (
                   <button
                     key={product._id}
+                    role="option"
+                    aria-selected={isSearchingActiveQuery && highlightedIndex === index}
                     onClick={() => handleProductClick(product._id)}
-                    className="flex flex-col text-left hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                    className={`flex flex-col text-left p-2 rounded-lg transition-colors ${
+                      isSearchingActiveQuery && highlightedIndex === index ? 'bg-gray-100' : 'hover:bg-gray-50'
+                    }`}
                   >
                     <div className="relative w-full aspect-square bg-gray-50 rounded overflow-hidden mb-2">
                       {product.images && product.images.length > 0 ? (
@@ -464,12 +495,16 @@ export default function SearchDropdown({
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                   Featured Products
                 </h3>
-                <div className="grid grid-cols-4 gap-3">
-                  {displayedFeaturedProducts.map((product) => (
+                <div id="search-results-listbox" role="listbox" className="grid grid-cols-4 gap-3">
+                  {displayedFeaturedProducts.map((product, index) => (
                     <button
                       key={product._id}
+                      role="option"
+                      aria-selected={!isSearchingActiveQuery && highlightedIndex === index}
                       onClick={() => handleProductClick(product._id)}
-                      className="flex flex-col text-left hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                      className={`flex flex-col text-left p-2 rounded-lg transition-colors ${
+                        !isSearchingActiveQuery && highlightedIndex === index ? 'bg-gray-100' : 'hover:bg-gray-50'
+                      }`}
                     >
                       <div className="relative w-full aspect-square bg-gray-50 rounded overflow-hidden mb-2">
                         {product.images && product.images.length > 0 ? (
@@ -513,6 +548,8 @@ export default function SearchDropdown({
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

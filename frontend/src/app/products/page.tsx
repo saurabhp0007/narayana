@@ -11,8 +11,6 @@ import { useWishlistStore } from '@/store/wishlistStore';
 import { useAuthStore } from '@/store/authStore';
 import { useDataStore } from '@/store/dataStore';
 import { useGuestStore } from '@/store/guestStore';
-import Header from '@/components/common/Header';
-import Footer from '@/components/common/Footer';
 import SearchDropdown from '@/components/common/SearchDropdown';
 import ProductCard from '@/components/common/ProductCard';
 
@@ -407,12 +405,9 @@ function ProductsPageContent() {
   const activeBanner = subcategoryBanner || shopSubcategoryBanner;
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      <Header />
-
-      <main className="flex-grow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-          {/* Page Header */}
+    <div className="bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+        {/* Page Header */}
           {activeBanner ? (
             <div className="mb-5 relative rounded-lg overflow-hidden bg-gray-100">
               {activeBanner.image && (
@@ -819,10 +814,7 @@ function ProductsPageContent() {
             </div>
           </div>
         </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
   );
 }
 

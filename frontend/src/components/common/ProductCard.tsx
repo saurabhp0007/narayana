@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { Product } from '@/types';
 
 interface ProductCardProps {
@@ -45,9 +46,9 @@ export default function ProductCard({
   const showImage = product.images && product.images.length > 0 && !imageFailed;
 
   return (
-    <div className="group">
+    <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }} className="group">
       <Link href={`/products/${product._id}`} className="block">
-        <div className="relative aspect-[4/5] bg-gray-50 rounded-lg overflow-hidden mb-3">
+        <div className="relative aspect-[4/5] bg-gray-50 rounded-lg overflow-hidden mb-3 shadow-none group-hover:shadow-lg transition-shadow duration-300">
           {showImage ? (
             <Image
               src={product.images[0]}
@@ -61,13 +62,15 @@ export default function ProductCard({
             <PlaceholderIcon className="w-12 h-12" />
           )}
           {product.discountPrice && (
-            <span className="absolute top-2 left-2 bg-gray-900 text-white text-xs px-2 py-1 rounded font-medium">
+            <span className="absolute top-2 left-2 bg-gray-900 text-white text-xs px-2 py-1 rounded-full font-medium">
               -{Math.round(((product.price - product.discountPrice) / product.price) * 100)}%
             </span>
           )}
           {onAddToWishlist && (
             <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
                 onClick={(e) => {
                   e.preventDefault();
                   onAddToWishlist(product._id);
@@ -86,7 +89,7 @@ export default function ProductCard({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
                 )}
-              </button>
+              </motion.button>
             </div>
           )}
         </div>
@@ -111,7 +114,8 @@ export default function ProductCard({
         </div>
 
         {onAddToCart && (
-          <button
+          <motion.button
+            whileTap={{ scale: 0.97 }}
             onClick={() => onAddToCart(product._id)}
             disabled={isAddingToCart}
             className="w-full px-3 py-2 bg-gray-900 text-white text-xs font-medium rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50"
@@ -127,9 +131,9 @@ export default function ProductCard({
             ) : (
               'Add to Cart'
             )}
-          </button>
+          </motion.button>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

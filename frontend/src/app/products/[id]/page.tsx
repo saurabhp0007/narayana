@@ -10,8 +10,6 @@ import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
 import { useAuthStore } from '@/store/authStore';
 import { useGuestStore } from '@/store/guestStore';
-import Header from '@/components/common/Header';
-import Footer from '@/components/common/Footer';
 import ProductCard from '@/components/common/ProductCard';
 
 export default function ProductDetailPage() {
@@ -143,96 +141,81 @@ export default function ProductDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-grow bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-1/3 mb-8"></div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="h-96 bg-gray-200 rounded"></div>
-                <div>
-                  <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
-                  <div className="h-24 bg-gray-200 rounded mb-4"></div>
-                  <div className="h-12 bg-gray-200 rounded w-1/3"></div>
-                </div>
+      <div className="bg-gray-50 min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-1/3 mb-8"></div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="h-96 bg-gray-200 rounded"></div>
+              <div>
+                <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                <div className="h-24 bg-gray-200 rounded mb-4"></div>
+                <div className="h-12 bg-gray-200 rounded w-1/3"></div>
               </div>
             </div>
           </div>
-        </main>
-        <Footer />
+        </div>
       </div>
     );
   }
 
   if (notFound || !product) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-grow bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="text-center py-12">
-              <svg
-                className="w-16 h-16 mx-auto text-gray-400 mb-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Product Not Found</h2>
-              <p className="text-gray-600 mb-4">
-                The product you are looking for does not exist or has been removed.
-              </p>
-              <Link
-                href="/products"
-                className="inline-block px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Browse Products
-              </Link>
-            </div>
+      <div className="bg-gray-50 min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center py-12">
+            <svg
+              className="w-16 h-16 mx-auto text-gray-400 mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Product Not Found</h2>
+            <p className="text-gray-600 mb-4">
+              The product you are looking for does not exist or has been removed.
+            </p>
+            <Link
+              href="/products"
+              className="inline-block px-6 py-3 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors"
+            >
+              Browse Products
+            </Link>
           </div>
-        </main>
-        <Footer />
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-grow bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="text-center py-12">
-              <p className="text-red-600 mb-4">{error}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Retry
-              </button>
-            </div>
+      <div className="bg-gray-50 min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center py-12">
+            <p className="text-red-600 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-3 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors"
+            >
+              Retry
+            </button>
           </div>
-        </main>
-        <Footer />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-
-      <main className="flex-grow bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Breadcrumb */}
+    <div className="bg-gray-50 min-h-screen">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Breadcrumb */}
           <nav className="mb-8">
             <ol className="flex items-center space-x-2 text-sm text-gray-600">
               <li>
@@ -531,9 +514,6 @@ export default function ProductDetailPage() {
             </div>
           )}
         </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
   );
 }

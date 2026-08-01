@@ -8,8 +8,6 @@ import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { useGuestStore } from '@/store/guestStore';
 import { guestApi, orderApi } from '@/lib/api';
-import Header from '@/components/common/Header';
-import Footer from '@/components/common/Footer';
 
 interface CheckoutForm {
   name: string;
@@ -203,12 +201,9 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      <Header />
-
-      <main className="flex-grow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between mb-8">
+    <div className="bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-between mb-8">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Checkout</h1>
             {isLoggedIn && (
               <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
@@ -492,9 +487,6 @@ export default function CheckoutPage() {
             </div>
           )}
         </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
   );
 }

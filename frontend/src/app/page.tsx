@@ -3,9 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { HeroBanner } from '@/types';
-import Header from '@/components/common/Header';
-import Footer from '@/components/common/Footer';
-import HeroBannerCarousel from '@/components/home/HeroBannerCarousel';
+import HeroBannerCarousel, { HeroBannerSkeleton } from '@/components/home/HeroBannerCarousel';
 import CountdownTimer from '@/components/home/CountdownTimer';
 import TrustBadges from '@/components/home/TrustBadges';
 import ReviewsSection from '@/components/home/ReviewsSection';
@@ -67,39 +65,36 @@ export default function HomePage() {
     countdown.enabled && countdown.endDate && new Date(countdown.endDate).getTime() > Date.now();
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      <Header />
+    <div className="bg-white">
+      {/* Hero Banner Carousel */}
+      {isLoading ? (
+        <HeroBannerSkeleton />
+      ) : (
+        <HeroBannerCarousel banners={heroBanners} announcementText={announcementText} />
+      )}
 
-      <main className="flex-grow">
+      {/* Mega Sale Countdown */}
+      {showCountdown && countdown.endDate && (
+        <CountdownTimer endDate={countdown.endDate} label={countdown.label} />
+      )}
 
-        {/* Hero Banner Carousel */}
-        {!isLoading && <HeroBannerCarousel banners={heroBanners} announcementText={announcementText} />}
+      {/* Latest Arrivals */}
+      <LatestArrivalsSection />
 
-        {/* Mega Sale Countdown */}
-        {showCountdown && countdown.endDate && (
-          <CountdownTimer endDate={countdown.endDate} label={countdown.label} />
-        )}
+      {/* Footwear */}
+      <FootwearSection />
 
-        {/* Latest Arrivals */}
-        <LatestArrivalsSection />
+      {/* Shop by Category */}
+      <ShopByCategorySection />
 
-        {/* Footwear */}
-        <FootwearSection />
+      {/* Curated Collections */}
+      <CollectionsSection />
 
-        {/* Shop by Category */}
-        <ShopByCategorySection />
+      {/* Trust Badges */}
+      <TrustBadges />
 
-        {/* Curated Collections */}
-        <CollectionsSection />
-
-        {/* Trust Badges */}
-        <TrustBadges />
-
-        {/* Customer Reviews */}
-        <ReviewsSection />
-      </main>
-
-      <Footer />
+      {/* Customer Reviews */}
+      <ReviewsSection />
     </div>
   );
 }

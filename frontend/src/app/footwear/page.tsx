@@ -5,8 +5,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { categoryApi, productApi } from '@/lib/api';
 import { Category, Gender } from '@/types';
-import Header from '@/components/common/Header';
-import Footer from '@/components/common/Footer';
 
 type TabKey = 'deals' | 'mens' | 'womens';
 
@@ -91,12 +89,9 @@ export default function FootwearPage() {
   const activeItems = tabs.find((t) => t.key === activeTab)?.items || [];
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      <Header />
-
-      <main className="flex-grow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <h1 className="text-3xl md:text-4xl font-bold text-center mb-8" style={{ fontFamily: 'Georgia, serif' }}>
+    <div className="bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <h1 className="text-3xl md:text-4xl font-bold text-center mb-8 font-display">
             Footwear
           </h1>
 
@@ -130,9 +125,6 @@ export default function FootwearPage() {
             <div className="text-center text-gray-500 py-12">No items in this section yet.</div>
           )}
         </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
   );
 }

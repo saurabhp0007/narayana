@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { footwearSubcategoryApi } from '@/lib/api';
 import { FootwearSubcategory } from '@/types';
+import { ProductGridSkeleton } from '@/components/common/Skeleton';
 
 export default function FootwearSection() {
   const [tabNames, setTabNames] = useState<string[]>([]);
@@ -65,9 +66,7 @@ export default function FootwearSection() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-900 border-t-transparent"></div>
-          </div>
+          <ProductGridSkeleton count={8} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6" />
         ) : (
           <div key={currentTab} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-in-up">
             {currentSubcategories.map((subcategory) => (
