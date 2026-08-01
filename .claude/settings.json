@@ -42,7 +42,12 @@
       "Read(//tmp/**)",
       "Bash(npx expo *)",
       "Bash(npx expo-doctor *)",
-      "Bash(identify assets/splash.png)"
+      "Bash(identify assets/splash.png)",
+      "Bash(npx eas-cli *)",
+      "Bash(java -version)",
+      "Bash(./gradlew assembleRelease)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001)",
+      "Bash(npm ls *)"
     ]
   }
 }

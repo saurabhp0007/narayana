@@ -12,7 +12,7 @@ function CollectionRowSkeleton() {
   return (
     <div className="mb-1 last:mb-0">
       <Skeleton className="w-full aspect-[4/5] sm:aspect-[16/9] md:aspect-[21/9] rounded-none" />
-      <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-px bg-gray-100">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-px bg-gray-100">
         {[...Array(7)].map((_, i) => (
           <Skeleton key={i} className="aspect-[4/5] rounded-none" />
         ))}
@@ -71,7 +71,7 @@ function CollectionRow({ collection }: { collection: Collection }) {
           <Image src={collection.bannerImage} alt={collection.name} fill className="object-cover" sizes="100vw" />
         </div>
       )}
-      <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-px bg-gray-100">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-px bg-gray-100">
         {products.map((product) => (
           <ProductTile key={product._id} product={product} />
         ))}
@@ -98,7 +98,7 @@ export default function CollectionsSection() {
 
   return (
     <section className="bg-white">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {isLoading ? (
           <div className="space-y-8">
             <CollectionRowSkeleton />

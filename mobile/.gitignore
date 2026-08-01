@@ -20,6 +20,10 @@ web-build/
 android/
 ios/
 
+# Release signing (never commit)
+*.keystore
+release.keystore.properties
+
 # macOS
 .DS_Store
 *.pem
