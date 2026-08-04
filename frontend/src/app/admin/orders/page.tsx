@@ -529,6 +529,9 @@ export default function OrderManagementPage() {
                               SKU
                             </th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                              Size
+                            </th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                               Qty
                             </th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
@@ -546,6 +549,7 @@ export default function OrderManagementPage() {
                                 {item.productName}
                               </td>
                               <td className="px-4 py-2 text-sm text-gray-500">{item.sku}</td>
+                              <td className="px-4 py-2 text-sm text-gray-500">{item.size || '-'}</td>
                               <td className="px-4 py-2 text-sm text-gray-900">{item.quantity}</td>
                               <td className="px-4 py-2 text-sm text-gray-900">
                                 {item.discountPrice

@@ -22,6 +22,9 @@ export class OrderItem {
   @Prop({ required: true, min: 1 })
   quantity: number;
 
+  @Prop({ trim: true })
+  size?: string;
+
   @Prop({ required: true, min: 0 })
   price: number;
 

@@ -12,9 +12,23 @@ import {
   MaxLength,
   ArrayMinSize,
   IsUrl,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ProductBadge } from '../schemas/product.schema';
+
+export class SizeStockDto {
+  @ApiProperty({ description: 'Size label (e.g. "M", "UK 9", "6-8Y")', example: 'M' })
+  @IsString()
+  @IsNotEmpty({ message: 'Size is required' })
+  size: string;
+
+  @ApiProperty({ description: 'Stock quantity for this size', example: 20 })
+  @IsNumber()
+  @Min(0, { message: 'Stock cannot be negative' })
+  stock: number;
+}
 
 export class CreateProductDto {
   @ApiProperty({
@@ -85,6 +99,18 @@ export class CreateProductDto {
   @IsNumber()
   @Min(0, { message: 'Stock cannot be negative' })
   stock: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Per-size stock breakdown. When provided (non-empty), `sizes` and the aggregate `stock` are derived from this instead of the flat fields above.',
+    type: [SizeStockDto],
+    example: [{ size: 'S', stock: 10 }, { size: 'M', stock: 15 }],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SizeStockDto)
+  sizeStock?: SizeStockDto[];
 
   @ApiProperty({
     description: 'Original price of the product',

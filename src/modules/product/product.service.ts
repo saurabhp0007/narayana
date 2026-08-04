@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Product } from './schemas/product.schema';
+import { Product, SizeStock } from './schemas/product.schema';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { GenderService } from '../gender/gender.service';
@@ -71,6 +71,19 @@ export class ProductService {
       await this.validateRelatedProducts(createProductDto.relatedProductIds);
     }
 
+    // When per-size stock is supplied, it's the source of truth: derive `sizes` and
+    // the aggregate `stock` from it so every existing size/stock filter and display
+    // keeps working without touching those code paths.
+    let sizeStockOverride: { sizes: string[]; stock: number; sizeStock: SizeStock[] } | undefined;
+    if (createProductDto.sizeStock && createProductDto.sizeStock.length > 0) {
+      const normalized = this.normalizeSizeStock(createProductDto.sizeStock);
+      sizeStockOverride = {
+        sizeStock: normalized,
+        sizes: normalized.map((s) => s.size),
+        stock: normalized.reduce((sum, s) => sum + s.stock, 0),
+      };
+    }
+
     const product = new this.productModel({
       ...createProductDto,
       sku,
@@ -81,6 +94,7 @@ export class ProductService {
       homepageCategoryId: createProductDto.homepageCategoryId
         ? new Types.ObjectId(createProductDto.homepageCategoryId)
         : undefined,
+      ...sizeStockOverride,
     });
 
     const savedProduct = await product.save();
@@ -441,9 +455,23 @@ export class ProductService {
     // so ID fields ended up persisted as strings, silently breaking every later query that
     // matches against a real ObjectId (e.g. homepageCategoryId, populate()). Verified directly
     // against the DB: this codebase already has legacy categoryId docs corrupted the same way.
-    const { genderId, categoryId, relatedProductIds, homepageCategoryId, ...rest } =
+    const { genderId, categoryId, relatedProductIds, homepageCategoryId, sizeStock, ...rest } =
       updateProductDto;
     Object.assign(product, rest);
+
+    // Same derive-from-sizeStock rule as create(): when sizeStock is supplied (non-empty),
+    // it overrides sizes/stock; an explicit empty array clears per-size tracking and leaves
+    // sizes/stock as whatever `rest` (or the existing document) already has.
+    if (sizeStock !== undefined) {
+      if (sizeStock.length > 0) {
+        const normalized = this.normalizeSizeStock(sizeStock);
+        product.sizeStock = normalized as unknown as SizeStock[];
+        product.sizes = normalized.map((s) => s.size);
+        product.stock = normalized.reduce((sum, s) => sum + s.stock, 0);
+      } else {
+        product.sizeStock = [];
+      }
+    }
 
     if (genderId !== undefined) {
       product.genderId = new Types.ObjectId(genderId);
@@ -475,7 +503,7 @@ export class ProductService {
     return { message: `Product ${product.name} (SKU: ${product.sku}) has been deleted successfully` };
   }
 
-  async updateStock(id: string, quantity: number): Promise<Product> {
+  async updateStock(id: string, quantity: number, size?: string): Promise<Product> {
     // Atomic read-modify-write via a conditioned findOneAndUpdate: the previous
     // implementation loaded the document, changed `stock` in memory, then saved it,
     // which is a classic check-then-act race — two concurrent orders decrementing the
@@ -483,6 +511,38 @@ export class ProductService {
     // update, overselling. The `stock: { $gte: -quantity } ` guard (only relevant for
     // decrements, where quantity is negative) makes Mongo itself the single source of
     // truth for whether enough stock remains, atomically.
+    if (size) {
+      // Per-size variant: increments the matching sizeStock entry and the aggregate
+      // `stock` in the same atomic update, guarded (for decrements) by that entry
+      // having enough stock — same race-free pattern as the aggregate-only path below.
+      const elemMatch: Record<string, unknown> = { size };
+      if (quantity < 0) {
+        elemMatch.stock = { $gte: -quantity };
+      }
+
+      const updatedProduct = await this.productModel
+        .findOneAndUpdate(
+          { _id: id, sizeStock: { $elemMatch: elemMatch } },
+          { $inc: { 'sizeStock.$[elem].stock': quantity, stock: quantity } },
+          { new: true, arrayFilters: [{ 'elem.size': size }] },
+        )
+        .exec();
+
+      if (!updatedProduct) {
+        const product = await this.productModel.findById(id).select('sizeStock').exec();
+        if (!product) {
+          throw new NotFoundException(`Product with ID ${id} not found`);
+        }
+        if (!product.sizeStock?.some((s) => s.size === size)) {
+          throw new BadRequestException(`Size "${size}" not found on this product`);
+        }
+        throw new BadRequestException('Insufficient stock for this operation');
+      }
+
+      await this.invalidateCache();
+      return updatedProduct;
+    }
+
     const condition: Record<string, unknown> = { _id: id };
     if (quantity < 0) {
       condition.stock = { $gte: -quantity };
@@ -502,6 +562,31 @@ export class ProductService {
 
     await this.invalidateCache();
     return updatedProduct;
+  }
+
+  // Single place stock checks resolve "how much is actually available" — total stock
+  // when the product has no per-size breakdown (or no size was requested), otherwise
+  // the specific size's stock (0 if that size isn't tracked on this product).
+  resolveAvailableStock(product: Product, size?: string): number {
+    if (!size || !product.sizeStock || product.sizeStock.length === 0) {
+      return product.stock;
+    }
+    const entry = product.sizeStock.find((s) => s.size === size);
+    return entry ? entry.stock : 0;
+  }
+
+  // Rejects duplicate size labels within one sizeStock payload (they'd otherwise silently
+  // collapse into ambiguous per-size stock — later writes shadowing earlier ones).
+  private normalizeSizeStock(sizeStock: { size: string; stock: number }[]): { size: string; stock: number }[] {
+    const seen = new Set<string>();
+    return sizeStock.map((entry) => {
+      const size = entry.size.trim();
+      if (seen.has(size)) {
+        throw new BadRequestException(`Duplicate size "${size}" in sizeStock`);
+      }
+      seen.add(size);
+      return { size, stock: entry.stock };
+    });
   }
 
   private async generateUniqueSKU(genderName: string, categoryName: string): Promise<string> {

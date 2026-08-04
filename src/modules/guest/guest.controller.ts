@@ -69,8 +69,9 @@ export class GuestController {
   async removeFromCart(
     @Param('productId') productId: string,
     @Query() query: GuestCartQueryDto,
+    @Query('size') size?: string,
   ) {
-    return this.guestService.removeFromCart(query.guestId, productId);
+    return this.guestService.removeFromCart(query.guestId, productId, size);
   }
 
   @Delete('cart')

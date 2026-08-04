@@ -1,4 +1,4 @@
-import { IsMongoId, IsNotEmpty, IsNumber, Min, IsOptional } from 'class-validator';
+import { IsMongoId, IsNotEmpty, IsNumber, Min, IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AddToCartDto {
@@ -19,4 +19,12 @@ export class AddToCartDto {
   @IsNumber()
   @Min(1, { message: 'Quantity must be at least 1' })
   quantity?: number;
+
+  @ApiPropertyOptional({
+    description: 'Selected size, required when the product has sizes',
+    example: 'M',
+  })
+  @IsOptional()
+  @IsString()
+  size?: string;
 }

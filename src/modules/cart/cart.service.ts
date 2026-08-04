@@ -34,27 +34,34 @@ export class CartService {
       throw new BadRequestException('Product is not available');
     }
 
-    const quantity = addToCartDto.quantity || 1;
+    if (product.sizes && product.sizes.length > 0 && !addToCartDto.size) {
+      throw new BadRequestException('Please select a size');
+    }
 
-    if (product.stock < quantity) {
+    const quantity = addToCartDto.quantity || 1;
+    const size = addToCartDto.size;
+    const availableStock = this.productService.resolveAvailableStock(product, size);
+
+    if (availableStock < quantity) {
       throw new BadRequestException(
-        `Insufficient stock. Available: ${product.stock}, Requested: ${quantity}`,
+        `Insufficient stock. Available: ${availableStock}, Requested: ${quantity}`,
       );
     }
 
-    // Check if product already in cart
+    // Check if this product+size is already in cart
     const existingCartItem = await this.cartModel.findOne({
       userId: new Types.ObjectId(userId),
       productId: new Types.ObjectId(addToCartDto.productId),
+      size: size ?? { $exists: false },
     });
 
     if (existingCartItem) {
       // Update quantity
       const newQuantity = existingCartItem.quantity + quantity;
 
-      if (product.stock < newQuantity) {
+      if (availableStock < newQuantity) {
         throw new BadRequestException(
-          `Insufficient stock. Available: ${product.stock}, In cart: ${existingCartItem.quantity}`,
+          `Insufficient stock. Available: ${availableStock}, In cart: ${existingCartItem.quantity}`,
         );
       }
 
@@ -72,6 +79,7 @@ export class CartService {
       userId: new Types.ObjectId(userId),
       productId: new Types.ObjectId(addToCartDto.productId),
       quantity,
+      size,
       addedAt: new Date(),
     });
 
@@ -123,10 +131,11 @@ export class CartService {
 
     // Validate stock
     const product = await this.productService.findOne(cartItem.productId.toString());
+    const availableStock = this.productService.resolveAvailableStock(product, cartItem.size);
 
-    if (product.stock < updateCartDto.quantity) {
+    if (availableStock < updateCartDto.quantity) {
       throw new BadRequestException(
-        `Insufficient stock. Available: ${product.stock}, Requested: ${updateCartDto.quantity}`,
+        `Insufficient stock. Available: ${availableStock}, Requested: ${updateCartDto.quantity}`,
       );
     }
 
@@ -221,6 +230,7 @@ export class CartService {
           isActive: product.isActive,
         },
         quantity: item.quantity,
+        size: item.size,
         price: productDiscountPrice,
         itemSubtotal: productDiscountPrice * item.quantity,
         productDiscount: productDiscount,

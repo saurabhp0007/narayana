@@ -39,9 +39,10 @@ export class OrderService {
         throw new BadRequestException(`Product ${product.name} is no longer available`);
       }
 
-      if (product.stock < cartItem.quantity) {
+      const availableStock = this.productService.resolveAvailableStock(product, cartItem.size);
+      if (availableStock < cartItem.quantity) {
         throw new BadRequestException(
-          `Insufficient stock for ${product.name}. Available: ${product.stock}, Required: ${cartItem.quantity}`,
+          `Insufficient stock for ${product.name}. Available: ${availableStock}, Required: ${cartItem.quantity}`,
         );
       }
     }
@@ -54,6 +55,7 @@ export class OrderService {
       productId: new Types.ObjectId(cartItem.product._id),
       productName: cartItem.product.name,
       sku: cartItem.product.sku,
+      size: cartItem.size,
       quantity: cartItem.quantity,
       price: cartItem.price,
       discountPrice: cartItem.product.discountPrice,
@@ -82,7 +84,7 @@ export class OrderService {
     // Deduct stock (in a transaction-like manner)
     try {
       for (const cartItem of cart.items) {
-        await this.productService.updateStock(cartItem.product._id, -cartItem.quantity);
+        await this.productService.updateStock(cartItem.product._id, -cartItem.quantity, cartItem.size);
       }
     } catch (error) {
       // Rollback: delete the order if stock update fails

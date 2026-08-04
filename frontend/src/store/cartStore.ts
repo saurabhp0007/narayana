@@ -12,9 +12,9 @@ interface CartState {
   // Actions
   fetchCart: (guestId?: string | null) => Promise<void>;
   fetchCount: (guestId?: string | null) => Promise<void>;
-  addToCart: (productId: string, quantity?: number, guestId?: string | null) => Promise<void>;
-  updateQuantity: (itemId: string, quantity: number, productId?: string, guestId?: string | null) => Promise<void>;
-  removeFromCart: (itemId: string, productId?: string, guestId?: string | null) => Promise<void>;
+  addToCart: (productId: string, quantity?: number, guestId?: string | null, size?: string) => Promise<void>;
+  updateQuantity: (itemId: string, quantity: number, productId?: string, guestId?: string | null, size?: string) => Promise<void>;
+  removeFromCart: (itemId: string, productId?: string, guestId?: string | null, size?: string) => Promise<void>;
   clearCart: (guestId?: string | null) => Promise<void>;
   clearError: () => void;
   resetCart: () => void;
@@ -62,11 +62,11 @@ export const useCartStore = create<CartState>((set) => ({
     }
   },
 
-  addToCart: async (productId: string, quantity: number = 1, guestId?: string | null) => {
+  addToCart: async (productId: string, quantity: number = 1, guestId?: string | null, size?: string) => {
     set({ isLoading: true, error: null });
     try {
       if (guestId) {
-        await guestApi.addToCart({ guestId, productId, quantity });
+        await guestApi.addToCart({ guestId, productId, quantity, size });
         const response = await guestApi.getCart(guestId);
         const countResponse = await guestApi.getCartCount(guestId);
         const items = Array.isArray(response.data) ? response.data : (response.data?.items || []);
@@ -78,7 +78,7 @@ export const useCartStore = create<CartState>((set) => ({
           isLoading: false
         });
       } else {
-        await cartApi.add({ productId, quantity });
+        await cartApi.add({ productId, quantity, size });
         const response = await cartApi.get();
         const countResponse = await cartApi.getCount();
         const items = Array.isArray(response.data) ? response.data : (response.data?.items || []);
@@ -100,11 +100,11 @@ export const useCartStore = create<CartState>((set) => ({
     }
   },
 
-  updateQuantity: async (itemId: string, quantity: number, productId?: string, guestId?: string | null) => {
+  updateQuantity: async (itemId: string, quantity: number, productId?: string, guestId?: string | null, size?: string) => {
     set({ isLoading: true, error: null });
     try {
       if (guestId && productId) {
-        await guestApi.updateCartItem({ guestId, productId, quantity });
+        await guestApi.updateCartItem({ guestId, productId, quantity, size });
         const response = await guestApi.getCart(guestId);
         const items = Array.isArray(response.data) ? response.data : (response.data?.items || []);
         const summary = response.data?.summary || null;
@@ -126,11 +126,11 @@ export const useCartStore = create<CartState>((set) => ({
     }
   },
 
-  removeFromCart: async (itemId: string, productId?: string, guestId?: string | null) => {
+  removeFromCart: async (itemId: string, productId?: string, guestId?: string | null, size?: string) => {
     set({ isLoading: true, error: null });
     try {
       if (guestId && productId) {
-        await guestApi.removeFromCart(guestId, productId);
+        await guestApi.removeFromCart(guestId, productId, size);
         const response = await guestApi.getCart(guestId);
         const countResponse = await guestApi.getCartCount(guestId);
         const items = Array.isArray(response.data) ? response.data : (response.data?.items || []);
