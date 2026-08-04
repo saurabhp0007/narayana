@@ -13,6 +13,7 @@ import { useDataStore } from '@/store/dataStore';
 import { useGuestStore } from '@/store/guestStore';
 import SearchDropdown from '@/components/common/SearchDropdown';
 import ProductCard from '@/components/common/ProductCard';
+import SizeFilter from '@/components/common/SizeFilter';
 
 function ProductsPageContent() {
   const searchParams = useSearchParams();
@@ -65,7 +66,6 @@ function ProductsPageContent() {
   const [selectedSizes, setSelectedSizes] = useState<string[]>(
     searchParams.get('sizes')?.split(',').filter(Boolean) || []
   );
-  const [availableSizes, setAvailableSizes] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>(searchParams.get('sortBy') || 'newest');
   const [suggestions, setSuggestions] = useState<Product[]>([]);
   const [currentOfferId, setCurrentOfferId] = useState<string>(
@@ -168,21 +168,6 @@ function ProductsPageContent() {
 
     fetchCategories();
   }, [selectedGender, fetchCategoriesByGender]);
-
-  // Fetch the sizes actually present for the current gender/category scope, so the
-  // size filter never offers a size that has zero matching products.
-  useEffect(() => {
-    let cancelled = false;
-    productApi
-      .getSizes({ genderId: selectedGender || undefined, categoryId: selectedCategory || undefined })
-      .then((res) => {
-        if (!cancelled) setAvailableSizes(res.data || []);
-      })
-      .catch((err) => console.error('Failed to fetch available sizes:', err));
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedGender, selectedCategory]);
 
   // Resolve the footwear subcategory (banner + mapped SKUs) when linked in via subcategorySlug
   useEffect(() => {
@@ -380,10 +365,8 @@ function ProductsPageContent() {
     setCurrentPage(1);
   };
 
-  const toggleSize = (size: string) => {
-    setSelectedSizes((prev) =>
-      prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]
-    );
+  const handleSizeChange = (sizes: string[]) => {
+    setSelectedSizes(sizes);
     setCurrentPage(1);
   };
 
@@ -394,7 +377,11 @@ function ProductsPageContent() {
     ...(selectedCategory
       ? [{ key: 'category', label: categories.find((c) => c._id === selectedCategory)?.name || 'Category', onRemove: () => setSelectedCategory('') }]
       : []),
-    ...selectedSizes.map((size) => ({ key: `size-${size}`, label: `Size: ${size}`, onRemove: () => toggleSize(size) })),
+    ...selectedSizes.map((size) => ({
+      key: `size-${size}`,
+      label: `Size: ${size}`,
+      onRemove: () => handleSizeChange(selectedSizes.filter((s) => s !== size)),
+    })),
     ...(minPrice || maxPrice
       ? [{ key: 'price', label: `₹${minPrice || '0'} - ₹${maxPrice || '∞'}`, onRemove: () => { setMinPrice(''); setMaxPrice(''); } }]
       : []),
@@ -557,27 +544,13 @@ function ProductsPageContent() {
                 )}
 
                 {/* Size Filter */}
-                {availableSizes.length > 0 && (
-                  <div className="mb-4">
-                    <label className="block text-xs font-medium text-gray-700 mb-2">Size</label>
-                    <div className="flex flex-wrap gap-2">
-                      {availableSizes.map((size) => (
-                        <button
-                          key={size}
-                          type="button"
-                          onClick={() => toggleSize(size)}
-                          className={`min-w-[2.5rem] px-2.5 py-1.5 border rounded-md text-xs font-medium transition-colors ${
-                            selectedSizes.includes(size)
-                              ? 'border-gray-900 bg-gray-900 text-white'
-                              : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                          }`}
-                        >
-                          {size}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <SizeFilter
+                  genderId={selectedGender}
+                  categoryId={selectedCategory}
+                  selectedSizes={selectedSizes}
+                  onChange={handleSizeChange}
+                  className="mb-4"
+                />
 
                 {/* Price Range */}
                 <div className="mb-5">
