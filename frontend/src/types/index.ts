@@ -110,7 +110,9 @@ export interface CartProduct {
 }
 
 export interface CartItem {
-  _id: string;
+  // Only present for a logged-in user's Mongo-backed cart line — guest cart items live
+  // in Redis and are identified by product._id + size instead, with no _id of their own.
+  _id?: string;
   product: CartProduct;
   quantity: number;
   size?: string;
@@ -163,7 +165,9 @@ export interface OrderItem {
 export interface Order {
   _id: string;
   orderId: string;
-  userId: string;
+  userId?: string;
+  guestId?: string;
+  customerName?: string;
   items: OrderItem[];
   subtotal: number;
   discount: number;

@@ -13,8 +13,8 @@ interface CartState {
   fetchCart: (guestId?: string | null) => Promise<void>;
   fetchCount: (guestId?: string | null) => Promise<void>;
   addToCart: (productId: string, quantity?: number, guestId?: string | null, size?: string) => Promise<void>;
-  updateQuantity: (itemId: string, quantity: number, productId?: string, guestId?: string | null, size?: string) => Promise<void>;
-  removeFromCart: (itemId: string, productId?: string, guestId?: string | null, size?: string) => Promise<void>;
+  updateQuantity: (itemId: string | undefined, quantity: number, productId?: string, guestId?: string | null, size?: string) => Promise<void>;
+  removeFromCart: (itemId: string | undefined, productId?: string, guestId?: string | null, size?: string) => Promise<void>;
   clearCart: (guestId?: string | null) => Promise<void>;
   clearError: () => void;
   resetCart: () => void;
@@ -100,7 +100,7 @@ export const useCartStore = create<CartState>((set) => ({
     }
   },
 
-  updateQuantity: async (itemId: string, quantity: number, productId?: string, guestId?: string | null, size?: string) => {
+  updateQuantity: async (itemId: string | undefined, quantity: number, productId?: string, guestId?: string | null, size?: string) => {
     set({ isLoading: true, error: null });
     try {
       if (guestId && productId) {
@@ -110,6 +110,9 @@ export const useCartStore = create<CartState>((set) => ({
         const summary = response.data?.summary || null;
         set({ items, summary, isLoading: false });
       } else {
+        if (!itemId) {
+          throw new Error('Missing cart item id');
+        }
         await cartApi.update(itemId, quantity);
         const response = await cartApi.get();
         const items = Array.isArray(response.data) ? response.data : (response.data?.items || []);
@@ -126,7 +129,7 @@ export const useCartStore = create<CartState>((set) => ({
     }
   },
 
-  removeFromCart: async (itemId: string, productId?: string, guestId?: string | null, size?: string) => {
+  removeFromCart: async (itemId: string | undefined, productId?: string, guestId?: string | null, size?: string) => {
     set({ isLoading: true, error: null });
     try {
       if (guestId && productId) {
@@ -142,6 +145,9 @@ export const useCartStore = create<CartState>((set) => ({
           isLoading: false
         });
       } else {
+        if (!itemId) {
+          throw new Error('Missing cart item id');
+        }
         await cartApi.remove(itemId);
         const response = await cartApi.get();
         const countResponse = await cartApi.getCount();

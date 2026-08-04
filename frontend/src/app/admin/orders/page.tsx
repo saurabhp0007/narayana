@@ -135,7 +135,7 @@ export default function OrderManagementPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return `$${amount.toFixed(2)}`;
+    return `₹${amount.toFixed(2)}`;
   };
 
   return (
@@ -304,7 +304,15 @@ export default function OrderManagementPage() {
                       <div className="text-sm font-medium text-gray-900">{order.orderId}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{order.contactEmail || 'N/A'}</div>
+                      <div className="text-sm text-gray-900">
+                        {order.customerName || order.contactEmail || 'N/A'}
+                        {!order.userId && (
+                          <span className="ml-1 text-xs text-gray-400">(guest)</span>
+                        )}
+                      </div>
+                      {order.customerName && order.contactEmail && (
+                        <div className="text-xs text-gray-500">{order.contactEmail}</div>
+                      )}
                       {order.contactPhone && (
                         <div className="text-xs text-gray-500">{order.contactPhone}</div>
                       )}
@@ -480,6 +488,15 @@ export default function OrderManagementPage() {
                     <div>
                       <h4 className="text-sm font-medium text-gray-500">Order Date</h4>
                       <p className="text-sm text-gray-900">{formatDate(selectedOrder.createdAt)}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Customer</h4>
+                      <p className="text-sm text-gray-900">
+                        {selectedOrder.customerName || (selectedOrder.userId ? 'Registered user' : 'Guest')}
+                        {!selectedOrder.userId && selectedOrder.guestId && (
+                          <span className="ml-1 text-xs text-gray-400">(guest)</span>
+                        )}
+                      </p>
                     </div>
                     <div>
                       <h4 className="text-sm font-medium text-gray-500">Contact Email</h4>

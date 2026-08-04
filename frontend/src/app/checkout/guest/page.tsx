@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/store/cartStore';
 import { useGuestStore } from '@/store/guestStore';
+import { useToastStore } from '@/store/toastStore';
 import { guestApi } from '@/lib/api';
 
 interface GuestCheckoutForm {
@@ -23,6 +24,7 @@ export default function GuestCheckoutPage() {
   const router = useRouter();
   const { items, summary, isLoading, fetchCart, clearCart } = useCartStore();
   const { guestId } = useGuestStore();
+  const showToast = useToastStore((s) => s.show);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState<GuestCheckoutForm>({
@@ -130,7 +132,7 @@ export default function GuestCheckoutPage() {
       // Clear cart after successful order
       await clearCart(guestId);
 
-      alert(`Order placed successfully! Order ID: ${response.data.orderId}\nA confirmation email will be sent to ${formData.email}`);
+      showToast(`Order placed successfully! Order ID: ${response.data.orderId}. A confirmation email will be sent to ${formData.email}`, 'success');
       router.push('/');
     } catch (err: unknown) {
       const apiError = err as { response?: { data?: { message?: string } } };
@@ -356,7 +358,7 @@ export default function GuestCheckoutPage() {
                   {/* Cart Items */}
                   <div className="space-y-4 max-h-64 overflow-y-auto mb-4">
                     {items.map((item) => (
-                      <div key={item._id} className="flex items-center gap-3">
+                      <div key={item._id || `${item.product._id}-${item.size || 'nosize'}`} className="flex items-center gap-3">
                         <div className="shrink-0 w-16 h-16 relative">
                           {item?.product?.images && item?.product?.images[0] ? (
                             <Image
