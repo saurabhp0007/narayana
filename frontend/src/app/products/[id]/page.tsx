@@ -49,9 +49,11 @@ export default function ProductDetailPage() {
         const productData: Product = response.data;
         setProduct(productData);
 
-        // Set default size if available
+        // Default to the first in-stock size when per-size stock is tracked, so the
+        // page doesn't land on a size that's immediately disabled.
         if (productData.sizes && productData.sizes.length > 0) {
-          setSelectedSize(productData.sizes[0]);
+          const inStockSize = productData.sizeStock?.find((s) => s.stock > 0)?.size;
+          setSelectedSize(inStockSize || productData.sizes[0]);
         }
 
         // Related products: one call to the dedicated endpoint, which already handles
@@ -76,9 +78,32 @@ export default function ProductDetailPage() {
     fetchProduct();
   }, [productId]);
 
+  // Different sizes can have different stock, so re-clamp quantity whenever the
+  // selected size changes instead of leaving a stale value that overshoots the new max.
+  useEffect(() => {
+    setQuantity((q) => Math.max(1, Math.min(q, Math.max(availableStock, 1))));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSize]);
+
+  // Resolves how much stock is actually available: the selected size's stock when the
+  // product tracks per-size stock, otherwise the aggregate stock.
+  const getStockForSize = (size?: string): number => {
+    if (!product) return 0;
+    if (!product.sizeStock || product.sizeStock.length === 0) return product.stock;
+    const entry = product.sizeStock.find((s) => s.size === size);
+    return entry ? entry.stock : 0;
+  };
+
+  const availableStock = getStockForSize(selectedSize);
+
   const handleAddToCart = async () => {
     if (product?.sizes && product.sizes.length > 0 && !selectedSize) {
       alert('Please select a size');
+      return;
+    }
+
+    if (availableStock === 0) {
+      alert('This size is out of stock');
       return;
     }
 
@@ -87,14 +112,14 @@ export default function ProductDetailPage() {
       // Check if user is logged in
       if (userType === 'user' && user) {
         // Logged-in user - add to database cart
-        await addToCart(productId, quantity);
+        await addToCart(productId, quantity, undefined, selectedSize || undefined);
       } else {
         // Guest user - add to Redis cart
         let currentGuestId = guestId;
         if (!currentGuestId) {
           currentGuestId = await initGuestSession();
         }
-        await addToCart(productId, quantity, currentGuestId);
+        await addToCart(productId, quantity, currentGuestId, selectedSize || undefined);
       }
       alert('Added to cart successfully!');
     } catch (err) {
@@ -338,7 +363,7 @@ export default function ProductDetailPage() {
 
               {/* Stock Availability */}
               <div className="mb-6">
-                {product.stock > 0 ? (
+                {availableStock > 0 ? (
                   <div className="flex items-center text-green-600">
                     <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                       <path
@@ -348,7 +373,7 @@ export default function ProductDetailPage() {
                       />
                     </svg>
                     <span className="font-medium">In Stock</span>
-                    <span className="text-gray-600 ml-2">({product.stock} available)</span>
+                    <span className="text-gray-600 ml-2">({availableStock} available)</span>
                   </div>
                 ) : (
                   <div className="flex items-center text-red-600">
@@ -377,19 +402,27 @@ export default function ProductDetailPage() {
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Size</h3>
                   <div className="flex flex-wrap gap-2">
-                    {product.sizes.map((size) => (
-                      <button
-                        key={size}
-                        onClick={() => setSelectedSize(size)}
-                        className={`text-black px-4 py-2 border rounded-md font-medium transition-colors ${
-                          selectedSize === size
-                            ? 'border-blue-500 bg-blue-50 text-blue-700'
-                            : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                      >
-                        {size}
-                      </button>
-                    ))}
+                    {product.sizes.map((size) => {
+                      const sizeStock = getStockForSize(size);
+                      const isOutOfStock = sizeStock === 0;
+                      return (
+                        <button
+                          key={size}
+                          onClick={() => !isOutOfStock && setSelectedSize(size)}
+                          disabled={isOutOfStock}
+                          title={isOutOfStock ? `${size} is out of stock` : `${sizeStock} available`}
+                          className={`px-4 py-2 border rounded-md font-medium transition-colors ${
+                            isOutOfStock
+                              ? 'border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed line-through'
+                              : selectedSize === size
+                              ? 'text-black border-blue-500 bg-blue-50 text-blue-700'
+                              : 'text-black border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -408,14 +441,14 @@ export default function ProductDetailPage() {
                     type="number"
                     value={quantity}
                     onChange={(e) =>
-                      setQuantity(Math.max(1, Math.min(product.stock, parseInt(e.target.value) || 1)))
+                      setQuantity(Math.max(1, Math.min(availableStock, parseInt(e.target.value) || 1)))
                     }
                     min="1"
-                    max={product.stock}
+                    max={availableStock}
                     className="w-20 px-3 py-2 border border-gray-300 rounded-md text-center text-black"
                   />
                   <button
-                    onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
+                    onClick={() => setQuantity((q) => Math.min(availableStock, q + 1))}
                     className="text-black px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
                   >
                     +
@@ -427,7 +460,7 @@ export default function ProductDetailPage() {
               <div className="flex gap-4">
                 <button
                   onClick={handleAddToCart}
-                  disabled={addingToCart || product.stock === 0}
+                  disabled={addingToCart || availableStock === 0}
                   className="flex-grow px-6 py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {addingToCart ? (
@@ -449,7 +482,7 @@ export default function ProductDetailPage() {
                       </svg>
                       Adding...
                     </span>
-                  ) : product.stock === 0 ? (
+                  ) : availableStock === 0 ? (
                     'Out of Stock'
                   ) : (
                     'Add to Cart'

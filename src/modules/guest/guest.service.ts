@@ -18,6 +18,7 @@ import { randomUUID } from 'crypto';
 interface GuestCartItem {
   productId: string;
   quantity: number;
+  size?: string;
   addedAt: string;
 }
 
@@ -47,7 +48,7 @@ export class GuestService {
   // ==================== CART OPERATIONS ====================
 
   async addToCart(dto: GuestAddToCartDto): Promise<any> {
-    const { guestId, productId, quantity = 1 } = dto;
+    const { guestId, productId, quantity = 1, size } = dto;
 
     // Validate product exists and has stock
     const product = await this.productService.findOne(productId);
@@ -56,9 +57,15 @@ export class GuestService {
       throw new BadRequestException('Product is not available');
     }
 
-    if (product.stock < quantity) {
+    if (product.sizes && product.sizes.length > 0 && !size) {
+      throw new BadRequestException('Please select a size');
+    }
+
+    const availableStock = this.productService.resolveAvailableStock(product, size);
+
+    if (availableStock < quantity) {
       throw new BadRequestException(
-        `Insufficient stock. Available: ${product.stock}, Requested: ${quantity}`,
+        `Insufficient stock. Available: ${availableStock}, Requested: ${quantity}`,
       );
     }
 
@@ -66,17 +73,17 @@ export class GuestService {
     const cartKey = this.getCartKey(guestId);
     const currentCart = await this.getGuestCartItems(guestId);
 
-    // Check if product already in cart
+    // Check if this product+size is already in cart
     const existingItemIndex = currentCart.findIndex(
-      (item) => item.productId === productId,
+      (item) => item.productId === productId && item.size === size,
     );
 
     if (existingItemIndex !== -1) {
       const newQuantity = currentCart[existingItemIndex].quantity + quantity;
 
-      if (product.stock < newQuantity) {
+      if (availableStock < newQuantity) {
         throw new BadRequestException(
-          `Insufficient stock. Available: ${product.stock}, In cart: ${currentCart[existingItemIndex].quantity}`,
+          `Insufficient stock. Available: ${availableStock}, In cart: ${currentCart[existingItemIndex].quantity}`,
         );
       }
 
@@ -85,6 +92,7 @@ export class GuestService {
       currentCart.push({
         productId,
         quantity,
+        size,
         addedAt: new Date().toISOString(),
       });
     }
@@ -122,19 +130,20 @@ export class GuestService {
   }
 
   async updateCartItem(dto: GuestUpdateCartDto): Promise<any> {
-    const { guestId, productId, quantity } = dto;
+    const { guestId, productId, quantity, size } = dto;
 
     const product = await this.productService.findOne(productId);
+    const availableStock = this.productService.resolveAvailableStock(product, size);
 
-    if (product.stock < quantity) {
+    if (availableStock < quantity) {
       throw new BadRequestException(
-        `Insufficient stock. Available: ${product.stock}, Requested: ${quantity}`,
+        `Insufficient stock. Available: ${availableStock}, Requested: ${quantity}`,
       );
     }
 
     const currentCart = await this.getGuestCartItems(guestId);
     const itemIndex = currentCart.findIndex(
-      (item) => item.productId === productId,
+      (item) => item.productId === productId && item.size === size,
     );
 
     if (itemIndex === -1) {
@@ -153,10 +162,10 @@ export class GuestService {
     return { message: 'Cart item updated', guestId };
   }
 
-  async removeFromCart(guestId: string, productId: string): Promise<any> {
+  async removeFromCart(guestId: string, productId: string, size?: string): Promise<any> {
     const currentCart = await this.getGuestCartItems(guestId);
     const filteredCart = currentCart.filter(
-      (item) => item.productId !== productId,
+      (item) => !(item.productId === productId && item.size === size),
     );
 
     if (filteredCart.length === currentCart.length) {
@@ -320,9 +329,10 @@ export class GuestService {
     // Validate stock for all items
     for (const item of cart.items) {
       const product = await this.productService.findOne(item.productId);
-      if (product.stock < item.quantity) {
+      const availableStock = this.productService.resolveAvailableStock(product, item.size);
+      if (availableStock < item.quantity) {
         throw new BadRequestException(
-          `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`,
+          `Insufficient stock for ${product.name}. Available: ${availableStock}, Requested: ${item.quantity}`,
         );
       }
     }
@@ -341,6 +351,7 @@ export class GuestService {
         productId: item.productId,
         productName: item.product.name,
         sku: item.product.sku,
+        size: item.size,
         quantity: item.quantity,
         price: item.price,
         itemTotal: item.itemTotal,
@@ -381,6 +392,7 @@ export class GuestService {
         await this.cartService.addToCart(userId, {
           productId: guestItem.productId,
           quantity: guestItem.quantity,
+          size: guestItem.size,
         });
         mergedCount++;
       } catch (error) {
@@ -521,6 +533,7 @@ export class GuestService {
           isActive: product.isActive,
         },
         quantity: item.quantity,
+        size: item.size,
         price: productDiscountPrice,
         itemSubtotal: productDiscountPrice * item.quantity,
         productDiscount: productDiscount,

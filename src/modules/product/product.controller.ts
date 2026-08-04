@@ -380,8 +380,12 @@ export class ProductController {
     status: 404,
     description: 'Product not found',
   })
-  async updateStock(@Param('id') id: string, @Body('quantity') quantity: number) {
-    return this.productService.updateStock(id, quantity);
+  async updateStock(
+    @Param('id') id: string,
+    @Body('quantity') quantity: number,
+    @Body('size') size?: string,
+  ) {
+    return this.productService.updateStock(id, quantity, size);
   }
 
   @Delete(':id')

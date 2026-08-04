@@ -160,7 +160,14 @@ export default function CartPage() {
                           <div className="flex justify-between">
                             <div>
                               <h3 className="text-lg font-medium text-gray-900">{item?.product?.name}</h3>
-                              <p className="mt-1 text-sm text-gray-500">SKU: {item?.product?.sku}</p>
+                              <p className="mt-1 text-sm text-gray-500">
+                                SKU: {item?.product?.sku}
+                                {item?.size && (
+                                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                                    Size: {item.size}
+                                  </span>
+                                )}
+                              </p>
                             </div>
                             <div className="text-right">
                               {item?.product?.discountPrice ? (

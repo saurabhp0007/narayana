@@ -34,6 +34,11 @@ export interface Admin {
 }
 
 // Product types
+export interface SizeStock {
+  size: string;
+  stock: number;
+}
+
 export interface Product {
   _id: string;
   name: string;
@@ -44,6 +49,7 @@ export interface Product {
   categoryId: Category | string;
   sizes?: string[];
   stock: number;
+  sizeStock?: SizeStock[];
   price: number;
   discountPrice?: number;
   relatedProductIds?: string[];
@@ -107,6 +113,7 @@ export interface CartItem {
   _id: string;
   product: CartProduct;
   quantity: number;
+  size?: string;
   price: number;
   itemSubtotal: number;
   productDiscount: number;
@@ -146,6 +153,7 @@ export interface OrderItem {
   productId: string;
   productName: string;
   sku: string;
+  size?: string;
   quantity: number;
   price: number;
   discountPrice?: number;
@@ -270,6 +278,7 @@ export interface CreateProductDto {
   categoryId: string;
   sizes?: string[];
   stock: number;
+  sizeStock?: SizeStock[];
   price: number;
   discountPrice?: number;
   relatedProductIds?: string[];
@@ -460,6 +469,7 @@ export interface CreateReviewDto {
 export interface AddToCartDto {
   productId: string;
   quantity?: number;
+  size?: string;
 }
 
 export interface CreateOrderDto {

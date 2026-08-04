@@ -137,7 +137,7 @@ export const productApi = {
 export const cartApi = {
   get: () => api.get('/cart'),
   getCount: () => api.get('/cart/count'),
-  add: (data: { productId: string; quantity?: number }) => api.post('/cart', data),
+  add: (data: { productId: string; quantity?: number; size?: string }) => api.post('/cart', data),
   update: (id: string, quantity: number) => api.patch(`/cart/${id}`, { quantity }),
   remove: (id: string) => api.delete(`/cart/${id}`),
   clear: () => api.delete('/cart'),
@@ -292,12 +292,12 @@ export const guestApi = {
   // Cart
   getCart: (guestId: string) => api.get('/guest/cart', { params: { guestId } }),
   getCartCount: (guestId: string) => api.get('/guest/cart/count', { params: { guestId } }),
-  addToCart: (data: { guestId: string; productId: string; quantity?: number }) =>
+  addToCart: (data: { guestId: string; productId: string; quantity?: number; size?: string }) =>
     api.post('/guest/cart', data),
-  updateCartItem: (data: { guestId: string; productId: string; quantity: number }) =>
+  updateCartItem: (data: { guestId: string; productId: string; quantity: number; size?: string }) =>
     api.patch('/guest/cart', data),
-  removeFromCart: (guestId: string, productId: string) =>
-    api.delete(`/guest/cart/${productId}`, { params: { guestId } }),
+  removeFromCart: (guestId: string, productId: string, size?: string) =>
+    api.delete(`/guest/cart/${productId}`, { params: { guestId, size } }),
   clearCart: (guestId: string) => api.delete('/guest/cart', { params: { guestId } }),
   // Wishlist
   getWishlist: (guestId: string) => api.get('/guest/wishlist', { params: { guestId } }),

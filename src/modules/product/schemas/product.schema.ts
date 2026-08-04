@@ -16,6 +16,17 @@ export enum ProductBadge {
   LUXURY = 'LUXURY',
 }
 
+// Per-size stock breakdown. When present and non-empty, `sizes` and the aggregate
+// `stock` on Product are kept in sync from this array (see ProductService); when
+// empty/absent, products fall back to the flat `sizes`/`stock` fields as before.
+export class SizeStock {
+  @Prop({ required: true, trim: true })
+  size: string;
+
+  @Prop({ required: true, default: 0, min: 0 })
+  stock: number;
+}
+
 @Schema({ timestamps: true })
 export class Product extends Document {
   @Prop({ required: true, trim: true })
@@ -41,6 +52,9 @@ export class Product extends Document {
 
   @Prop({ required: true, default: 0, min: 0 })
   stock: number;
+
+  @Prop({ type: [SizeStock], default: [] })
+  sizeStock: SizeStock[];
 
   @Prop({ required: true, min: 0 })
   price: number;

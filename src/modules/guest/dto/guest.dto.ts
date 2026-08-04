@@ -18,6 +18,11 @@ export class GuestAddToCartDto {
   @Min(1)
   @IsOptional()
   quantity?: number;
+
+  @ApiProperty({ description: 'Selected size, required when the product has sizes', required: false })
+  @IsString()
+  @IsOptional()
+  size?: string;
 }
 
 export class GuestUpdateCartDto {
@@ -35,6 +40,11 @@ export class GuestUpdateCartDto {
   @IsNumber()
   @Min(1)
   quantity: number;
+
+  @ApiProperty({ description: 'Size of the cart line being updated', required: false })
+  @IsString()
+  @IsOptional()
+  size?: string;
 }
 
 export class GuestRemoveFromCartDto {
@@ -47,6 +57,11 @@ export class GuestRemoveFromCartDto {
   @IsString()
   @IsNotEmpty()
   productId: string;
+
+  @ApiProperty({ description: 'Size of the cart line being removed', required: false })
+  @IsString()
+  @IsOptional()
+  size?: string;
 }
 
 export class GuestCartQueryDto {

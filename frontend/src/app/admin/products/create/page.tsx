@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { productApi, genderApi, categoryApi, mediaApi } from '@/lib/api';
-import { Gender, Category, CreateProductDto } from '@/types';
+import { Gender, Category, CreateProductDto, SizeStock } from '@/types';
+
+const NEW_SIZE_OPTION = '__new__';
 
 interface FormErrors {
   name?: string;
@@ -28,7 +30,7 @@ export default function CreateProductPage() {
     price: 0,
     discountPrice: undefined,
     stock: 0,
-    sizes: [],
+    sizeStock: [],
     images: [],
     isActive: true,
   });
@@ -38,8 +40,14 @@ export default function CreateProductPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
 
-  // Sizes and images inputs
-  const [sizeInput, setSizeInput] = useState('');
+  // Size + per-size stock inputs. The size dropdown is sourced from sizes already used
+  // in this category (same data the storefront's size filter uses), so admins pick from
+  // a consistent vocabulary instead of free-typing near-duplicates ("M" vs "Medium").
+  const [knownSizes, setKnownSizes] = useState<string[]>([]);
+  const [sizeSelectValue, setSizeSelectValue] = useState('');
+  const [customSizeInput, setCustomSizeInput] = useState('');
+  const [sizeStockInput, setSizeStockInput] = useState('');
+  const [sizeError, setSizeError] = useState<string | null>(null);
   const [imageInput, setImageInput] = useState('');
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -80,6 +88,25 @@ export default function CreateProductPage() {
     }
   }, [formData.genderId, categories, formData.categoryId]);
 
+  // Fetch the sizes already used in this category (scoped by gender too when set) to
+  // populate the size dropdown, so it stays in sync with the storefront's size filter.
+  useEffect(() => {
+    const fetchSizes = async () => {
+      try {
+        const res = await productApi.getSizes({
+          genderId: formData.genderId || undefined,
+          categoryId: formData.categoryId || undefined,
+        });
+        setKnownSizes(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        console.error('Failed to fetch available sizes:', err);
+      }
+    };
+    fetchSizes();
+  }, [formData.genderId, formData.categoryId]);
+
+  const sizeStockTotal = (formData.sizeStock || []).reduce((sum, s) => sum + s.stock, 0);
+
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
@@ -99,7 +126,7 @@ export default function CreateProductPage() {
       newErrors.price = 'Price must be greater than 0';
     }
 
-    if (formData.stock < 0) {
+    if ((formData.sizeStock?.length || 0) === 0 && formData.stock < 0) {
       newErrors.stock = 'Stock cannot be negative';
     }
 
@@ -121,6 +148,7 @@ export default function CreateProductPage() {
       const dataToSubmit = {
         ...formData,
         discountPrice: formData.discountPrice || undefined,
+        stock: (formData.sizeStock?.length || 0) > 0 ? sizeStockTotal : formData.stock,
       };
       await productApi.create(dataToSubmit);
       router.push('/admin/products');
@@ -135,20 +163,43 @@ export default function CreateProductPage() {
     }
   };
 
-  const addSize = () => {
-    if (sizeInput.trim() && !formData.sizes?.includes(sizeInput.trim())) {
-      setFormData((prev) => ({
-        ...prev,
-        sizes: [...(prev.sizes || []), sizeInput.trim()],
-      }));
-      setSizeInput('');
-    }
-  };
+  const addSizeStockRow = () => {
+    const size =
+      sizeSelectValue === NEW_SIZE_OPTION ? customSizeInput.trim() : sizeSelectValue.trim();
 
-  const removeSize = (size: string) => {
+    if (!size) {
+      setSizeError('Select a size or enter a new one');
+      return;
+    }
+    if (formData.sizeStock?.some((s) => s.size.toLowerCase() === size.toLowerCase())) {
+      setSizeError(`"${size}" has already been added`);
+      return;
+    }
+
+    const stock = Math.max(0, parseInt(sizeStockInput, 10) || 0);
     setFormData((prev) => ({
       ...prev,
-      sizes: prev.sizes?.filter((s) => s !== size) || [],
+      sizeStock: [...(prev.sizeStock || []), { size, stock }],
+    }));
+    setSizeError(null);
+    setSizeSelectValue('');
+    setCustomSizeInput('');
+    setSizeStockInput('');
+  };
+
+  const updateSizeStockQty = (size: string, stock: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      sizeStock: (prev.sizeStock || []).map((s) =>
+        s.size === size ? { ...s, stock: Math.max(0, stock) } : s
+      ),
+    }));
+  };
+
+  const removeSizeStockRow = (size: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      sizeStock: (prev.sizeStock || []).filter((s) => s.size !== size),
     }));
   };
 
@@ -348,19 +399,25 @@ export default function CreateProductPage() {
             <label htmlFor="stock" className="block text-sm font-medium text-gray-700 mb-1">
               Stock *
             </label>
-            <input
-              type="number"
-              id="stock"
-              value={formData.stock || ''}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, stock: parseInt(e.target.value) || 0 }))
-              }
-              min="0"
-              className={`text-black w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                errors.stock ? 'border-red-300' : 'border-gray-300'
-              }`}
-              placeholder="0"
-            />
+            {(formData.sizeStock?.length || 0) > 0 ? (
+              <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-600">
+                {sizeStockTotal} <span className="text-xs text-gray-400">(sum of sizes below)</span>
+              </div>
+            ) : (
+              <input
+                type="number"
+                id="stock"
+                value={formData.stock || ''}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, stock: parseInt(e.target.value) || 0 }))
+                }
+                min="0"
+                className={`text-black w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                  errors.stock ? 'border-red-300' : 'border-gray-300'
+                }`}
+                placeholder="0"
+              />
+            )}
             {errors.stock && <p className="mt-1 text-sm text-red-600">{errors.stock}</p>}
           </div>
 
@@ -412,42 +469,82 @@ export default function CreateProductPage() {
             </div>
           </div>
 
-          {/* Sizes */}
+          {/* Sizes + per-size stock */}
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Sizes</label>
-            <div className="flex items-center space-x-2 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Sizes &amp; Stock
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+              Pick a size already used in this category (keeps it consistent with the storefront
+              size filter), or add a new one, and set how much stock it has.
+            </p>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <select
+                value={sizeSelectValue}
+                onChange={(e) => setSizeSelectValue(e.target.value)}
+                className="text-black px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="">Select size</option>
+                {knownSizes.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+                <option value={NEW_SIZE_OPTION}>+ New size&hellip;</option>
+              </select>
+              {sizeSelectValue === NEW_SIZE_OPTION && (
+                <input
+                  type="text"
+                  value={customSizeInput}
+                  onChange={(e) => setCustomSizeInput(e.target.value)}
+                  className="text-black px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="e.g. UK 9, XXL, 6-8Y"
+                />
+              )}
               <input
-                type="text"
-                value={sizeInput}
-                onChange={(e) => setSizeInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSize())}
-                className="text-black flex-1 text-black px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Enter size (e.g., S, M, L, XL)"
+                type="number"
+                min="0"
+                value={sizeStockInput}
+                onChange={(e) => setSizeStockInput(e.target.value)}
+                className="text-black w-28 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Stock"
               />
               <button
                 type="button"
-                onClick={addSize}
+                onClick={addSizeStockRow}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 Add
               </button>
             </div>
-            {formData.sizes && formData.sizes.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {formData.sizes.map((size) => (
-                  <span
-                    key={size}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800"
+            {sizeError && <p className="mb-2 text-sm text-red-600">{sizeError}</p>}
+            {formData.sizeStock && formData.sizeStock.length > 0 && (
+              <div className="space-y-2">
+                {formData.sizeStock.map((entry) => (
+                  <div
+                    key={entry.size}
+                    className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-md"
                   >
-                    {size}
-                    <button
-                      type="button"
-                      onClick={() => removeSize(size)}
-                      className="ml-2 text-indigo-600 hover:text-indigo-900"
-                    >
-                      &times;
-                    </button>
-                  </span>
+                    <span className="text-sm font-medium text-gray-900">{entry.size}</span>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        min="0"
+                        value={entry.stock}
+                        onChange={(e) =>
+                          updateSizeStockQty(entry.size, parseInt(e.target.value) || 0)
+                        }
+                        className="text-black w-24 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeSizeStockRow(entry.size)}
+                        className="text-red-600 hover:text-red-900 text-sm"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
