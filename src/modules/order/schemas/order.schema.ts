@@ -40,8 +40,19 @@ export class Order extends Document {
   @Prop({ required: true, unique: true })
   orderId: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'Admin', required: true })
-  userId: Types.ObjectId;
+  // Optional: guest checkouts have no registered account, so this is unset and
+  // `guestId`/`customerName` carry the customer info instead.
+  @Prop({ type: Types.ObjectId, ref: 'Admin', required: false })
+  userId?: Types.ObjectId;
+
+  // Set only for guest checkouts (no `userId`) — lets admins trace/debug a guest order
+  // back to its Redis cart session even though there's no account record.
+  @Prop({ trim: true })
+  guestId?: string;
+
+  // Guest checkouts have no account to pull a name from, so it's captured directly here.
+  @Prop({ trim: true })
+  customerName?: string;
 
   @Prop({ type: [OrderItem], required: true })
   items: OrderItem[];

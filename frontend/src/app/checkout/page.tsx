@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { useGuestStore } from '@/store/guestStore';
+import { useToastStore } from '@/store/toastStore';
 import { guestApi, orderApi } from '@/lib/api';
 
 interface CheckoutForm {
@@ -25,6 +26,7 @@ export default function CheckoutPage() {
   const { items, summary, isLoading, fetchCart, clearCart } = useCartStore();
   const { userType, user } = useAuthStore();
   const { guestId, initGuestSession } = useGuestStore();
+  const showToast = useToastStore((s) => s.show);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [currentGuestId, setCurrentGuestId] = useState<string | null>(null);
@@ -161,7 +163,7 @@ export default function CheckoutPage() {
 
         const response = await orderApi.create(orderData);
         await clearCart();
-        alert(`Order placed successfully! Order ID: ${response.data.orderId}`);
+        showToast(`Order placed successfully! Order ID: ${response.data.orderId}`, 'success');
         router.push('/orders');
       } else {
         // Guest user - create order via guestApi
@@ -189,7 +191,7 @@ export default function CheckoutPage() {
 
         const response = await guestApi.checkout(checkoutData);
         await clearCart(currentGuestId);
-        alert(`Order placed successfully! Order ID: ${response.data.orderId}\nA confirmation email will be sent to ${formData.email}`);
+        showToast(`Order placed successfully! Order ID: ${response.data.orderId}. A confirmation email will be sent to ${formData.email}`, 'success');
         router.push('/');
       }
     } catch (err: unknown) {
@@ -419,7 +421,7 @@ export default function CheckoutPage() {
                   {/* Cart Items */}
                   <div className="space-y-4 max-h-64 overflow-y-auto mb-4">
                     {items.map((item) => (
-                      <div key={item._id} className="flex items-center gap-3">
+                      <div key={item._id || `${item.product._id}-${item.size || 'nosize'}`} className="flex items-center gap-3">
                         <div className="shrink-0 w-16 h-16 relative">
                           {item?.product?.images && item?.product?.images[0] ? (
                             <Image

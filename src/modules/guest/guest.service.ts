@@ -8,6 +8,7 @@ import { ProductService } from '../product/product.service';
 import { OfferService } from '../offer/offer.service';
 import { CartService } from '../cart/cart.service';
 import { WishlistService } from '../wishlist/wishlist.service';
+import { OrderService } from '../order/order.service';
 import {
   GuestAddToCartDto,
   GuestUpdateCartDto,
@@ -39,6 +40,7 @@ export class GuestService {
     private offerService: OfferService,
     private cartService: CartService,
     private wishlistService: WishlistService,
+    private orderService: OrderService,
   ) {}
 
   generateGuestId(): string {
@@ -316,61 +318,39 @@ export class GuestService {
 
   // ==================== CHECKOUT ====================
 
+  // Creates a real Order document (via OrderService) instead of the old behavior of
+  // writing an ad-hoc object into Redis — that never appeared in the admin orders list
+  // (which reads the Order collection) and never decremented product stock. Cart
+  // validation, stock checks/deduction, and email confirmation are all handled by
+  // createOrderFromGuestCart, the same logic the logged-in checkout path uses.
   async checkout(dto: GuestCheckoutDto): Promise<any> {
     const { guestId, customerDetails, shippingAddress, notes } = dto;
 
-    // Get cart items
     const cart = await this.getCart(guestId);
 
-    if (cart.items.length === 0) {
-      throw new BadRequestException('Cart is empty');
-    }
+    const shippingAddressString = [
+      shippingAddress.address,
+      shippingAddress.city,
+      shippingAddress.state,
+      shippingAddress.pincode,
+    ]
+      .filter(Boolean)
+      .join(', ');
 
-    // Validate stock for all items
-    for (const item of cart.items) {
-      const product = await this.productService.findOne(item.productId);
-      const availableStock = this.productService.resolveAvailableStock(product, item.size);
-      if (availableStock < item.quantity) {
-        throw new BadRequestException(
-          `Insufficient stock for ${product.name}. Available: ${availableStock}, Requested: ${item.quantity}`,
-        );
-      }
-    }
-
-    // Generate order ID
-    const orderId = `GO_${Date.now()}_${randomUUID().substring(0, 8).toUpperCase()}`;
-
-    // Create order object
-    const order = {
-      orderId,
-      guestId,
-      customerDetails,
-      shippingAddress,
-      notes: notes || '',
-      items: cart.items.map((item) => ({
-        productId: item.productId,
-        productName: item.product.name,
-        sku: item.product.sku,
-        size: item.size,
-        quantity: item.quantity,
-        price: item.price,
-        itemTotal: item.itemTotal,
-      })),
-      summary: cart.summary,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    };
-
-    // Store order in Redis (for 7 days)
-    const orderKey = `guest:order:${orderId}`;
-    await this.redisService.set(orderKey, JSON.stringify(order), 604800); // 7 days
+    const order = await this.orderService.createOrderFromGuestCart(cart, guestId, {
+      customerName: customerDetails.name,
+      contactEmail: customerDetails.email,
+      contactPhone: customerDetails.phone,
+      shippingAddress: shippingAddressString,
+      notes,
+    });
 
     // Clear the cart after successful order
     await this.clearCart(guestId);
 
     return {
       message: 'Order placed successfully',
-      orderId,
+      orderId: order.orderId,
       orderDetails: order,
     };
   }

@@ -4,13 +4,12 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Product } from '@/types';
+import { Product, Category } from '@/types';
+import { productBadgeStyles, productBadgeLabels } from '@/lib/productBadge';
 
 interface ProductCardProps {
   product: Product;
-  onAddToCart?: (productId: string) => void;
   onAddToWishlist?: (productId: string) => void;
-  isAddingToCart?: boolean;
   isAddingToWishlist?: boolean;
 }
 
@@ -37,37 +36,60 @@ function PlaceholderIcon({ className }: { className: string }) {
  */
 export default function ProductCard({
   product,
-  onAddToCart,
   onAddToWishlist,
-  isAddingToCart = false,
   isAddingToWishlist = false,
 }: ProductCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = product.images && product.images.length > 0 && !imageFailed;
+  const discountPercent = product.discountPrice
+    ? Math.round(((product.price - product.discountPrice) / product.price) * 100)
+    : 0;
+  const categoryName =
+    product.categoryId && typeof product.categoryId !== 'string'
+      ? (product.categoryId as Category).name
+      : '';
 
   return (
-    <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }} className="group">
+    <motion.div
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      className="group h-full bg-white rounded-2xl ring-1 ring-gray-100 group-hover:ring-gray-200 shadow-sm hover:shadow-lg transition-shadow duration-300 p-2.5 sm:p-3 flex flex-col"
+    >
       <Link href={`/products/${product._id}`} className="block">
-        <div className="relative aspect-[4/5] bg-gray-50 rounded-lg overflow-hidden mb-3 shadow-none group-hover:shadow-lg transition-shadow duration-300">
+        <div className="relative aspect-[4/5] bg-gray-50 rounded-xl overflow-hidden mb-3">
           {showImage ? (
             <Image
               src={product.images[0]}
               alt={product.name}
               fill
-              className="object-contain p-2 group-hover:scale-105 transition-transform duration-300"
+              className="object-contain p-3 group-hover:scale-105 transition-transform duration-300"
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
               onError={() => setImageFailed(true)}
             />
           ) : (
             <PlaceholderIcon className="w-12 h-12" />
           )}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/25 transition-colors duration-300">
+            <span className="px-5 py-2 bg-white text-gray-900 text-xs font-semibold rounded-full shadow-lg opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+              View Product
+            </span>
+          </div>
+          {product.badge && (
+            <span
+              className={`absolute top-2 left-2 text-white text-[10px] px-2 py-1 rounded-full font-semibold tracking-wide shadow-sm ${
+                productBadgeStyles[product.badge] || 'bg-gray-900'
+              }`}
+            >
+              {productBadgeLabels[product.badge] || product.badge}
+            </span>
+          )}
           {product.discountPrice && (
-            <span className="absolute top-2 left-2 bg-gray-900 text-white text-xs px-2 py-1 rounded-full font-medium">
-              -{Math.round(((product.price - product.discountPrice) / product.price) * 100)}%
+            <span className="absolute top-2 right-2 bg-accent-500 text-white text-xs px-2 py-1 rounded-full font-bold shadow-sm">
+              -{discountPercent}%
             </span>
           )}
           {onAddToWishlist && (
-            <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute bottom-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <motion.button
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.92 }}
@@ -95,44 +117,28 @@ export default function ProductCard({
         </div>
       </Link>
 
-      <div>
-        <Link href={`/products/${product._id}`}>
-          <h3 className="text-sm font-medium text-gray-900 mb-1 line-clamp-2 group-hover:text-gray-600 transition-colors">
+      <div className="flex flex-col flex-grow px-0.5 pb-0.5">
+        {categoryName && (
+          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
+            {categoryName}
+          </span>
+        )}
+        <Link href={`/products/${product._id}`} className="flex-grow">
+          <h3 className="text-sm font-medium text-gray-900 mb-1.5 line-clamp-2 group-hover:text-gray-600 transition-colors">
             {product.name}
           </h3>
         </Link>
 
-        <div className={onAddToCart ? 'mb-3' : ''}>
+        <div className="flex items-center gap-2 mt-auto">
           {product.discountPrice ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-gray-900">₹{product.discountPrice.toFixed(2)}</span>
-              <span className="text-xs text-gray-500 line-through">₹{product.price.toFixed(2)}</span>
-            </div>
+            <>
+              <span className="text-sm font-bold text-gray-900">₹{product.discountPrice.toFixed(2)}</span>
+              <span className="text-xs text-gray-400 line-through">₹{product.price.toFixed(2)}</span>
+            </>
           ) : (
-            <span className="text-sm font-semibold text-gray-900">₹{product.price.toFixed(2)}</span>
+            <span className="text-sm font-bold text-gray-900">₹{product.price.toFixed(2)}</span>
           )}
         </div>
-
-        {onAddToCart && (
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={() => onAddToCart(product._id)}
-            disabled={isAddingToCart}
-            className="w-full px-3 py-2 bg-gray-900 text-white text-xs font-medium rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50"
-          >
-            {isAddingToCart ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-2 h-3 w-3" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Adding...
-              </span>
-            ) : (
-              'Add to Cart'
-            )}
-          </motion.button>
-        )}
       </div>
     </motion.div>
   );

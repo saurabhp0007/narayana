@@ -6,11 +6,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { productApi, footwearSubcategoryApi, shopSubcategoryApi } from '@/lib/api';
 import { Product, Category, PaginatedResponse, FootwearSubcategory, ShopSubcategory } from '@/types';
-import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
 import { useAuthStore } from '@/store/authStore';
 import { useDataStore } from '@/store/dataStore';
 import { useGuestStore } from '@/store/guestStore';
+import { useToastStore } from '@/store/toastStore';
 import SearchDropdown from '@/components/common/SearchDropdown';
 import ProductCard from '@/components/common/ProductCard';
 import SizeFilter from '@/components/common/SizeFilter';
@@ -18,9 +18,9 @@ import SizeFilter from '@/components/common/SizeFilter';
 function ProductsPageContent() {
   const searchParams = useSearchParams();
   const { userType, user } = useAuthStore();
-  const { addToCart } = useCartStore();
   const { addToWishlist } = useWishlistStore();
   const { guestId, initGuestSession } = useGuestStore();
+  const showToast = useToastStore((s) => s.show);
 
   // Use shared data store
   const {
@@ -88,7 +88,6 @@ function ProductsPageContent() {
   const [showFilters, setShowFilters] = useState(false);
 
   // Loading states for actions
-  const [addingToCart, setAddingToCart] = useState<string | null>(null);
   const [addingToWishlist, setAddingToWishlist] = useState<string | null>(null);
 
   // Refs to prevent flickering
@@ -304,28 +303,6 @@ function ProductsPageContent() {
     };
   }, [fetchProducts]);
 
-  const handleAddToCart = async (productId: string) => {
-    setAddingToCart(productId);
-    try {
-      if (userType === 'user' && user) {
-        await addToCart(productId, 1);
-      } else {
-        // Guest user - use Redis-based cart
-        let currentGuestId = guestId;
-        if (!currentGuestId) {
-          currentGuestId = await initGuestSession();
-        }
-        await addToCart(productId, 1, currentGuestId);
-      }
-      alert('Added to cart successfully!');
-    } catch (err) {
-      console.error('Failed to add to cart:', err);
-      alert('Failed to add to cart. Please try again.');
-    } finally {
-      setAddingToCart(null);
-    }
-  };
-
   const handleAddToWishlist = async (productId: string) => {
     setAddingToWishlist(productId);
     try {
@@ -339,10 +316,10 @@ function ProductsPageContent() {
         }
         await addToWishlist(productId, currentGuestId);
       }
-      alert('Added to wishlist successfully!');
+      showToast('Added to wishlist successfully!', 'success');
     } catch (err) {
       console.error('Failed to add to wishlist:', err);
-      alert('Failed to add to wishlist. Please try again.');
+      showToast('Failed to add to wishlist. Please try again.', 'error');
     } finally {
       setAddingToWishlist(null);
     }
@@ -715,9 +692,7 @@ function ProductsPageContent() {
                       <ProductCard
                         key={product._id}
                         product={product}
-                        onAddToCart={handleAddToCart}
                         onAddToWishlist={handleAddToWishlist}
-                        isAddingToCart={addingToCart === product._id}
                         isAddingToWishlist={addingToWishlist === product._id}
                       />
                     ))}

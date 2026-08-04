@@ -109,6 +109,99 @@ export class OrderService {
     return order;
   }
 
+  // Mirrors createOrderFromCart but for a guest checkout: no userId (guest has no
+  // account), the cart is passed in already resolved (GuestService owns the Redis cart),
+  // and the caller clears that cart afterward instead of this method doing it. Without
+  // this, guest checkouts previously only wrote an ad-hoc object into Redis — never a
+  // real Order document — so they never showed up in the admin orders list and never
+  // decremented product stock.
+  async createOrderFromGuestCart(
+    cart: { items: any[]; summary: any },
+    guestId: string,
+    details: {
+      customerName: string;
+      contactEmail?: string;
+      contactPhone?: string;
+      shippingAddress?: string;
+      notes?: string;
+    },
+  ): Promise<Order> {
+    if (!cart.items || cart.items.length === 0) {
+      throw new BadRequestException('Cart is empty');
+    }
+
+    // Verify stock for all items
+    for (const cartItem of cart.items) {
+      const product = await this.productService.findOne(cartItem.product._id);
+
+      if (!product.isActive) {
+        throw new BadRequestException(`Product ${product.name} is no longer available`);
+      }
+
+      const availableStock = this.productService.resolveAvailableStock(product, cartItem.size);
+      if (availableStock < cartItem.quantity) {
+        throw new BadRequestException(
+          `Insufficient stock for ${product.name}. Available: ${availableStock}, Required: ${cartItem.quantity}`,
+        );
+      }
+    }
+
+    const orderId = await this.generateOrderId();
+
+    const orderItems = cart.items.map((cartItem) => ({
+      productId: new Types.ObjectId(cartItem.product._id),
+      productName: cartItem.product.name,
+      sku: cartItem.product.sku,
+      size: cartItem.size,
+      quantity: cartItem.quantity,
+      price: cartItem.price,
+      discountPrice: cartItem.product.discountPrice,
+      images: cartItem.product.images || [],
+    }));
+
+    const order = new this.orderModel({
+      orderId,
+      guestId,
+      customerName: details.customerName,
+      items: orderItems,
+      subtotal: cart.summary.subtotal,
+      discount: cart.summary.totalDiscount,
+      totalAmount: cart.summary.total,
+      totalItems: cart.summary.totalItems,
+      status: OrderStatus.PENDING,
+      notes: details.notes,
+      shippingAddress: details.shippingAddress,
+      contactEmail: details.contactEmail,
+      contactPhone: details.contactPhone,
+    });
+
+    await order.save();
+
+    // Deduct stock (in a transaction-like manner)
+    try {
+      for (const cartItem of cart.items) {
+        await this.productService.updateStock(cartItem.product._id, -cartItem.quantity, cartItem.size);
+      }
+    } catch (error) {
+      // Rollback: delete the order if stock update fails
+      await order.deleteOne();
+      throw new InternalServerErrorException('Failed to update stock. Order creation cancelled.');
+    }
+
+    // Send order confirmation email
+    if (details.contactEmail) {
+      await this.emailService.sendOrderConfirmation(details.contactEmail, {
+        orderId: order.orderId,
+        items: orderItems,
+        totalAmount: order.totalAmount,
+        subtotal: order.subtotal,
+        discount: order.discount,
+      });
+    }
+
+    return order;
+  }
+
   async findAll(
     page: number = 1,
     limit: number = 10,

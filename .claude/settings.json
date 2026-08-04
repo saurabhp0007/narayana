@@ -48,7 +48,30 @@
       "Bash(./gradlew assembleRelease)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001)",
       "Bash(npm ls *)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/)",
+      "Read(//home/**)",
+      "Read(//home/user/**)",
+      "Bash(git -C /Users/saurabh/Desktop/narayana log --oneline -8)",
+      "Bash(git -C /Users/saurabh/Desktop/narayana status --short)",
+      "Bash(git check-ignore *)",
+      "Bash(grep -rn '\\\\$' frontend/src/app/admin --include=\"*.tsx\")",
+      "Bash(grep -v '\\\\${')",
+      "Bash(grep '\\\\$')",
+      "Bash(grep -rn '\\\\$\\\\${' frontend/src/app/admin --include=\"*.tsx\")",
+      "Bash(grep -rn '\\\\$\\\\{' frontend/src/app/admin --include=\"*.tsx\")",
+      "Bash(grep -iv 'classname\\\\|template\\\\|`')",
+      "Bash(grep -rnF '${' frontend/src/app/admin --include=\"*.tsx\")",
+      "Bash(python3 -)",
+      "Bash(grep -rnF '$' frontend/src/app/admin --include=\"*.tsx\")",
+      "Bash(lsof -i :3001 -sTCP:LISTEN)",
+      "Bash(curl -s http://localhost:3000/api/products/6a5f9bdd41ef72795a09aad9)",
+      "Bash(curl -s \"http://localhost:3000/api/products?limit=5\")",
+      "Bash(curl -s \"http://localhost:3000/api/products?limit=100\")",
+      "Bash(curl -s http://localhost:3000/api/products/6a5f9ae741ef72795a09a209)"
+    ],
+    "additionalDirectories": [
+      "/home/user/narayana/frontend/src/lib",
+      "/System/Volumes/Data/home/user/narayana/frontend/src/lib"
     ]
   }
 }
