@@ -405,21 +405,35 @@ export default function ProductDetailPage() {
                     {product.sizes.map((size) => {
                       const sizeStock = getStockForSize(size);
                       const isOutOfStock = sizeStock === 0;
+                      // Only show a per-size stock count when the product actually tracks
+                      // it — for legacy products without sizeStock, getStockForSize falls
+                      // back to the same aggregate number for every size, which would be
+                      // misleading to display as if it were size-specific.
+                      const hasPerSizeStock = !!product.sizeStock && product.sizeStock.length > 0;
                       return (
                         <button
                           key={size}
                           onClick={() => !isOutOfStock && setSelectedSize(size)}
                           disabled={isOutOfStock}
                           title={isOutOfStock ? `${size} is out of stock` : `${sizeStock} available`}
-                          className={`px-4 py-2 border rounded-md font-medium transition-colors ${
+                          className={`flex flex-col items-center min-w-[3.5rem] px-4 py-2 border rounded-md font-medium transition-colors ${
                             isOutOfStock
-                              ? 'border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed line-through'
+                              ? 'border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed'
                               : selectedSize === size
                               ? 'text-black border-blue-500 bg-blue-50 text-blue-700'
                               : 'text-black border-gray-300 hover:border-gray-400'
                           }`}
                         >
-                          {size}
+                          <span className={isOutOfStock ? 'line-through' : ''}>{size}</span>
+                          {hasPerSizeStock && (
+                            <span
+                              className={`text-[10px] mt-0.5 font-normal ${
+                                isOutOfStock ? 'text-gray-300' : 'text-gray-500'
+                              }`}
+                            >
+                              {isOutOfStock ? 'Out of stock' : `${sizeStock} left`}
+                            </span>
+                          )}
                         </button>
                       );
                     })}
