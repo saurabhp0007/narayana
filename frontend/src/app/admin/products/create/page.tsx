@@ -3,16 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { productApi, genderApi, categoryApi, mediaApi } from '@/lib/api';
-import { Gender, Category, CreateProductDto, SizeStock } from '@/types';
-
-const NEW_SIZE_OPTION = '__new__';
+import { Gender, Category, CreateProductDto } from '@/types';
 
 interface FormErrors {
   name?: string;
   genderId?: string;
   categoryId?: string;
   price?: string;
-  stock?: string;
   general?: string;
 }
 
@@ -41,11 +38,11 @@ export default function CreateProductPage() {
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
 
   // Size + per-size stock inputs. The size dropdown is sourced from sizes already used
-  // in this category (same data the storefront's size filter uses), so admins pick from
-  // a consistent vocabulary instead of free-typing near-duplicates ("M" vs "Medium").
+  // elsewhere in the catalog (same data the storefront's size filter uses), so admins
+  // always pick from the existing vocabulary instead of free-typing near-duplicates
+  // ("M" vs "Medium") — there's no "add a new size" escape hatch by design.
   const [knownSizes, setKnownSizes] = useState<string[]>([]);
   const [sizeSelectValue, setSizeSelectValue] = useState('');
-  const [customSizeInput, setCustomSizeInput] = useState('');
   const [sizeStockInput, setSizeStockInput] = useState('');
   const [sizeError, setSizeError] = useState<string | null>(null);
   const [imageInput, setImageInput] = useState('');
@@ -90,14 +87,21 @@ export default function CreateProductPage() {
 
   // Fetch the sizes already used in this category (scoped by gender too when set) to
   // populate the size dropdown, so it stays in sync with the storefront's size filter.
+  // Falls back to every size used across the catalog when this category has none yet,
+  // so the dropdown isn't a dead end for a brand-new category.
   useEffect(() => {
     const fetchSizes = async () => {
       try {
-        const res = await productApi.getSizes({
+        const scoped = await productApi.getSizes({
           genderId: formData.genderId || undefined,
           categoryId: formData.categoryId || undefined,
         });
-        setKnownSizes(Array.isArray(res.data) ? res.data : []);
+        let sizes = Array.isArray(scoped.data) ? scoped.data : [];
+        if (sizes.length === 0 && (formData.genderId || formData.categoryId)) {
+          const all = await productApi.getSizes();
+          sizes = Array.isArray(all.data) ? all.data : [];
+        }
+        setKnownSizes(sizes);
       } catch (err) {
         console.error('Failed to fetch available sizes:', err);
       }
@@ -126,10 +130,6 @@ export default function CreateProductPage() {
       newErrors.price = 'Price must be greater than 0';
     }
 
-    if ((formData.sizeStock?.length || 0) === 0 && formData.stock < 0) {
-      newErrors.stock = 'Stock cannot be negative';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -148,7 +148,7 @@ export default function CreateProductPage() {
       const dataToSubmit = {
         ...formData,
         discountPrice: formData.discountPrice || undefined,
-        stock: (formData.sizeStock?.length || 0) > 0 ? sizeStockTotal : formData.stock,
+        stock: sizeStockTotal,
       };
       await productApi.create(dataToSubmit);
       router.push('/admin/products');
@@ -164,11 +164,10 @@ export default function CreateProductPage() {
   };
 
   const addSizeStockRow = () => {
-    const size =
-      sizeSelectValue === NEW_SIZE_OPTION ? customSizeInput.trim() : sizeSelectValue.trim();
+    const size = sizeSelectValue.trim();
 
     if (!size) {
-      setSizeError('Select a size or enter a new one');
+      setSizeError('Select a size');
       return;
     }
     if (formData.sizeStock?.some((s) => s.size.toLowerCase() === size.toLowerCase())) {
@@ -183,7 +182,6 @@ export default function CreateProductPage() {
     }));
     setSizeError(null);
     setSizeSelectValue('');
-    setCustomSizeInput('');
     setSizeStockInput('');
   };
 
@@ -394,33 +392,6 @@ export default function CreateProductPage() {
             </div>
           </div>
 
-          {/* Stock */}
-          <div>
-            <label htmlFor="stock" className="block text-sm font-medium text-gray-700 mb-1">
-              Stock *
-            </label>
-            {(formData.sizeStock?.length || 0) > 0 ? (
-              <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-600">
-                {sizeStockTotal} <span className="text-xs text-gray-400">(sum of sizes below)</span>
-              </div>
-            ) : (
-              <input
-                type="number"
-                id="stock"
-                value={formData.stock || ''}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, stock: parseInt(e.target.value) || 0 }))
-                }
-                min="0"
-                className={`text-black w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                  errors.stock ? 'border-red-300' : 'border-gray-300'
-                }`}
-                placeholder="0"
-              />
-            )}
-            {errors.stock && <p className="mt-1 text-sm text-red-600">{errors.stock}</p>}
-          </div>
-
           {/* Badge */}
           <div>
             <label htmlFor="badge" className="block text-sm font-medium text-gray-700 mb-1">
@@ -472,35 +443,28 @@ export default function CreateProductPage() {
           {/* Sizes + per-size stock */}
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Sizes &amp; Stock
+              Sizes &amp; Stock *
             </label>
             <p className="text-xs text-gray-500 mb-2">
-              Pick a size already used in this category (keeps it consistent with the storefront
-              size filter), or add a new one, and set how much stock it has.
+              Pick a size from the list (kept in sync with the storefront size filter) and set
+              how much stock it has. Total stock is the sum of the sizes added here.
             </p>
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <select
                 value={sizeSelectValue}
                 onChange={(e) => setSizeSelectValue(e.target.value)}
-                className="text-black px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                disabled={knownSizes.length === 0}
+                className="text-black px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
               >
-                <option value="">Select size</option>
+                <option value="">
+                  {knownSizes.length === 0 ? 'No sizes available yet' : 'Select size'}
+                </option>
                 {knownSizes.map((size) => (
                   <option key={size} value={size}>
                     {size}
                   </option>
                 ))}
-                <option value={NEW_SIZE_OPTION}>+ New size&hellip;</option>
               </select>
-              {sizeSelectValue === NEW_SIZE_OPTION && (
-                <input
-                  type="text"
-                  value={customSizeInput}
-                  onChange={(e) => setCustomSizeInput(e.target.value)}
-                  className="text-black px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="e.g. UK 9, XXL, 6-8Y"
-                />
-              )}
               <input
                 type="number"
                 min="0"
@@ -512,12 +476,18 @@ export default function CreateProductPage() {
               <button
                 type="button"
                 onClick={addSizeStockRow}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                disabled={knownSizes.length === 0}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
               >
                 Add
               </button>
             </div>
             {sizeError && <p className="mb-2 text-sm text-red-600">{sizeError}</p>}
+            {formData.sizeStock && formData.sizeStock.length > 0 && (
+              <p className="mb-2 text-xs text-gray-500">
+                Total stock: <span className="font-medium text-gray-700">{sizeStockTotal}</span>
+              </p>
+            )}
             {formData.sizeStock && formData.sizeStock.length > 0 && (
               <div className="space-y-2">
                 {formData.sizeStock.map((entry) => (
