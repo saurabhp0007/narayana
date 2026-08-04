@@ -13,11 +13,16 @@ export default function AdminLayout({
   const pathname = usePathname();
   const { admin, userType, logout, loadFromStorage } = useAuthStore();
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     loadFromStorage();
     setIsLoaded(true);
   }, [loadFromStorage]);
+
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [pathname]);
 
   if (!isLoaded) {
     return (
@@ -80,31 +85,54 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Admin Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div className="flex items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
+      <header className="bg-white shadow sticky top-0 z-30">
+        <div className="px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen((open) => !open)}
+              className="lg:hidden -ml-1 p-2 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              aria-label="Toggle navigation"
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">Admin Panel</h1>
           </div>
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <span className="hidden sm:inline text-sm text-gray-600">
               Welcome, <span className="font-medium">{admin.name}</span>
             </span>
             <button
               onClick={logout}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="inline-flex items-center px-2.5 sm:px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
-              <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-4 w-4 sm:mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
-              Logout
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
       </header>
 
       <div className="flex">
+        {/* Mobile sidebar backdrop */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 z-20 bg-black/50 lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         {/* Sidebar */}
-        <aside className="w-64 bg-white shadow-md min-h-screen">
+        <aside
+          className={`fixed inset-y-0 left-0 z-20 w-64 bg-white shadow-md min-h-screen transform transition-transform duration-200 ease-in-out overflow-y-auto pt-16 lg:pt-0 lg:static lg:translate-x-0 lg:shrink-0 ${
+            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
           <nav className="mt-5 px-2">
             <div className="space-y-1">
               {navItems.map((item) => (
@@ -118,7 +146,7 @@ export default function AdminLayout({
                   }`}
                 >
                   <svg
-                    className={`mr-3 h-5 w-5 ${
+                    className={`mr-3 h-5 w-5 shrink-0 ${
                       isActive(item.href)
                         ? 'text-indigo-500'
                         : 'text-gray-400 group-hover:text-gray-500'
@@ -137,7 +165,7 @@ export default function AdminLayout({
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-8">{children}</main>
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

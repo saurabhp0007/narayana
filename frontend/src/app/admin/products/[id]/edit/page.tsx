@@ -225,9 +225,12 @@ export default function EditProductPage() {
     }
   };
 
-  const toggleSizeToAdd = (size: string) => {
+  // Selection keys are "<group label>::<size>" rather than the bare size, since the same
+  // size string (e.g. "8") can appear in more than one group (Shoe Sizes vs Dress Sizes) —
+  // keying on the bare value would select it in every group it appears in at once.
+  const toggleSizeToAdd = (key: string) => {
     setSelectedSizesToAdd((prev) =>
-      prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]
+      prev.includes(key) ? prev.filter((s) => s !== key) : [...prev, key]
     );
   };
 
@@ -240,7 +243,7 @@ export default function EditProductPage() {
     }
 
     const stock = Math.max(0, parseInt(sizeStockInput, 10) || 0);
-    const rows = selectedSizesToAdd.map((size) => ({ size, stock }));
+    const rows = selectedSizesToAdd.map((key) => ({ size: key.slice(key.indexOf('::') + 2), stock }));
 
     setFormData((prev) => ({
       ...prev,
@@ -580,13 +583,14 @@ export default function EditProductPage() {
                   <div className="flex flex-wrap gap-2">
                     {group.sizes.map((size) => {
                       const alreadyAdded = addedSizes.has(size.toLowerCase());
-                      const isSelected = selectedSizesToAdd.includes(size);
+                      const key = `${group.label}::${size}`;
+                      const isSelected = selectedSizesToAdd.includes(key);
                       return (
                         <button
                           key={size}
                           type="button"
                           disabled={alreadyAdded}
-                          onClick={() => toggleSizeToAdd(size)}
+                          onClick={() => toggleSizeToAdd(key)}
                           className={`min-w-[2.5rem] px-2.5 py-1.5 border rounded-md text-xs font-medium transition-colors ${
                             alreadyAdded
                               ? 'border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed'
