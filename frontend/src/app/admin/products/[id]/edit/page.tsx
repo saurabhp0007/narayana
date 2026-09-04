@@ -79,7 +79,7 @@ export default function EditProductPage() {
       try {
         const [gendersRes, categoriesRes, productRes] = await Promise.all([
           genderApi.getAll({ isActive: true }),
-          categoryApi.getAll({ isActive: true }),
+          categoryApi.getAll({ isActive: true, limit: 100 }),
           productApi.getById(productId),
         ]);
 

@@ -66,7 +66,7 @@ export default function OfferManagementPage() {
     try {
       const [productsRes, categoriesRes] = await Promise.all([
         productApi.getAll({ limit: 100, isActive: true }),
-        categoryApi.getAll({ isActive: true }),
+        categoryApi.getAll({ isActive: true, limit: 100 }),
       ]);
 
       const productsData = productsRes.data;

@@ -48,7 +48,7 @@ export default function CreateProductPage() {
       try {
         const [gendersRes, categoriesRes] = await Promise.all([
           genderApi.getAll({ isActive: true }),
-          categoryApi.getAll({ isActive: true }),
+          categoryApi.getAll({ isActive: true, limit: 100 }),
         ]);
         setGenders(Array.isArray(gendersRes.data) ? gendersRes.data : gendersRes.data.data || []);
         setCategories(
