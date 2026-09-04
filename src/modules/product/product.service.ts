@@ -12,6 +12,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { GenderService } from '../gender/gender.service';
 import { CategoryService } from '../category/category.service';
+import { SizeGroupService } from '../size-group/size-group.service';
 import { RedisService } from '../../database/redis.service';
 import { generateSKU } from '../../common/utils/sku.util';
 
@@ -26,6 +27,7 @@ export class ProductService {
     private productModel: Model<Product>,
     private genderService: GenderService,
     private categoryService: CategoryService,
+    private sizeGroupService: SizeGroupService,
     private redisService: RedisService,
   ) {}
 
@@ -77,6 +79,7 @@ export class ProductService {
     let sizeStockOverride: { sizes: string[]; stock: number; sizeStock: SizeStock[] } | undefined;
     if (createProductDto.sizeStock && createProductDto.sizeStock.length > 0) {
       const normalized = this.normalizeSizeStock(createProductDto.sizeStock);
+      await this.assertSizesAreKnown(normalized.map((s) => s.size));
       sizeStockOverride = {
         sizeStock: normalized,
         sizes: normalized.map((s) => s.size),
@@ -465,6 +468,10 @@ export class ProductService {
     if (sizeStock !== undefined) {
       if (sizeStock.length > 0) {
         const normalized = this.normalizeSizeStock(sizeStock);
+        await this.assertSizesAreKnown(
+          normalized.map((s) => s.size),
+          product.sizes,
+        );
         product.sizeStock = normalized as unknown as SizeStock[];
         product.sizes = normalized.map((s) => s.size);
         product.stock = normalized.reduce((sum, s) => sum + s.stock, 0);
@@ -587,6 +594,23 @@ export class ProductService {
       seen.add(size);
       return { size, stock: entry.stock };
     });
+  }
+
+  // Every size on a SKU must exist in some active size group. Sizes already stored on
+  // the product being edited are grandfathered so tightening the vocabulary later never
+  // blocks an unrelated edit. To use a brand-new size, add it to a size group first.
+  private async assertSizesAreKnown(sizes: string[], grandfathered: string[] = []): Promise<void> {
+    const allowed = await this.sizeGroupService.getAllowedSizes();
+    for (const existing of grandfathered) {
+      allowed.add(existing.trim().toLowerCase());
+    }
+
+    const unknown = sizes.filter((size) => !allowed.has(size.trim().toLowerCase()));
+    if (unknown.length > 0) {
+      throw new BadRequestException(
+        `These sizes are not in any size group: ${unknown.join(', ')}. Add them to a size group first.`,
+      );
+    }
   }
 
   private async generateUniqueSKU(genderName: string, categoryName: string): Promise<string> {

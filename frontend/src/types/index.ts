@@ -39,6 +39,19 @@ export interface SizeStock {
   stock: number;
 }
 
+export interface SizeGroup {
+  _id: string;
+  key: string;
+  name: string;
+  measurement: string;
+  recommendedUse: string;
+  sizes: string[];
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Product {
   _id: string;
   name: string;

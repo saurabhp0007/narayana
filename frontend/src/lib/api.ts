@@ -133,6 +133,19 @@ export const productApi = {
   delete: (id: string) => api.delete(`/products/${id}`),
 };
 
+// Size Group API (size vocabularies for the admin product Sizes & Stock picker)
+export const sizeGroupApi = {
+  getAll: (onlyActive?: boolean) =>
+    api.get('/size-groups', { params: onlyActive ? { onlyActive: true } : undefined }),
+  getById: (id: string) => api.get(`/size-groups/${id}`),
+  create: (data: object) => api.post('/size-groups', data),
+  update: (id: string, data: object) => api.patch(`/size-groups/${id}`, data),
+  delete: (id: string) => api.delete(`/size-groups/${id}`),
+  addSize: (id: string, size: string) => api.post(`/size-groups/${id}/sizes`, { size }),
+  removeSize: (id: string, size: string) =>
+    api.delete(`/size-groups/${id}/sizes/${encodeURIComponent(size)}`),
+};
+
 // Cart API
 export const cartApi = {
   get: () => api.get('/cart'),

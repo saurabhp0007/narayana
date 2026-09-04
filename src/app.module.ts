@@ -22,6 +22,7 @@ import { HeroBannerModule } from './modules/hero-banner/hero-banner.module';
 import { CollectionModule } from './modules/collection/collection.module';
 import { ShopCategoryModule } from './modules/shop-category/shop-category.module';
 import { ShopSubcategoryModule } from './modules/shop-subcategory/shop-subcategory.module';
+import { SizeGroupModule } from './modules/size-group/size-group.module';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
@@ -56,6 +57,7 @@ import imagekitConfig from './config/imagekit.config';
     CollectionModule,
     ShopCategoryModule,
     ShopSubcategoryModule,
+    SizeGroupModule,
   ],
   controllers: [AppController],
   providers: [],
