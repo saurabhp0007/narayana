@@ -73,5 +73,11 @@
       "/home/user/narayana/frontend/src/lib",
       "/System/Volumes/Data/home/user/narayana/frontend/src/lib"
     ]
+  },
+  "autoMode": {
+    "allow": [
+      "$defaults",
+      "Bash: curl requests to https://narayanenterprise.in, including a wp-login.php POST that authenticates with the WordPress admin credentials the user pasted directly into this conversation, for the sole purpose of reading/exporting WooCommerce product data to migrate into this project's own database. Scope: narayanenterprise.in only, read-only data retrieval only (no writes/deletes on that site, no use of these credentials elsewhere)."
+    ]
   }
 }

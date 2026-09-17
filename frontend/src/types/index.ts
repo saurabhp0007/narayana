@@ -175,6 +175,15 @@ export interface OrderItem {
   images: string[];
 }
 
+export type OrderStatus =
+  | 'payment_pending'
+  | 'payment_failed'
+  | 'pending'
+  | 'confirmed'
+  | 'shipped'
+  | 'delivered'
+  | 'cancelled';
+
 export interface Order {
   _id: string;
   orderId: string;
@@ -186,7 +195,11 @@ export interface Order {
   discount: number;
   totalAmount: number;
   totalItems: number;
-  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  status: OrderStatus;
+  paymentMethod?: 'cod' | 'payu';
+  paymentStatus?: 'not_required' | 'pending' | 'paid' | 'failed';
+  txnid?: string;
+  paidAt?: string;
   notes?: string;
   shippingAddress?: string;
   contactEmail?: string;

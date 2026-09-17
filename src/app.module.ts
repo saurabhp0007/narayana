@@ -16,6 +16,7 @@ import { OrderModule } from './modules/order/order.module';
 import { OfferModule } from './modules/offer/offer.module';
 import { FootwearSubcategoryModule } from './modules/footwear-subcategory/footwear-subcategory.module';
 import { GuestModule } from './modules/guest/guest.module';
+import { PaymentModule } from './modules/payment/payment.module';
 import { ReviewModule } from './modules/review/review.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { HeroBannerModule } from './modules/hero-banner/hero-banner.module';
@@ -28,12 +29,13 @@ import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
 import emailConfig from './config/email.config';
 import imagekitConfig from './config/imagekit.config';
+import payuConfig from './config/payu.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, emailConfig, imagekitConfig],
+      load: [appConfig, databaseConfig, jwtConfig, emailConfig, imagekitConfig, payuConfig],
       envFilePath: '.env',
     }),
     DatabaseModule,
@@ -51,6 +53,7 @@ import imagekitConfig from './config/imagekit.config';
     OfferModule,
     FootwearSubcategoryModule,
     GuestModule,
+    PaymentModule,
     ReviewModule,
     SettingsModule,
     HeroBannerModule,

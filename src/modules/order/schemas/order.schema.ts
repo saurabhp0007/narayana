@@ -2,11 +2,27 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
 export enum OrderStatus {
+  // Online-payment order created, waiting for the customer to finish paying.
+  PAYMENT_PENDING = 'payment_pending',
+  // Online payment did not go through (customer can retry from the order).
+  PAYMENT_FAILED = 'payment_failed',
   PENDING = 'pending',
   CONFIRMED = 'confirmed',
   SHIPPED = 'shipped',
   DELIVERED = 'delivered',
   CANCELLED = 'cancelled',
+}
+
+export enum PaymentMethod {
+  COD = 'cod',
+  PAYU = 'payu',
+}
+
+export enum OrderPaymentStatus {
+  NOT_REQUIRED = 'not_required',
+  PENDING = 'pending',
+  PAID = 'paid',
+  FAILED = 'failed',
 }
 
 export class OrderItem {
@@ -75,6 +91,19 @@ export class Order extends Document {
     default: OrderStatus.PENDING,
   })
   status: OrderStatus;
+
+  @Prop({ type: String, enum: PaymentMethod, default: PaymentMethod.COD })
+  paymentMethod: PaymentMethod;
+
+  @Prop({ type: String, enum: OrderPaymentStatus, default: OrderPaymentStatus.NOT_REQUIRED })
+  paymentStatus: OrderPaymentStatus;
+
+  // PayU transaction id for online-payment orders.
+  @Prop({ trim: true })
+  txnid?: string;
+
+  @Prop()
+  paidAt?: Date;
 
   @Prop()
   notes: string;

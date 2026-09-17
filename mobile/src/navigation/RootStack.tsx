@@ -11,6 +11,8 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { ProductsScreen } from '../screens/ProductsScreen';
 import { ProductDetailScreen } from '../screens/ProductDetailScreen';
 import { CartScreen } from '../screens/CartScreen';
+import { CheckoutScreen } from '../screens/CheckoutScreen';
+import { OrderConfirmationScreen } from '../screens/OrderConfirmationScreen';
 import { WishlistScreen } from '../screens/WishlistScreen';
 import { OrdersScreen } from '../screens/OrdersScreen';
 import { LoginScreen } from '../screens/LoginScreen';
@@ -53,6 +55,8 @@ export const RootStack = () => {
           <Stack.Screen name="Products" component={ProductsScreen} />
           <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
           <Stack.Screen name="Cart" component={CartScreen} />
+          <Stack.Screen name="Checkout" component={CheckoutScreen} />
+          <Stack.Screen name="OrderConfirmation" component={OrderConfirmationScreen} />
           <Stack.Screen name="Wishlist" component={WishlistScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
           <Stack.Screen name="Orders" component={OrdersScreen} />

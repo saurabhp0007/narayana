@@ -3,8 +3,25 @@
 import { useEffect, useState, useCallback } from 'react';
 import { orderApi } from '@/lib/api';
 import { Order, PaginatedResponse } from '@/types';
+import { printOrderReceipt } from '@/lib/receipt';
 
 type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+
+const FULFILLMENT_STATUSES: OrderStatus[] = [
+  'pending',
+  'confirmed',
+  'shipped',
+  'delivered',
+  'cancelled',
+];
+
+const STATUS_LABEL = (s: string) =>
+  s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  cod: 'Cash on Delivery',
+  payu: 'Online (PayU)',
+};
 
 interface OrderStats {
   totalOrders: number;
@@ -103,9 +120,20 @@ export default function OrderManagementPage() {
     }
   };
 
-  const openDetailsModal = (order: Order) => {
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+
+  const openDetailsModal = async (order: Order) => {
     setSelectedOrder(order);
     setIsDetailsModalOpen(true);
+    setIsLoadingDetails(true);
+    try {
+      const { data } = await orderApi.getByOrderId(order.orderId);
+      setSelectedOrder(data);
+    } catch {
+      // fall back to the row data we already have
+    } finally {
+      setIsLoadingDetails(false);
+    }
   };
 
   const closeDetailsModal = () => {
@@ -115,6 +143,8 @@ export default function OrderManagementPage() {
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
+      payment_pending: 'bg-orange-100 text-orange-800',
+      payment_failed: 'bg-red-100 text-red-800',
       pending: 'bg-yellow-100 text-yellow-800',
       confirmed: 'bg-blue-100 text-blue-800',
       shipped: 'bg-purple-100 text-purple-800',
@@ -122,6 +152,15 @@ export default function OrderManagementPage() {
       cancelled: 'bg-red-100 text-red-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getPaymentStatusColor = (status?: string) => {
+    const colors: Record<string, string> = {
+      paid: 'bg-green-100 text-green-800',
+      pending: 'bg-orange-100 text-orange-800',
+      failed: 'bg-red-100 text-red-800',
+    };
+    return colors[status || ''] || 'bg-gray-100 text-gray-600';
   };
 
   const formatDate = (dateString: string) => {
@@ -335,22 +374,46 @@ export default function OrderManagementPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <select
-                        value={order.status}
-                        onChange={(e) =>
-                          handleStatusUpdate(order._id, e.target.value as OrderStatus)
-                        }
-                        disabled={updatingOrderId === order._id}
-                        className={`text-xs font-semibold rounded-full px-2 py-1 border-0 focus:ring-2 focus:ring-indigo-500 ${getStatusColor(
-                          order.status
-                        )} ${updatingOrderId === order._id ? 'opacity-50' : ''}`}
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="shipped">Shipped</option>
-                        <option value="delivered">Delivered</option>
-                        <option value="cancelled">Cancelled</option>
-                      </select>
+                      {FULFILLMENT_STATUSES.includes(order.status as OrderStatus) ? (
+                        <select
+                          value={order.status}
+                          onChange={(e) =>
+                            handleStatusUpdate(order._id, e.target.value as OrderStatus)
+                          }
+                          disabled={updatingOrderId === order._id}
+                          className={`text-xs font-semibold rounded-full px-2 py-1 border-0 focus:ring-2 focus:ring-indigo-500 ${getStatusColor(
+                            order.status
+                          )} ${updatingOrderId === order._id ? 'opacity-50' : ''}`}
+                        >
+                          {FULFILLMENT_STATUSES.map((s) => (
+                            <option key={s} value={s}>
+                              {STATUS_LABEL(s)}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span
+                          className={`inline-flex text-xs font-semibold rounded-full px-2 py-1 ${getStatusColor(
+                            order.status
+                          )}`}
+                        >
+                          {STATUS_LABEL(order.status)}
+                        </span>
+                      )}
+                      {order.paymentMethod && (
+                        <div className="mt-1">
+                          <span
+                            className={`inline-flex text-[10px] font-medium rounded px-1.5 py-0.5 ${getPaymentStatusColor(
+                              order.paymentStatus
+                            )}`}
+                          >
+                            {order.paymentMethod === 'payu' ? 'PayU' : 'COD'}
+                            {order.paymentStatus && order.paymentStatus !== 'not_required'
+                              ? ` · ${STATUS_LABEL(order.paymentStatus)}`
+                              : ''}
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {formatDate(order.createdAt)}
@@ -456,20 +519,31 @@ export default function OrderManagementPage() {
                 <div className="flex justify-between items-start mb-4">
                   <h3 className="text-lg leading-6 font-medium text-gray-900">
                     Order Details - {selectedOrder.orderId}
+                    {isLoadingDetails && (
+                      <span className="ml-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-400 border-t-transparent align-middle" />
+                    )}
                   </h3>
-                  <button
-                    onClick={closeDetailsModal}
-                    className="text-gray-400 hover:text-gray-500"
-                  >
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => printOrderReceipt(selectedOrder)}
+                      className="text-sm font-medium text-indigo-600 hover:text-indigo-900"
+                    >
+                      Print Receipt
+                    </button>
+                    <button
+                      onClick={closeDetailsModal}
+                      className="text-gray-400 hover:text-gray-500"
+                    >
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-6">
@@ -482,8 +556,34 @@ export default function OrderManagementPage() {
                           selectedOrder.status
                         )}`}
                       >
-                        {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
+                        {STATUS_LABEL(selectedOrder.status)}
                       </span>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Payment</h4>
+                      <p className="text-sm text-gray-900">
+                        {PAYMENT_METHOD_LABEL[selectedOrder.paymentMethod || 'cod'] ||
+                          selectedOrder.paymentMethod ||
+                          '—'}
+                        {selectedOrder.paymentStatus &&
+                          selectedOrder.paymentStatus !== 'not_required' && (
+                            <span
+                              className={`ml-2 inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getPaymentStatusColor(
+                                selectedOrder.paymentStatus
+                              )}`}
+                            >
+                              {STATUS_LABEL(selectedOrder.paymentStatus)}
+                            </span>
+                          )}
+                      </p>
+                      {selectedOrder.txnid && (
+                        <p className="text-xs text-gray-500 mt-0.5">Txn: {selectedOrder.txnid}</p>
+                      )}
+                      {selectedOrder.paidAt && (
+                        <p className="text-xs text-gray-500">
+                          Paid: {formatDate(selectedOrder.paidAt)}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <h4 className="text-sm font-medium text-gray-500">Order Date</h4>
@@ -625,6 +725,13 @@ export default function OrderManagementPage() {
                   className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
                 >
                   Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => printOrderReceipt(selectedOrder)}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm"
+                >
+                  Print Receipt
                 </button>
               </div>
             </div>

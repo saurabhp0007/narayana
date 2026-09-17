@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { orderApi } from '@/lib/api';
+import { printOrderReceipt } from '@/lib/receipt';
 import { Order } from '@/types';
 
 interface PaginationInfo {
@@ -197,12 +198,20 @@ export default function OrdersPage() {
                     <div>
                       <p className="text-sm text-gray-500">Status</p>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(order.status)}`}>
-                        {order.status}
+                        {order.status.replace(/_/g, ' ')}
                       </span>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Total</p>
                       <p className="text-lg font-bold text-gray-900">₹{order.totalAmount.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <button
+                        onClick={() => printOrderReceipt(order)}
+                        className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                      >
+                        Print Receipt
+                      </button>
                     </div>
                   </div>
                 </div>

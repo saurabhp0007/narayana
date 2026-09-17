@@ -1,12 +1,18 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Order, OrderStatus } from './schemas/order.schema';
+import {
+  Order,
+  OrderStatus,
+  PaymentMethod,
+  OrderPaymentStatus,
+} from './schemas/order.schema';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { CartService } from '../cart/cart.service';
@@ -15,6 +21,8 @@ import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name);
+
   constructor(
     @InjectModel(Order.name)
     private orderModel: Model<Order>,
@@ -72,6 +80,8 @@ export class OrderService {
       totalAmount: cart.summary.total,
       totalItems: cart.summary.totalItems,
       status: OrderStatus.PENDING,
+      paymentMethod: PaymentMethod.COD,
+      paymentStatus: OrderPaymentStatus.NOT_REQUIRED,
       notes: createOrderDto.notes,
       shippingAddress: createOrderDto.shippingAddress,
       contactEmail: createOrderDto.contactEmail,
@@ -169,6 +179,8 @@ export class OrderService {
       totalAmount: cart.summary.total,
       totalItems: cart.summary.totalItems,
       status: OrderStatus.PENDING,
+      paymentMethod: PaymentMethod.COD,
+      paymentStatus: OrderPaymentStatus.NOT_REQUIRED,
       notes: details.notes,
       shippingAddress: details.shippingAddress,
       contactEmail: details.contactEmail,
@@ -202,6 +214,149 @@ export class OrderService {
     return order;
   }
 
+  // ==================== ONLINE PAYMENT (PayU) ====================
+
+  // Creates an order in PAYMENT_PENDING state from an already-resolved cart. Unlike
+  // the COD paths, stock is NOT deducted, the cart is NOT cleared and no email is
+  // sent here — that all happens in markPayuOrderPaid once PayU confirms the payment.
+  async createPendingPayuOrder(params: {
+    userId?: string;
+    guestId?: string;
+    customerName?: string;
+    cart: { items: any[]; summary: any };
+    contactEmail?: string;
+    contactPhone?: string;
+    shippingAddress?: string;
+    notes?: string;
+  }): Promise<Order> {
+    const { cart } = params;
+
+    if (!cart.items || cart.items.length === 0) {
+      throw new BadRequestException('Cart is empty');
+    }
+
+    for (const cartItem of cart.items) {
+      const product = await this.productService.findOne(cartItem.product._id);
+
+      if (!product.isActive) {
+        throw new BadRequestException(`Product ${product.name} is no longer available`);
+      }
+
+      const availableStock = this.productService.resolveAvailableStock(product, cartItem.size);
+      if (availableStock < cartItem.quantity) {
+        throw new BadRequestException(
+          `Insufficient stock for ${product.name}. Available: ${availableStock}, Required: ${cartItem.quantity}`,
+        );
+      }
+    }
+
+    const orderId = await this.generateOrderId();
+
+    const orderItems = cart.items.map((cartItem) => ({
+      productId: new Types.ObjectId(cartItem.product._id),
+      productName: cartItem.product.name,
+      sku: cartItem.product.sku,
+      size: cartItem.size,
+      quantity: cartItem.quantity,
+      price: cartItem.price,
+      discountPrice: cartItem.product.discountPrice,
+      images: cartItem.product.images || [],
+    }));
+
+    const order = new this.orderModel({
+      orderId,
+      userId: params.userId ? new Types.ObjectId(params.userId) : undefined,
+      guestId: params.guestId,
+      customerName: params.customerName,
+      items: orderItems,
+      subtotal: cart.summary.subtotal,
+      discount: cart.summary.totalDiscount,
+      totalAmount: cart.summary.total,
+      totalItems: cart.summary.totalItems,
+      status: OrderStatus.PAYMENT_PENDING,
+      paymentMethod: PaymentMethod.PAYU,
+      paymentStatus: OrderPaymentStatus.PENDING,
+      notes: params.notes,
+      shippingAddress: params.shippingAddress,
+      contactEmail: params.contactEmail,
+      contactPhone: params.contactPhone,
+    });
+
+    await order.save();
+    return order;
+  }
+
+  // Called once PayU confirms a successful payment (via any channel). Idempotent:
+  // multiple channels (callback, webhook, status poll) can race here, so the paid
+  // transition is claimed atomically and stock/email only run for the claimer.
+  async markPayuOrderPaid(orderId: string, txnid: string): Promise<Order> {
+    const order = await this.orderModel.findOneAndUpdate(
+      { orderId, paymentStatus: { $ne: OrderPaymentStatus.PAID } },
+      {
+        $set: {
+          status: OrderStatus.PENDING,
+          paymentStatus: OrderPaymentStatus.PAID,
+          txnid,
+          paidAt: new Date(),
+        },
+      },
+      { new: true },
+    );
+
+    if (!order) {
+      // Already paid by another channel, or the order no longer exists.
+      return this.orderModel.findOne({ orderId });
+    }
+
+    // Customer has already paid, so a stock shortfall here can't block the order —
+    // deduct anyway (may go negative) and log it for the admin to reconcile.
+    for (const item of order.items) {
+      try {
+        await this.productService.updateStock(
+          item.productId.toString(),
+          -item.quantity,
+          item.size,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Stock deduction failed for paid order ${orderId}, product ${item.productId}: ${error.message}`,
+        );
+      }
+    }
+
+    if (order.contactEmail) {
+      await this.emailService.sendOrderConfirmation(order.contactEmail, {
+        orderId: order.orderId,
+        items: order.items,
+        totalAmount: order.totalAmount,
+        subtotal: order.subtotal,
+        discount: order.discount,
+      });
+    }
+
+    return order;
+  }
+
+  // Called when PayU reports the payment failed/was cancelled. Leaves the order in
+  // place (no stock was taken) so the customer can retry. Never overrides a paid order.
+  async markPayuOrderFailed(orderId: string, txnid?: string): Promise<Order> {
+    const order = await this.orderModel.findOne({ orderId });
+    if (!order) {
+      throw new NotFoundException(`Order with Order ID ${orderId} not found`);
+    }
+
+    if (order.paymentStatus === OrderPaymentStatus.PAID) {
+      return order;
+    }
+
+    order.status = OrderStatus.PAYMENT_FAILED;
+    order.paymentStatus = OrderPaymentStatus.FAILED;
+    if (txnid) order.txnid = txnid;
+    await order.save();
+
+    return order;
+  }
+
   async findAll(
     page: number = 1,
     limit: number = 10,
@@ -210,6 +365,7 @@ export class OrderService {
       status?: OrderStatus;
       fromDate?: Date;
       toDate?: Date;
+      hideIncompletePayments?: boolean;
     },
   ): Promise<any> {
     const skip = (page - 1) * limit;
@@ -221,6 +377,11 @@ export class OrderService {
 
     if (filters?.status) {
       filter.status = filters.status;
+    } else if (filters?.hideIncompletePayments) {
+      // Customer-facing lists shouldn't surface abandoned/failed payment attempts.
+      filter.status = {
+        $nin: [OrderStatus.PAYMENT_PENDING, OrderStatus.PAYMENT_FAILED],
+      };
     }
 
     if (filters?.fromDate || filters?.toDate) {
@@ -284,7 +445,7 @@ export class OrderService {
   }
 
   async findUserOrders(userId: string, page: number = 1, limit: number = 10): Promise<any> {
-    return this.findAll(page, limit, { userId });
+    return this.findAll(page, limit, { userId, hideIncompletePayments: true });
   }
 
   async updateStatus(id: string, updateOrderStatusDto: UpdateOrderStatusDto): Promise<Order> {
@@ -319,27 +480,37 @@ export class OrderService {
       },
     ]);
 
+    const byStatus = stats.reduce((acc: any, stat: any) => {
+      acc[stat._id] = { count: stat.count, totalAmount: stat.totalAmount };
+      return acc;
+    }, {});
+
     const totalOrders = await this.orderModel.countDocuments(filter);
+    const countFor = (status: OrderStatus) => byStatus[status]?.count || 0;
+
+    // Revenue = money actually owed to the shop: exclude incomplete-payment and
+    // cancelled orders, count everything else (COD + paid online).
+    const nonRevenue: OrderStatus[] = [
+      OrderStatus.PAYMENT_PENDING,
+      OrderStatus.PAYMENT_FAILED,
+      OrderStatus.CANCELLED,
+    ];
     const totalRevenue = await this.orderModel.aggregate([
-      { $match: filter },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: '$totalAmount' },
-        },
-      },
+      { $match: { ...filter, status: { $nin: nonRevenue } } },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
     ]);
 
     return {
       totalOrders,
       totalRevenue: totalRevenue[0]?.total || 0,
-      byStatus: stats.reduce((acc: any, stat: any) => {
-        acc[stat._id] = {
-          count: stat.count,
-          totalAmount: stat.totalAmount,
-        };
-        return acc;
-      }, {}),
+      pendingOrders: countFor(OrderStatus.PENDING),
+      confirmedOrders: countFor(OrderStatus.CONFIRMED),
+      shippedOrders: countFor(OrderStatus.SHIPPED),
+      deliveredOrders: countFor(OrderStatus.DELIVERED),
+      cancelledOrders: countFor(OrderStatus.CANCELLED),
+      paymentPendingOrders: countFor(OrderStatus.PAYMENT_PENDING),
+      paymentFailedOrders: countFor(OrderStatus.PAYMENT_FAILED),
+      byStatus,
     };
   }
 

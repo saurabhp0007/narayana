@@ -8,7 +8,10 @@ import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { useGuestStore } from '@/store/guestStore';
 import { useToastStore } from '@/store/toastStore';
-import { guestApi, orderApi } from '@/lib/api';
+import { guestApi, orderApi, paymentApi } from '@/lib/api';
+import { launchBoltCheckout } from '@/lib/payu';
+
+type PaymentMethod = 'payu' | 'cod';
 
 interface CheckoutForm {
   name: string;
@@ -29,6 +32,7 @@ export default function CheckoutPage() {
   const showToast = useToastStore((s) => s.show);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('payu');
   const [currentGuestId, setCurrentGuestId] = useState<string | null>(null);
   const [formData, setFormData] = useState<CheckoutForm>({
     name: '',
@@ -130,6 +134,12 @@ export default function CheckoutPage() {
       }
     }
 
+    // Online payment needs a name/email/phone to send to PayU
+    if (paymentMethod === 'payu' && (!formData.name || !formData.email || !formData.phone)) {
+      setError('Name, email and phone are required for online payment.');
+      return false;
+    }
+
     return true;
   };
 
@@ -148,48 +158,69 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
     setError('');
 
-    try {
-      if (isLoggedIn) {
-        // Logged in user - create order via orderApi
-        const orderData:any = {
-          shippingAddress: {
-            address: formData.address,
-            city: formData.city,
-            state: formData.state,
-            pincode: formData.pincode,
-          },
-          notes: formData.notes,
-        };
+    const shippingAddress = {
+      address: formData.address,
+      city: formData.city,
+      state: formData.state,
+      pincode: formData.pincode,
+    };
+    const shippingAddressString = `${formData.address}, ${formData.city}, ${formData.state}, ${formData.pincode}`;
 
-        const response = await orderApi.create(orderData);
+    try {
+      if (paymentMethod === 'payu') {
+        if (!isLoggedIn && !currentGuestId) {
+          setError('Guest session not found. Please try again.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        const { data } = await paymentApi.initiate({
+          // Always pass the guest session if we have one; the backend links the
+          // order to the signed-in account when a valid token is present and only
+          // falls back to the guest cart for the items.
+          guestId: currentGuestId || undefined,
+          customerDetails: {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+          },
+          shippingAddress,
+          notes: formData.notes,
+        });
+
+        await launchBoltCheckout(data.boltScriptUrl, data.params);
+        router.push(`/checkout/status?txnid=${encodeURIComponent(data.txnid)}`);
+        return;
+      }
+
+      // Cash on delivery
+      if (isLoggedIn) {
+        const response = await orderApi.create({
+          shippingAddress: shippingAddressString,
+          contactEmail: formData.email || undefined,
+          contactPhone: formData.phone || undefined,
+          notes: formData.notes,
+        });
         await clearCart();
         showToast(`Order placed successfully! Order ID: ${response.data.orderId}`, 'success');
         router.push('/orders');
       } else {
-        // Guest user - create order via guestApi
         if (!currentGuestId) {
           setError('Guest session not found. Please try again.');
           setIsSubmitting(false);
           return;
         }
 
-        const checkoutData = {
+        const response = await guestApi.checkout({
           guestId: currentGuestId,
           customerDetails: {
             name: formData.name,
             email: formData.email,
             phone: formData.phone,
           },
-          shippingAddress: {
-            address: formData.address,
-            city: formData.city,
-            state: formData.state,
-            pincode: formData.pincode,
-          },
+          shippingAddress,
           notes: formData.notes,
-        };
-
-        const response = await guestApi.checkout(checkoutData);
+        });
         await clearCart(currentGuestId);
         showToast(`Order placed successfully! Order ID: ${response.data.orderId}. A confirmation email will be sent to ${formData.email}`, 'success');
         router.push('/');
@@ -250,8 +281,8 @@ export default function CheckoutPage() {
               {/* Checkout Form */}
               <div className="lg:col-span-7">
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Customer Information - Only for guest users */}
-                  {!isLoggedIn && (
+                  {/* Customer Information - for guests, and for online payment (PayU needs name/email/phone) */}
+                  {(!isLoggedIn || paymentMethod === 'payu') && (
                     <div className="bg-gray-50 rounded-lg p-6">
                       <h2 className="text-lg font-medium text-gray-900 mb-4">Customer Information</h2>
                       <div className="grid grid-cols-1 gap-4">
@@ -381,6 +412,40 @@ export default function CheckoutPage() {
                     />
                   </div>
 
+                  {/* Payment Method */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h2 className="text-lg font-medium text-gray-900 mb-4">Payment Method</h2>
+                    <div className="space-y-3">
+                      {(['payu', 'cod'] as PaymentMethod[]).map((method) => (
+                        <label
+                          key={method}
+                          className={`flex items-start gap-3 border rounded-md p-3 cursor-pointer ${
+                            paymentMethod === method ? 'border-gray-900 bg-white' : 'border-gray-300'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value={method}
+                            checked={paymentMethod === method}
+                            onChange={() => setPaymentMethod(method)}
+                            className="mt-1"
+                          />
+                          <span>
+                            <span className="block text-sm font-medium text-gray-900">
+                              {method === 'payu' ? 'Pay Online (Cards / UPI / Netbanking)' : 'Cash on Delivery'}
+                            </span>
+                            <span className="block text-xs text-gray-500">
+                              {method === 'payu'
+                                ? 'Secure payment via PayU. Your order is confirmed once payment succeeds.'
+                                : 'Pay in cash when your order is delivered.'}
+                            </span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
                   <button
                     type="submit"
                     disabled={isSubmitting || items.length === 0}
@@ -392,8 +457,10 @@ export default function CheckoutPage() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Placing Order...
+                        {paymentMethod === 'payu' ? 'Starting Payment...' : 'Placing Order...'}
                       </>
+                    ) : paymentMethod === 'payu' ? (
+                      `Pay ₹${calculateTotal().toFixed(2)}`
                     ) : (
                       'Place Order'
                     )}

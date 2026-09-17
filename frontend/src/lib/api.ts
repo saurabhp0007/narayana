@@ -332,3 +332,35 @@ export const guestApi = {
     notes?: string;
   }) => api.post('/guest/checkout', data),
 };
+
+// Payment API (PayU)
+export interface PayuInitiateResponse {
+  boltScriptUrl: string;
+  orderId: string;
+  txnid: string;
+  params: {
+    key: string;
+    txnid: string;
+    amount: string;
+    productinfo: string;
+    firstname: string;
+    email: string;
+    phone: string;
+    surl: string;
+    furl: string;
+    hash: string;
+    udf1: string;
+  };
+}
+
+export const paymentApi = {
+  initiate: (data: {
+    guestId?: string;
+    customerDetails?: { name: string; email: string; phone: string };
+    shippingAddress: { address: string; city: string; state: string; pincode: string };
+    notes?: string;
+  }) => api.post<PayuInitiateResponse>('/payments/initiate', data),
+  getStatus: (txnid: string) =>
+    api.get<{ txnid: string; status: string; orderId: string }>(`/payments/status/${txnid}`),
+  getReceipt: (txnid: string) => api.get(`/payments/${txnid}/receipt`),
+};
