@@ -7,11 +7,8 @@ import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { useGuestStore } from '@/store/guestStore';
-import { useToastStore } from '@/store/toastStore';
-import { guestApi, orderApi, paymentApi } from '@/lib/api';
+import { paymentApi } from '@/lib/api';
 import { launchBoltCheckout } from '@/lib/payu';
-
-type PaymentMethod = 'payu' | 'cod';
 
 interface CheckoutForm {
   name: string;
@@ -26,13 +23,11 @@ interface CheckoutForm {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, summary, isLoading, fetchCart, clearCart } = useCartStore();
+  const { items, summary, isLoading, fetchCart } = useCartStore();
   const { userType, user } = useAuthStore();
   const { guestId, initGuestSession } = useGuestStore();
-  const showToast = useToastStore((s) => s.show);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('payu');
   const [currentGuestId, setCurrentGuestId] = useState<string | null>(null);
   const [formData, setFormData] = useState<CheckoutForm>({
     name: '',
@@ -102,12 +97,10 @@ export default function CheckoutPage() {
   };
 
   const validateForm = (): boolean => {
-    // For guest users, all fields are required
-    if (!isLoggedIn) {
-      if (!formData.name || !formData.email || !formData.phone) {
-        setError('Please fill in all customer information fields.');
-        return false;
-      }
+    // Name/email/phone are always required — PayU needs them to process payment
+    if (!formData.name || !formData.email || !formData.phone) {
+      setError('Please fill in all customer information fields.');
+      return false;
     }
 
     // Shipping address is required for all users
@@ -116,27 +109,15 @@ export default function CheckoutPage() {
       return false;
     }
 
-    // Validate email format
-    if (!isLoggedIn || formData.email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (formData.email && !emailRegex.test(formData.email)) {
-        setError('Please enter a valid email address.');
-        return false;
-      }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address.');
+      return false;
     }
 
-    // Validate phone format
-    if (!isLoggedIn || formData.phone) {
-      const phoneRegex = /^[0-9]{10}$/;
-      if (formData.phone && !phoneRegex.test(formData.phone)) {
-        setError('Please enter a valid 10-digit phone number.');
-        return false;
-      }
-    }
-
-    // Online payment needs a name/email/phone to send to PayU
-    if (paymentMethod === 'payu' && (!formData.name || !formData.email || !formData.phone)) {
-      setError('Name, email and phone are required for online payment.');
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(formData.phone)) {
+      setError('Please enter a valid 10-digit phone number.');
       return false;
     }
 
@@ -155,6 +136,11 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!isLoggedIn && !currentGuestId) {
+      setError('Guest session not found. Please try again.');
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
 
@@ -164,67 +150,24 @@ export default function CheckoutPage() {
       state: formData.state,
       pincode: formData.pincode,
     };
-    const shippingAddressString = `${formData.address}, ${formData.city}, ${formData.state}, ${formData.pincode}`;
 
     try {
-      if (paymentMethod === 'payu') {
-        if (!isLoggedIn && !currentGuestId) {
-          setError('Guest session not found. Please try again.');
-          setIsSubmitting(false);
-          return;
-        }
+      const { data } = await paymentApi.initiate({
+        // Always pass the guest session if we have one; the backend links the
+        // order to the signed-in account when a valid token is present and only
+        // falls back to the guest cart for the items.
+        guestId: currentGuestId || undefined,
+        customerDetails: {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+        },
+        shippingAddress,
+        notes: formData.notes,
+      });
 
-        const { data } = await paymentApi.initiate({
-          // Always pass the guest session if we have one; the backend links the
-          // order to the signed-in account when a valid token is present and only
-          // falls back to the guest cart for the items.
-          guestId: currentGuestId || undefined,
-          customerDetails: {
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-          },
-          shippingAddress,
-          notes: formData.notes,
-        });
-
-        await launchBoltCheckout(data.boltScriptUrl, data.params);
-        router.push(`/checkout/status?txnid=${encodeURIComponent(data.txnid)}`);
-        return;
-      }
-
-      // Cash on delivery
-      if (isLoggedIn) {
-        const response = await orderApi.create({
-          shippingAddress: shippingAddressString,
-          contactEmail: formData.email || undefined,
-          contactPhone: formData.phone || undefined,
-          notes: formData.notes,
-        });
-        await clearCart();
-        showToast(`Order placed successfully! Order ID: ${response.data.orderId}`, 'success');
-        router.push('/orders');
-      } else {
-        if (!currentGuestId) {
-          setError('Guest session not found. Please try again.');
-          setIsSubmitting(false);
-          return;
-        }
-
-        const response = await guestApi.checkout({
-          guestId: currentGuestId,
-          customerDetails: {
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-          },
-          shippingAddress,
-          notes: formData.notes,
-        });
-        await clearCart(currentGuestId);
-        showToast(`Order placed successfully! Order ID: ${response.data.orderId}. A confirmation email will be sent to ${formData.email}`, 'success');
-        router.push('/');
-      }
+      await launchBoltCheckout(data.boltScriptUrl, data.params);
+      router.push(`/checkout/status?txnid=${encodeURIComponent(data.txnid)}`);
     } catch (err: unknown) {
       const apiError = err as { response?: { data?: { message?: string } } };
       setError(apiError.response?.data?.message || 'Failed to place order. Please try again.');
@@ -281,57 +224,55 @@ export default function CheckoutPage() {
               {/* Checkout Form */}
               <div className="lg:col-span-7">
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Customer Information - for guests, and for online payment (PayU needs name/email/phone) */}
-                  {(!isLoggedIn || paymentMethod === 'payu') && (
-                    <div className="bg-gray-50 rounded-lg p-6">
-                      <h2 className="text-lg font-medium text-gray-900 mb-4">Customer Information</h2>
-                      <div className="grid grid-cols-1 gap-4">
-                        <div>
-                          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                            Full Name *
-                          </label>
-                          <input
-                            type="text"
-                            id="name"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleInputChange}
-                            required
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                            Email Address *
-                          </label>
-                          <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleInputChange}
-                            required
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                            Phone Number *
-                          </label>
-                          <input
-                            type="tel"
-                            id="phone"
-                            name="phone"
-                            value={formData.phone}
-                            onChange={handleInputChange}
-                            required
-                            placeholder="10-digit number"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
-                          />
-                        </div>
+                  {/* Customer Information - PayU needs name/email/phone */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h2 className="text-lg font-medium text-gray-900 mb-4">Customer Information</h2>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                          Full Name *
+                        </label>
+                        <input
+                          type="text"
+                          id="name"
+                          name="name"
+                          value={formData.name}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                          Email Address *
+                        </label>
+                        <input
+                          type="email"
+                          id="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                          Phone Number *
+                        </label>
+                        <input
+                          type="tel"
+                          id="phone"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                          required
+                          placeholder="10-digit number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
+                        />
                       </div>
                     </div>
-                  )}
+                  </div>
 
                   {/* Shipping Address */}
                   <div className="bg-gray-50 rounded-lg p-6">
@@ -415,34 +356,15 @@ export default function CheckoutPage() {
                   {/* Payment Method */}
                   <div className="bg-gray-50 rounded-lg p-6">
                     <h2 className="text-lg font-medium text-gray-900 mb-4">Payment Method</h2>
-                    <div className="space-y-3">
-                      {(['payu', 'cod'] as PaymentMethod[]).map((method) => (
-                        <label
-                          key={method}
-                          className={`flex items-start gap-3 border rounded-md p-3 cursor-pointer ${
-                            paymentMethod === method ? 'border-gray-900 bg-white' : 'border-gray-300'
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value={method}
-                            checked={paymentMethod === method}
-                            onChange={() => setPaymentMethod(method)}
-                            className="mt-1"
-                          />
-                          <span>
-                            <span className="block text-sm font-medium text-gray-900">
-                              {method === 'payu' ? 'Pay Online (Cards / UPI / Netbanking)' : 'Cash on Delivery'}
-                            </span>
-                            <span className="block text-xs text-gray-500">
-                              {method === 'payu'
-                                ? 'Secure payment via PayU. Your order is confirmed once payment succeeds.'
-                                : 'Pay in cash when your order is delivered.'}
-                            </span>
-                          </span>
-                        </label>
-                      ))}
+                    <div className="flex items-start gap-3 border border-gray-900 rounded-md p-3 bg-white">
+                      <span>
+                        <span className="block text-sm font-medium text-gray-900">
+                          Pay Online (Cards / UPI / Netbanking)
+                        </span>
+                        <span className="block text-xs text-gray-500">
+                          Secure payment via PayU. Your order is confirmed once payment succeeds.
+                        </span>
+                      </span>
                     </div>
                   </div>
 
@@ -457,12 +379,10 @@ export default function CheckoutPage() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        {paymentMethod === 'payu' ? 'Starting Payment...' : 'Placing Order...'}
+                        Starting Payment...
                       </>
-                    ) : paymentMethod === 'payu' ? (
-                      `Pay ₹${calculateTotal().toFixed(2)}`
                     ) : (
-                      'Place Order'
+                      `Pay ₹${calculateTotal().toFixed(2)}`
                     )}
                   </button>
                 </form>

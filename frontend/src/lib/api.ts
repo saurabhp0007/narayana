@@ -175,8 +175,6 @@ export const orderApi = {
   getById: (id: string) => api.get(`/orders/${id}`),
   getByOrderId: (orderId: string) => api.get(`/orders/order-id/${orderId}`),
   getStats: () => api.get('/orders/stats'),
-  create: (data: { notes?: string; shippingAddress?: string; contactEmail?: string; contactPhone?: string }) =>
-    api.post('/orders', data),
   updateStatus: (id: string, status: string) => api.patch(`/orders/${id}/status`, { status }),
 };
 
@@ -324,13 +322,6 @@ export const guestApi = {
   clearWishlist: (guestId: string) => api.delete('/guest/wishlist', { params: { guestId } }),
   moveWishlistToCart: (guestId: string, productId: string) =>
     api.post(`/guest/wishlist/move-to-cart/${productId}`, { guestId }),
-  // Checkout
-  checkout: (data: {
-    guestId: string;
-    customerDetails: { name: string; email: string; phone: string };
-    shippingAddress: { address: string; city: string; state: string; pincode: string };
-    notes?: string;
-  }) => api.post('/guest/checkout', data),
 };
 
 // Payment API (PayU)
