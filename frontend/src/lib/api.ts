@@ -168,8 +168,14 @@ export const wishlistApi = {
 
 // Order API
 export const orderApi = {
-  getAll: (params?: { page?: number; limit?: number; status?: string; fromDate?: string; toDate?: string }) =>
-    api.get('/orders', { params }),
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    fromDate?: string;
+    toDate?: string;
+    search?: string;
+  }) => api.get('/orders', { params }),
   getMyOrders: (params?: { page?: number; limit?: number; status?: string }) =>
     api.get('/orders/my-orders', { params }),
   getById: (id: string) => api.get(`/orders/${id}`),

@@ -1,5 +1,5 @@
 import { Order } from '@/types';
-import { customerOrderStatusLabel } from './orderStatus';
+import { customerOrderStatusLabel, orderCustomerName } from './orderStatus';
 
 const SHOP_NAME = 'Narayana Enterprise';
 const SHOP_TAGLINE = 'narayanenterprise.in';
@@ -47,7 +47,7 @@ function receiptHtml(order: Order, meta: ReceiptMeta): string {
     .join('');
 
   const customer =
-    order.customerName || order.contactEmail || (order.userId ? 'Registered customer' : 'Guest');
+    orderCustomerName(order) || order.contactEmail || (order.userId ? 'Registered customer' : 'Guest');
   const isGuest = !order.userId;
 
   return `<!doctype html>

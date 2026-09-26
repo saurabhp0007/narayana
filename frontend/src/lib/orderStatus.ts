@@ -1,4 +1,4 @@
-import { OrderStatus } from '@/types';
+import { Order, OrderStatus } from '@/types';
 
 // Mirrors the backend rules in order.schema.ts: forward only, cancellable until shipped.
 const FULFILMENT_FLOW: OrderStatus[] = [
@@ -40,3 +40,20 @@ export const ORDER_STATUS_COLORS: Record<string, string> = {
 
 export const orderStatusColor = (status: string): string =>
   ORDER_STATUS_COLORS[status] || 'bg-gray-100 text-gray-800';
+
+// Cancelling and delivering are irreversible, so both need an explicit confirm.
+export const confirmStatusChange = (orderId: string, status: string): boolean => {
+  if (status === 'cancelled') {
+    return window.confirm(
+      `Cancel order ${orderId}? Stock will be returned to inventory. This can't be undone.`,
+    );
+  }
+  if (status === 'delivered') {
+    return window.confirm(`Mark order ${orderId} as delivered? This can't be undone.`);
+  }
+  return true;
+};
+
+export const orderCustomerName = (order: Order): string | undefined =>
+  order.customerName ||
+  (order.userId && typeof order.userId === 'object' ? order.userId.name : undefined);

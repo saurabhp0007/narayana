@@ -164,8 +164,24 @@ export interface WishlistItem {
 }
 
 // Order types
+export interface OrderProductRef {
+  _id: string;
+  name: string;
+  sku: string;
+  images?: string[];
+  isActive: boolean;
+}
+
+export interface OrderCustomerRef {
+  _id: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
 export interface OrderItem {
-  productId: string;
+  // Populated (object) on single-order fetches; null if the product was deleted.
+  productId: string | OrderProductRef | null;
   productName: string;
   sku: string;
   size?: string;
@@ -189,7 +205,7 @@ export type OrderStatus =
 export interface Order {
   _id: string;
   orderId: string;
-  userId?: string;
+  userId?: string | OrderCustomerRef | null;
   guestId?: string;
   customerName?: string;
   items: OrderItem[];

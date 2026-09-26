@@ -20,6 +20,8 @@ import { CartService } from '../cart/cart.service';
 import { ProductService } from '../product/product.service';
 import { EmailService } from '../email/email.service';
 
+const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 @Injectable()
 export class OrderService {
   private readonly logger = new Logger(OrderService.name);
@@ -366,6 +368,7 @@ export class OrderService {
       status?: OrderStatus;
       fromDate?: Date;
       toDate?: Date;
+      search?: string;
       hideIncompletePayments?: boolean;
     },
   ): Promise<any> {
@@ -385,6 +388,17 @@ export class OrderService {
       };
     }
 
+    const search = filters?.search?.trim();
+    if (search) {
+      const pattern = new RegExp(escapeRegex(search), 'i');
+      filter.$or = [
+        { orderId: pattern },
+        { customerName: pattern },
+        { contactEmail: pattern },
+        { contactPhone: pattern },
+      ];
+    }
+
     if (filters?.fromDate || filters?.toDate) {
       filter.createdAt = {};
       if (filters.fromDate) {
@@ -398,7 +412,7 @@ export class OrderService {
     const [data, total] = await Promise.all([
       this.orderModel
         .find(filter)
-        .populate('userId', 'email')
+        .populate('userId', 'name email phone')
         .skip(skip)
         .limit(limit)
         .sort({ createdAt: -1 })
@@ -420,8 +434,8 @@ export class OrderService {
   async findOne(id: string): Promise<Order> {
     const order = await this.orderModel
       .findById(id)
-      .populate('userId', 'email')
-      .populate('items.productId', 'name sku isActive')
+      .populate('userId', 'name email phone')
+      .populate('items.productId', 'name sku images isActive')
       .exec();
 
     if (!order) {
@@ -434,8 +448,8 @@ export class OrderService {
   async findByOrderId(orderId: string): Promise<Order> {
     const order = await this.orderModel
       .findOne({ orderId })
-      .populate('userId', 'email')
-      .populate('items.productId', 'name sku isActive')
+      .populate('userId', 'name email phone')
+      .populate('items.productId', 'name sku images isActive')
       .exec();
 
     if (!order) {
@@ -445,8 +459,13 @@ export class OrderService {
     return order;
   }
 
-  async findUserOrders(userId: string, page: number = 1, limit: number = 10): Promise<any> {
-    return this.findAll(page, limit, { userId, hideIncompletePayments: true });
+  async findUserOrders(
+    userId: string,
+    page: number = 1,
+    limit: number = 10,
+    status?: OrderStatus,
+  ): Promise<any> {
+    return this.findAll(page, limit, { userId, status, hideIncompletePayments: true });
   }
 
   async updateStatus(id: string, updateOrderStatusDto: UpdateOrderStatusDto): Promise<Order> {

@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -23,7 +24,7 @@ import {
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
-import { OrderStatus } from './schemas/order.schema';
+import { Order, OrderStatus } from './schemas/order.schema';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @ApiTags('Order')
@@ -65,6 +66,7 @@ export class OrderController {
   @ApiQuery({ name: 'status', required: false, description: 'Filter by order status', enum: OrderStatus })
   @ApiQuery({ name: 'fromDate', required: false, description: 'Filter orders from this date (ISO format)' })
   @ApiQuery({ name: 'toDate', required: false, description: 'Filter orders until this date (ISO format)' })
+  @ApiQuery({ name: 'search', required: false, description: 'Order ID, customer name, email or phone' })
   @ApiResponse({
     status: 200,
     description: 'Orders retrieved successfully',
@@ -74,19 +76,27 @@ export class OrderController {
     description: 'Unauthorized - Authentication required',
   })
   async findAll(
+    @Request() req,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '10',
     @Query('status') status?: OrderStatus,
     @Query('fromDate') fromDate?: string,
     @Query('toDate') toDate?: string,
+    @Query('search') search?: string,
   ) {
+    this.assertAdmin(req);
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
 
     const filters: any = {};
     if (status) filters.status = status;
     if (fromDate) filters.fromDate = new Date(fromDate);
-    if (toDate) filters.toDate = new Date(toDate);
+    if (toDate) {
+      // A bare date (from a date picker) should include that whole day.
+      filters.toDate = new Date(toDate);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(toDate)) filters.toDate.setUTCHours(23, 59, 59, 999);
+    }
+    if (search) filters.search = search;
 
     return this.orderService.findAll(pageNum, limitNum, filters);
   }
@@ -110,11 +120,12 @@ export class OrderController {
     @Request() req,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '10',
+    @Query('status') status?: OrderStatus,
   ) {
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
 
-    return this.orderService.findUserOrders(req.user.userId, pageNum, limitNum);
+    return this.orderService.findUserOrders(req.user.userId, pageNum, limitNum, status);
   }
 
   @Get('stats')
@@ -155,8 +166,8 @@ export class OrderController {
     status: 404,
     description: 'Order not found',
   })
-  async findByOrderId(@Param('orderId') orderId: string) {
-    return this.orderService.findByOrderId(orderId);
+  async findByOrderId(@Request() req, @Param('orderId') orderId: string) {
+    return this.assertCanView(req, await this.orderService.findByOrderId(orderId));
   }
 
   @Get(':id')
@@ -177,8 +188,8 @@ export class OrderController {
     status: 404,
     description: 'Order not found',
   })
-  async findOne(@Param('id') id: string) {
-    return this.orderService.findOne(id);
+  async findOne(@Request() req, @Param('id') id: string) {
+    return this.assertCanView(req, await this.orderService.findOne(id));
   }
 
   @Patch(':id/status')
@@ -208,9 +219,22 @@ export class OrderController {
     @Param('id') id: string,
     @Body() updateOrderStatusDto: UpdateOrderStatusDto,
   ) {
-    if (!req.user.isAdmin) {
-      throw new ForbiddenException('Only admins can update order status');
-    }
+    this.assertAdmin(req);
     return this.orderService.updateStatus(id, updateOrderStatusDto);
+  }
+
+  private assertAdmin(req) {
+    if (!req.user.isAdmin) {
+      throw new ForbiddenException('Admin access required');
+    }
+  }
+
+  // Customers may only open their own orders; admins can open any.
+  private assertCanView(req, order: Order) {
+    const ownerId = (order.userId as any)?._id ?? order.userId;
+    if (!req.user.isAdmin && ownerId?.toString() !== req.user.userId) {
+      throw new NotFoundException('Order not found');
+    }
+    return order;
   }
 }

@@ -80,7 +80,7 @@ export class Order extends Document {
 
   // Optional: guest checkouts have no registered account, so this is unset and
   // `guestId`/`customerName` carry the customer info instead.
-  @Prop({ type: Types.ObjectId, ref: 'Admin', required: false })
+  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
   userId?: Types.ObjectId;
 
   // Set only for guest checkouts (no `userId`) — lets admins trace/debug a guest order
