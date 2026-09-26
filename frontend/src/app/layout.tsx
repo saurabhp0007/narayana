@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   description: 'Your one-stop shop for quality products',
 };
 
+
 export default function RootLayout({
   children,
 }: {
