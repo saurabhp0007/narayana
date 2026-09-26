@@ -16,7 +16,7 @@ export class ShopSubcategory extends Document {
   slug: string;
 
   @Prop({ default: '' })
-  image: string; // ImageKit URL
+  image: string; // Image URL
 
   @Prop({ default: '' })
   offerText: string; // e.g. "Flat 40% Off"

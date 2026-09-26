@@ -12,7 +12,7 @@ export class CreateShopSubcategoryDto {
   @IsString()
   slug?: string;
 
-  @ApiPropertyOptional({ description: 'ImageKit URL for the tile image' })
+  @ApiPropertyOptional({ description: 'Image URL for the tile image' })
   @IsOptional()
   @IsString()
   image?: string;

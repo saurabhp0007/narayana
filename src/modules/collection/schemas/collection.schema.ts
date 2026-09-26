@@ -16,7 +16,7 @@ export class Collection extends Document {
   slug: string;
 
   @Prop({ default: '' })
-  bannerImage: string; // ImageKit URL
+  bannerImage: string; // Image URL
 
   @Prop({ type: [Types.ObjectId], ref: 'Product', default: [] })
   productIds: Types.ObjectId[];

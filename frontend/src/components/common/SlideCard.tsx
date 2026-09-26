@@ -83,6 +83,8 @@ export default function SlideCard({
       <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden mb-3">
         {images.map((image, index) => {
           const isActive = !isSlideshow || index === activeIndex;
+          const isNeighbour = (index - activeIndex + images.length) % images.length <= 1 || (activeIndex - index + images.length) % images.length === 1;
+          if (!isNeighbour) return null;
           return (
             <Image
               key={image}

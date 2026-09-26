@@ -13,6 +13,7 @@ import {
   orderStatusColor,
   orderStatusLabel,
 } from '@/lib/orderStatus';
+import { sizedImageUrl } from '@/lib/imageLoader';
 
 const PAYMENT_BADGE: Record<string, { label: string; className: string }> = {
   paid: { label: 'Paid', className: 'bg-green-100 text-green-800' },
@@ -343,7 +344,7 @@ export default function OrderManagementPage() {
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             key={i}
-                            src={item.images[0]}
+                            src={sizedImageUrl(item.images[0], 160)}
                             alt=""
                             className="h-10 w-10 rounded-md border-2 border-white object-cover bg-gray-100"
                           />

@@ -22,7 +22,7 @@ export class FootwearSubcategory extends Document {
   slug: string;
 
   @Prop({ default: '' })
-  image: string; // ImageKit URL
+  image: string; // media URL
 
   @Prop({ default: '' })
   offerText: string; // e.g. "Flat 40% Off"

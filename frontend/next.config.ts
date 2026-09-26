@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'ik.imagekit.io',
+        hostname: 'img.narayanenterprise.in',
       },
       {
         protocol: 'https',
@@ -23,7 +23,9 @@ const nextConfig: NextConfig = {
         hostname: 'images.unsplash.com',
       },
     ],
-    unoptimized: true,
+    loader: 'custom',
+    loaderFile: './src/lib/imageLoader.ts',
+    deviceSizes: [640, 828, 1080, 1280, 1920],
   },
 };
 

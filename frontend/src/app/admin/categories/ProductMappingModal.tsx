@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { productApi } from '@/lib/api';
 import { Category, Product } from '@/types';
+import { sizedImageUrl } from '@/lib/imageLoader';
 
 interface ProductMappingModalProps {
   category: Category;
@@ -52,7 +53,7 @@ function ProductRow({
           {product.images?.[0] && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={product.images[0]}
+              src={sizedImageUrl(product.images[0], 160)}
               alt={product.name}
               className="h-10 w-10 rounded object-cover border border-gray-200"
             />

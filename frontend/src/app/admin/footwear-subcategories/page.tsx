@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { footwearSubcategoryApi, productApi } from '@/lib/api';
 import { FootwearSubcategory, CreateFootwearSubcategoryDto, Product } from '@/types';
 import ImageUploadField from '@/components/common/ImageUploadField';
+import { sizedImageUrl } from '@/lib/imageLoader';
 
 export default function FootwearSubcategoryManagementPage() {
   const [subcategories, setSubcategories] = useState<FootwearSubcategory[]>([]);
@@ -383,7 +384,7 @@ export default function FootwearSubcategoryManagementPage() {
                           </td>
                           <td className="px-6 py-3">
                             {subcategory.image ? (
-                              <img src={subcategory.image} alt={subcategory.name} className="h-10 w-10 object-cover rounded" />
+                              <img src={sizedImageUrl(subcategory.image, 160)} alt={subcategory.name} className="h-10 w-10 object-cover rounded" />
                             ) : (
                               <div className="h-10 w-10 bg-gray-100 rounded" />
                             )}
@@ -620,7 +621,7 @@ export default function FootwearSubcategoryManagementPage() {
                                 className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-50"
                               >
                                 {product.images?.[0] ? (
-                                  <img src={product.images[0]} alt={product.name} className="h-8 w-8 object-cover rounded" />
+                                  <img src={sizedImageUrl(product.images[0], 160)} alt={product.name} className="h-8 w-8 object-cover rounded" />
                                 ) : (
                                   <div className="h-8 w-8 bg-gray-100 rounded" />
                                 )}
@@ -641,7 +642,7 @@ export default function FootwearSubcategoryManagementPage() {
                           {selectedProducts.map((product, index) => (
                             <div key={product._id} className="flex items-center gap-3 border border-gray-200 rounded-md px-3 py-2">
                               {product.images?.[0] ? (
-                                <img src={product.images[0]} alt={product.name} className="h-10 w-10 object-cover rounded" />
+                                <img src={sizedImageUrl(product.images[0], 160)} alt={product.name} className="h-10 w-10 object-cover rounded" />
                               ) : (
                                 <div className="h-10 w-10 bg-gray-100 rounded" />
                               )}

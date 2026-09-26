@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { collectionApi, productApi } from '@/lib/api';
 import { Collection, CreateCollectionDto, Product } from '@/types';
 import ImageUploadField from '@/components/common/ImageUploadField';
+import { sizedImageUrl } from '@/lib/imageLoader';
 
 export default function CollectionManagementPage() {
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -278,7 +279,7 @@ export default function CollectionManagementPage() {
                   <tr key={collection._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       {collection.bannerImage ? (
-                        <img src={collection.bannerImage} alt={collection.name} className="h-12 w-20 object-cover rounded" />
+                        <img src={sizedImageUrl(collection.bannerImage, 160)} alt={collection.name} className="h-12 w-20 object-cover rounded" />
                       ) : (
                         <div className="h-12 w-20 bg-gray-100 rounded" />
                       )}
@@ -424,7 +425,7 @@ export default function CollectionManagementPage() {
                                 className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-50"
                               >
                                 {product.images?.[0] ? (
-                                  <img src={product.images[0]} alt={product.name} className="h-8 w-8 object-cover rounded" />
+                                  <img src={sizedImageUrl(product.images[0], 160)} alt={product.name} className="h-8 w-8 object-cover rounded" />
                                 ) : (
                                   <div className="h-8 w-8 bg-gray-100 rounded" />
                                 )}
@@ -445,7 +446,7 @@ export default function CollectionManagementPage() {
                           {selectedProducts.map((product, index) => (
                             <div key={product._id} className="flex items-center gap-3 border border-gray-200 rounded-md px-3 py-2">
                               {product.images?.[0] ? (
-                                <img src={product.images[0]} alt={product.name} className="h-10 w-10 object-cover rounded" />
+                                <img src={sizedImageUrl(product.images[0], 160)} alt={product.name} className="h-10 w-10 object-cover rounded" />
                               ) : (
                                 <div className="h-10 w-10 bg-gray-100 rounded" />
                               )}

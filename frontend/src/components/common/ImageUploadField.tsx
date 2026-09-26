@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { mediaApi } from '@/lib/api';
+import { sizedImageUrl } from '@/lib/imageLoader';
 
 interface ImageUploadFieldProps {
   value: string;
@@ -43,7 +44,7 @@ export default function ImageUploadField({ value, onChange, folder = 'products',
       <div className="flex items-start gap-3">
         {value ? (
           <img
-            src={value}
+            src={sizedImageUrl(value, 400)}
             alt="Preview"
             className="h-20 w-20 object-cover rounded border border-gray-300 flex-shrink-0"
           />

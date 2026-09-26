@@ -28,14 +28,14 @@ import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
 import emailConfig from './config/email.config';
-import imagekitConfig from './config/imagekit.config';
+import mediaConfig from './config/media.config';
 import payuConfig from './config/payu.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, emailConfig, imagekitConfig, payuConfig],
+      load: [appConfig, databaseConfig, jwtConfig, emailConfig, mediaConfig, payuConfig],
       envFilePath: '.env',
     }),
     DatabaseModule,

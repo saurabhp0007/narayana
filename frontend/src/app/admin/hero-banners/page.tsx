@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { heroBannerApi } from '@/lib/api';
 import { HeroBanner, CreateHeroBannerDto } from '@/types';
 import ImageUploadField from '@/components/common/ImageUploadField';
+import { sizedImageUrl } from '@/lib/imageLoader';
 
 export default function HeroBannerManagementPage() {
   const [banners, setBanners] = useState<HeroBanner[]>([]);
@@ -199,7 +200,7 @@ export default function HeroBannerManagementPage() {
                   <tr key={banner._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       {banner.image ? (
-                        <img src={banner.image} alt={banner.title} className="h-12 w-20 object-cover rounded" />
+                        <img src={sizedImageUrl(banner.image, 160)} alt={banner.title} className="h-12 w-20 object-cover rounded" />
                       ) : (
                         <div className="h-12 w-20 bg-gray-100 rounded" />
                       )}

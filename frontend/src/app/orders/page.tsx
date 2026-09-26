@@ -214,6 +214,7 @@ export default function OrdersPage() {
                               src={item.images[0]}
                               alt={item.productName}
                               fill
+                              sizes="64px"
                               className="object-cover rounded-md"
                             />
                           ) : (

@@ -13,6 +13,7 @@ import {
   orderStatusLabel,
 } from '@/lib/orderStatus';
 import { Order, OrderCustomerRef, OrderItem, OrderProductRef, OrderStatus } from '@/types';
+import { sizedImageUrl } from '@/lib/imageLoader';
 
 const PAYMENT_METHOD_LABEL: Record<string, string> = {
   cod: 'Cash on Delivery',
@@ -203,7 +204,7 @@ export default function AdminOrderDetailPage() {
                     <div className="h-20 w-20 shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
                       {image ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={image} alt={item.productName} className="h-full w-full object-cover" />
+                        <img src={sizedImageUrl(image, 160)} alt={item.productName} className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full items-center justify-center text-xs text-gray-400">No image</div>
                       )}

@@ -2,12 +2,12 @@ import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsNumber, MaxLength } from
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateHeroBannerDto {
-  @ApiProperty({ description: 'ImageKit URL for the full-width banner image' })
+  @ApiProperty({ description: 'Image URL for the full-width banner image' })
   @IsString()
   @IsNotEmpty({ message: 'Image is required' })
   image: string;
 
-  @ApiPropertyOptional({ description: 'ImageKit URL shown instead of `image` on mobile-sized screens' })
+  @ApiPropertyOptional({ description: 'Image URL shown instead of `image` on mobile-sized screens' })
   @IsOptional()
   @IsString()
   mobileImage?: string;

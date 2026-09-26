@@ -9,10 +9,10 @@ import { Document } from 'mongoose';
 @Schema({ timestamps: true })
 export class HeroBanner extends Document {
   @Prop({ required: true })
-  image: string; // ImageKit URL
+  image: string; // media URL
 
   @Prop()
-  mobileImage: string; // optional ImageKit URL shown instead of `image` on mobile-sized screens
+  mobileImage: string; // optional media URL shown instead of `image` on mobile-sized screens
 
   @Prop({ trim: true })
   subtitle: string; // small text above the headline, e.g. "New Arrivals"

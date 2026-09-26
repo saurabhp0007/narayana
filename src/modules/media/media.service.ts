@@ -1,174 +1,114 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import ImageKit from 'imagekit';
+import { randomBytes } from 'crypto';
+import { promises as fs, constants as fsConstants } from 'fs';
+import * as path from 'path';
+import sharp from 'sharp';
+
+export const IMAGE_VARIANT_WIDTHS = [400, 800] as const;
+const MAX_IMAGE_WIDTH = 1600;
+const WEBP_QUALITY = 80;
+
+export interface UploadedMedia {
+  url: string;
+  fileId: string;
+  name: string;
+  size: number;
+  filePath: string;
+}
 
 @Injectable()
-export class MediaService {
+export class MediaService implements OnModuleInit {
   private readonly logger = new Logger(MediaService.name);
-  private imagekit: ImageKit;
+  private readonly root: string;
+  private readonly baseUrl: string;
 
-  constructor(private configService: ConfigService) {
-    const publicKey = this.configService.get<string>('imagekit.publicKey');
-    const privateKey = this.configService.get<string>('imagekit.privateKey');
-    const urlEndpoint = this.configService.get<string>('imagekit.urlEndpoint');
-
-    if (!publicKey || !privateKey || !urlEndpoint) {
-      this.logger.warn('ImageKit credentials not configured. Media upload will not be available.');
-      return;
-    }
-
-    this.imagekit = new ImageKit({
-      publicKey,
-      privateKey,
-      urlEndpoint,
-    });
-
-    this.logger.log('ImageKit initialized successfully');
+  constructor(configService: ConfigService) {
+    this.root = path.resolve(configService.get<string>('media.dir') || 'uploads');
+    this.baseUrl = (configService.get<string>('media.url') || '').replace(/\/$/, '');
   }
 
-  /**
-   * Upload a single file to ImageKit
-   */
-  async uploadFile(
-    file: Express.Multer.File,
-    folder: string = 'products',
-  ): Promise<{
-    url: string;
-    fileId: string;
-    name: string;
-    size: number;
-    filePath: string;
-  }> {
-    if (!this.imagekit) {
-      throw new BadRequestException('ImageKit is not configured');
+  async onModuleInit() {
+    try {
+      await fs.mkdir(this.root, { recursive: true });
+      await fs.access(this.root, fsConstants.W_OK);
+      this.logger.log(`Media storage ready at ${this.root}`);
+    } catch (error) {
+      this.logger.error(`Media storage not writable at ${this.root}: ${error.message}`);
     }
+  }
+
+  async uploadFile(file: Express.Multer.File, folder = 'products'): Promise<UploadedMedia> {
+    const dir = this.safePath(folder);
+    await fs.mkdir(dir, { recursive: true });
+    const stem = `${this.slug(path.parse(file.originalname).name)}_${randomBytes(5).toString('hex')}`;
 
     try {
-      const result = await this.imagekit.upload({
-        file: file.buffer.toString('base64'),
-        fileName: file.originalname,
-        folder: folder,
-        useUniqueFileName: true,
-      });
+      const isResizable = file.mimetype.startsWith('image/') && file.mimetype !== 'image/gif';
+      const name = isResizable ? `${stem}.webp` : `${stem}${path.extname(file.originalname).toLowerCase()}`;
+      let size = file.size;
 
-      this.logger.log(`File uploaded successfully: ${result.fileId}`);
+      if (isResizable) {
+        const image = sharp(file.buffer).rotate();
+        const full = await image.clone().resize({ width: MAX_IMAGE_WIDTH, withoutEnlargement: true }).webp({ quality: WEBP_QUALITY }).toBuffer();
+        await fs.writeFile(path.join(dir, name), full);
+        size = full.length;
+        await Promise.all(
+          IMAGE_VARIANT_WIDTHS.map((width) =>
+            image
+              .clone()
+              .resize({ width, withoutEnlargement: true })
+              .webp({ quality: WEBP_QUALITY })
+              .toFile(path.join(dir, `${stem}-w${width}.webp`)),
+          ),
+        );
+      } else {
+        await fs.writeFile(path.join(dir, name), file.buffer);
+      }
 
-      return {
-        url: result.url,
-        fileId: result.fileId,
-        name: result.name,
-        size: result.size,
-        filePath: result.filePath,
-      };
+      const filePath = path.posix.join(folder, name);
+      this.logger.log(`File stored: ${filePath}`);
+      return { url: `${this.baseUrl}/${filePath}`, fileId: filePath, name, size, filePath: `/${filePath}` };
     } catch (error) {
       this.logger.error(`File upload failed: ${error.message}`, error.stack);
       throw new BadRequestException(`Failed to upload file: ${error.message}`);
     }
   }
 
-  /**
-   * Upload multiple files to ImageKit
-   */
-  async uploadMultipleFiles(
-    files: Express.Multer.File[],
-    folder: string = 'products',
-  ): Promise<
-    Array<{
-      url: string;
-      fileId: string;
-      name: string;
-      size: number;
-      filePath: string;
-    }>
-  > {
+  async uploadMultipleFiles(files: Express.Multer.File[], folder = 'products'): Promise<UploadedMedia[]> {
     if (!files || files.length === 0) {
       throw new BadRequestException('No files provided');
     }
-
-    const uploadPromises = files.map((file) => this.uploadFile(file, folder));
-    return Promise.all(uploadPromises);
+    return Promise.all(files.map((file) => this.uploadFile(file, folder)));
   }
 
-  /**
-   * Delete a file from ImageKit
-   */
   async deleteFile(fileId: string): Promise<void> {
-    if (!this.imagekit) {
-      throw new BadRequestException('ImageKit is not configured');
-    }
+    const file = this.safePath(fileId);
+    const { dir, name, ext } = path.parse(file);
+    const variants = ext === '.webp' ? IMAGE_VARIANT_WIDTHS.map((w) => path.join(dir, `${name}-w${w}.webp`)) : [];
 
     try {
-      await this.imagekit.deleteFile(fileId);
-      this.logger.log(`File deleted successfully: ${fileId}`);
-    } catch (error) {
-      this.logger.error(`File deletion failed: ${error.message}`, error.stack);
-      throw new BadRequestException(`Failed to delete file: ${error.message}`);
+      await fs.unlink(file);
+    } catch {
+      throw new NotFoundException(`File not found: ${fileId}`);
     }
+    await Promise.all(variants.map((v) => fs.unlink(v).catch(() => undefined)));
+    this.logger.log(`File deleted: ${fileId}`);
   }
 
-  /**
-   * Delete multiple files from ImageKit
-   */
   async deleteMultipleFiles(fileIds: string[]): Promise<void> {
-    if (!fileIds || fileIds.length === 0) {
-      return;
-    }
-
-    const deletePromises = fileIds.map((fileId) => this.deleteFile(fileId));
-    await Promise.all(deletePromises);
+    await Promise.all((fileIds || []).map((fileId) => this.deleteFile(fileId)));
   }
 
-  /**
-   * List files from ImageKit
-   */
-  async listFiles(folder?: string, limit: number = 50, skip: number = 0): Promise<any> {
-    if (!this.imagekit) {
-      throw new BadRequestException('ImageKit is not configured');
+  private safePath(relative: string): string {
+    const resolved = path.resolve(this.root, relative.replace(/^\/+/, ''));
+    if (resolved !== this.root && !resolved.startsWith(this.root + path.sep)) {
+      throw new BadRequestException('Invalid path');
     }
-
-    try {
-      const options: any = {
-        limit,
-        skip,
-      };
-
-      if (folder) {
-        options.path = folder;
-      }
-
-      const result = await this.imagekit.listFiles(options);
-      return result;
-    } catch (error) {
-      this.logger.error(`List files failed: ${error.message}`, error.stack);
-      throw new BadRequestException(`Failed to list files: ${error.message}`);
-    }
+    return resolved;
   }
 
-  /**
-   * Get file details from ImageKit
-   */
-  async getFileDetails(fileId: string): Promise<any> {
-    if (!this.imagekit) {
-      throw new BadRequestException('ImageKit is not configured');
-    }
-
-    try {
-      const result = await this.imagekit.getFileDetails(fileId);
-      return result;
-    } catch (error) {
-      this.logger.error(`Get file details failed: ${error.message}`, error.stack);
-      throw new BadRequestException(`Failed to get file details: ${error.message}`);
-    }
-  }
-
-  /**
-   * Get authentication parameters for client-side upload
-   */
-  getAuthenticationParameters(): any {
-    if (!this.imagekit) {
-      throw new BadRequestException('ImageKit is not configured');
-    }
-
-    return this.imagekit.getAuthenticationParameters();
+  private slug(name: string): string {
+    return name.replace(/[^a-zA-Z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'file';
   }
 }

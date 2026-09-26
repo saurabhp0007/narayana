@@ -49,3 +49,6 @@ temp/
 .vercel
 .env*
 migration/
+
+# Local media uploads
+/uploads

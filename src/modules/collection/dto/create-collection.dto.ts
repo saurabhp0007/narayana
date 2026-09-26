@@ -12,7 +12,7 @@ export class CreateCollectionDto {
   @IsString()
   slug?: string;
 
-  @ApiPropertyOptional({ description: 'ImageKit URL for the banner image shown above the product strip' })
+  @ApiPropertyOptional({ description: 'Image URL for the banner image shown above the product strip' })
   @IsOptional()
   @IsString()
   bannerImage?: string;

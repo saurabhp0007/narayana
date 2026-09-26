@@ -2,7 +2,6 @@ import {
   Controller,
   Post,
   Delete,
-  Get,
   Body,
   Param,
   Query,
@@ -184,72 +183,6 @@ export class MediaController {
     }
 
     return this.mediaService.uploadMultipleFiles(files, folder || 'products');
-  }
-
-  @Get('list')
-  @ApiOperation({
-    summary: 'List files',
-    description: 'Lists files stored in the media storage with pagination',
-  })
-  @ApiQuery({ name: 'folder', required: false, description: 'Folder to list files from' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Maximum number of files to return', example: '50' })
-  @ApiQuery({ name: 'skip', required: false, description: 'Number of files to skip', example: '0' })
-  @ApiResponse({
-    status: 200,
-    description: 'Files listed successfully',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized - Authentication required',
-  })
-  async listFiles(
-    @Query('folder') folder?: string,
-    @Query('limit') limit: string = '50',
-    @Query('skip') skip: string = '0',
-  ) {
-    const limitNum = parseInt(limit, 10);
-    const skipNum = parseInt(skip, 10);
-
-    return this.mediaService.listFiles(folder, limitNum, skipNum);
-  }
-
-  @Get('details/:fileId')
-  @ApiOperation({
-    summary: 'Get file details',
-    description: 'Retrieves detailed information about a specific file',
-  })
-  @ApiParam({ name: 'fileId', description: 'File ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'File details retrieved successfully',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized - Authentication required',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'File not found',
-  })
-  async getFileDetails(@Param('fileId') fileId: string) {
-    return this.mediaService.getFileDetails(fileId);
-  }
-
-  @Get('auth')
-  @ApiOperation({
-    summary: 'Get authentication parameters',
-    description: 'Gets authentication parameters for client-side file uploads',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Authentication parameters retrieved successfully',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized - Authentication required',
-  })
-  async getAuthParams() {
-    return this.mediaService.getAuthenticationParameters();
   }
 
   @Delete(':fileId')
