@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -9,6 +9,10 @@ import { useAuthStore } from '@/store/authStore';
 import { useGuestStore } from '@/store/guestStore';
 import { paymentApi } from '@/lib/api';
 import { launchBoltCheckout } from '@/lib/payu';
+import StateAutocomplete from '@/components/common/StateAutocomplete';
+import { INDIAN_STATES, PINCODE_REGEX, PincodeInfo, lookupPincode } from '@/lib/indiaAddress';
+
+type PincodeStatus = 'idle' | 'checking' | 'found' | 'not_found' | 'error';
 
 interface CheckoutForm {
   name: string;
@@ -39,6 +43,10 @@ export default function CheckoutPage() {
     pincode: '',
     notes: '',
   });
+
+  const [pincodeStatus, setPincodeStatus] = useState<PincodeStatus>('idle');
+  const [pincodeInfo, setPincodeInfo] = useState<PincodeInfo | null>(null);
+  const autofilledCity = useRef('');
 
   const isLoggedIn = userType === 'user' && user;
 
@@ -72,6 +80,37 @@ export default function CheckoutPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePincodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const pincode = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setFormData(prev => ({ ...prev, pincode }));
+    setPincodeInfo(null);
+
+    if (pincode.length < 6) {
+      setPincodeStatus('idle');
+      return;
+    }
+    if (!PINCODE_REGEX.test(pincode)) {
+      setPincodeStatus('not_found');
+      return;
+    }
+
+    setPincodeStatus('checking');
+    try {
+      const info = await lookupPincode(pincode);
+      setFormData(prev => {
+        if (prev.pincode !== pincode) return prev;
+        if (!info) return prev;
+        const keepCity = prev.city && prev.city !== autofilledCity.current;
+        autofilledCity.current = info.district;
+        return { ...prev, state: info.state, city: keepCity ? prev.city : info.district };
+      });
+      setPincodeInfo(info);
+      setPincodeStatus(info ? 'found' : 'not_found');
+    } catch {
+      setPincodeStatus('error');
+    }
   };
 
   const calculateTotal = () => {
@@ -118,6 +157,21 @@ export default function CheckoutPage() {
     const phoneRegex = /^[0-9]{10}$/;
     if (!phoneRegex.test(formData.phone)) {
       setError('Please enter a valid 10-digit phone number.');
+      return false;
+    }
+
+    if (!INDIAN_STATES.includes(formData.state)) {
+      setError('Please select a state from the list.');
+      return false;
+    }
+
+    if (!PINCODE_REGEX.test(formData.pincode)) {
+      setError('Please enter a valid 6-digit PIN code.');
+      return false;
+    }
+
+    if (pincodeInfo && pincodeInfo.state !== formData.state) {
+      setError(`PIN code ${formData.pincode} belongs to ${pincodeInfo.state}. Please check the PIN code or state.`);
       return false;
     }
 
@@ -292,6 +346,39 @@ export default function CheckoutPage() {
                           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
                         />
                       </div>
+                      <div>
+                        <label htmlFor="pincode" className="block text-sm font-medium text-gray-700 mb-1">
+                          PIN Code *
+                        </label>
+                        <input
+                          type="text"
+                          id="pincode"
+                          name="pincode"
+                          value={formData.pincode}
+                          onChange={handlePincodeChange}
+                          required
+                          inputMode="numeric"
+                          autoComplete="postal-code"
+                          maxLength={6}
+                          placeholder="6-digit PIN code"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
+                        />
+                        {pincodeStatus === 'checking' && (
+                          <p className="mt-1 text-xs text-gray-500">Checking PIN code…</p>
+                        )}
+                        {pincodeStatus === 'found' && pincodeInfo && (
+                          <p className={`mt-1 text-xs ${pincodeInfo.state === formData.state ? 'text-green-600' : 'text-red-600'}`}>
+                            {pincodeInfo.state === formData.state
+                              ? `Delivering to ${pincodeInfo.district}, ${pincodeInfo.state}`
+                              : `This PIN code belongs to ${pincodeInfo.state}, not ${formData.state || 'the selected state'}.`}
+                          </p>
+                        )}
+                        {pincodeStatus === 'not_found' && (
+                          <p className="mt-1 text-xs text-amber-600">
+                            We couldn&apos;t verify this PIN code. Please double-check it and select your city and state.
+                          </p>
+                        )}
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
@@ -311,30 +398,12 @@ export default function CheckoutPage() {
                           <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
                             State *
                           </label>
-                          <input
-                            type="text"
+                          <StateAutocomplete
                             id="state"
-                            name="state"
                             value={formData.state}
-                            onChange={handleInputChange}
-                            required
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
+                            onChange={(state) => setFormData(prev => ({ ...prev, state }))}
                           />
                         </div>
-                      </div>
-                      <div>
-                        <label htmlFor="pincode" className="block text-sm font-medium text-gray-700 mb-1">
-                          PIN Code *
-                        </label>
-                        <input
-                          type="text"
-                          id="pincode"
-                          name="pincode"
-                          value={formData.pincode}
-                          onChange={handleInputChange}
-                          required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
-                        />
                       </div>
                     </div>
                   </div>

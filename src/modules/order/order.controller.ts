@@ -10,6 +10,7 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -131,9 +132,8 @@ export class OrderController {
     description: 'Unauthorized - Authentication required',
   })
   async getOrderStats(@Request() req, @Query('userId') userId?: string) {
-    // If userId is provided, admin can view any user's stats
-    // Otherwise, get stats for current user
-    const targetUserId = userId || req.user.userId;
+    // Admins see store-wide stats (or a specific user's); customers only their own.
+    const targetUserId = req.user.isAdmin ? userId : req.user.userId;
     return this.orderService.getOrderStats(targetUserId);
   }
 
@@ -203,7 +203,14 @@ export class OrderController {
     status: 404,
     description: 'Order not found',
   })
-  async updateStatus(@Param('id') id: string, @Body() updateOrderStatusDto: UpdateOrderStatusDto) {
+  async updateStatus(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() updateOrderStatusDto: UpdateOrderStatusDto,
+  ) {
+    if (!req.user.isAdmin) {
+      throw new ForbiddenException('Only admins can update order status');
+    }
     return this.orderService.updateStatus(id, updateOrderStatusDto);
   }
 }

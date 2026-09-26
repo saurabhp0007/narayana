@@ -4,8 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../lib/theme';
 
 const badges = [
-  { label: 'Free Shipping', sublabel: 'On orders above ₹999', icon: 'cube-outline' as const },
-  { label: 'Easy Returns', sublabel: 'Within 7 days', icon: 'refresh-outline' as const },
   { label: '100% Secure', sublabel: 'Safe & secure payments', icon: 'lock-closed-outline' as const },
   { label: 'Best Quality', sublabel: 'Premium products', icon: 'checkmark-circle-outline' as const },
 ];

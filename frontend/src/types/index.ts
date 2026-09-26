@@ -180,6 +180,8 @@ export type OrderStatus =
   | 'payment_failed'
   | 'pending'
   | 'confirmed'
+  | 'processing'
+  | 'packed'
   | 'shipped'
   | 'delivered'
   | 'cancelled';

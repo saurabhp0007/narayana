@@ -6,10 +6,10 @@ export class UpdateOrderStatusDto {
   @ApiProperty({
     description: 'New status for the order',
     example: 'confirmed',
-    enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'],
+    enum: OrderStatus,
   })
   @IsEnum(OrderStatus, {
-    message: 'Status must be one of: pending, confirmed, shipped, delivered, cancelled',
+    message: `Status must be one of: ${Object.values(OrderStatus).join(', ')}`,
   })
   status: OrderStatus;
 }

@@ -1,4 +1,5 @@
 import { Order } from '@/types';
+import { customerOrderStatusLabel } from './orderStatus';
 
 const SHOP_NAME = 'Narayana Enterprise';
 const SHOP_TAGLINE = 'narayanenterprise.in';
@@ -108,7 +109,7 @@ function receiptHtml(order: Order, meta: ReceiptMeta): string {
       </div>
       <div class="block">
         <h2>Order Status</h2>
-        <div><span class="badge">${esc(order.status.replace(/_/g, ' '))}</span></div>
+        <div><span class="badge">${esc(customerOrderStatusLabel(order.status))}</span></div>
       </div>
       <div class="block">
         <h2>Payment</h2>

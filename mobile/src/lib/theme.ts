@@ -46,6 +46,8 @@ export const colors = {
   // Order status badge colors (bg/text pairs)
   statusPending: { bg: '#fef3c7', text: '#92400e' },
   statusConfirmed: { bg: '#dbeafe', text: '#1e40af' },
+  statusProcessing: { bg: '#fef3c7', text: '#b45309' },
+  statusPacked: { bg: '#e0e7ff', text: '#3730a3' },
   statusShipped: { bg: '#f3e8ff', text: '#6b21a8' },
   statusDelivered: { bg: '#d1fae5', text: '#065f46' },
   statusCancelled: { bg: '#fee2e2', text: '#991b1b' },

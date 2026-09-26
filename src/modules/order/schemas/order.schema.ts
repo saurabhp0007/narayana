@@ -8,10 +8,32 @@ export enum OrderStatus {
   PAYMENT_FAILED = 'payment_failed',
   PENDING = 'pending',
   CONFIRMED = 'confirmed',
+  PROCESSING = 'processing',
+  PACKED = 'packed',
   SHIPPED = 'shipped',
   DELIVERED = 'delivered',
   CANCELLED = 'cancelled',
 }
+
+// Fulfilment moves forward only (steps may be skipped). Orders can be cancelled until
+// they ship; delivered/cancelled are final. Payment-pending/failed orders aren't
+// admin-editable — PayU drives those.
+const FULFILMENT_FLOW = [
+  OrderStatus.PENDING,
+  OrderStatus.CONFIRMED,
+  OrderStatus.PROCESSING,
+  OrderStatus.PACKED,
+  OrderStatus.SHIPPED,
+  OrderStatus.DELIVERED,
+];
+const CANCELLABLE = FULFILMENT_FLOW.slice(0, FULFILMENT_FLOW.indexOf(OrderStatus.SHIPPED));
+
+export const allowedNextStatuses = (current: OrderStatus): OrderStatus[] => {
+  const step = FULFILMENT_FLOW.indexOf(current);
+  if (step === -1) return [];
+  const next = FULFILMENT_FLOW.slice(step + 1);
+  return CANCELLABLE.includes(current) ? [...next, OrderStatus.CANCELLED] : next;
+};
 
 export enum PaymentMethod {
   COD = 'cod',

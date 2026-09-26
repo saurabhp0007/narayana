@@ -1,6 +1,7 @@
-import { IsNotEmpty, IsString, IsNumber, Min, IsOptional, ValidateNested, IsObject } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber, Min, IsOptional, ValidateNested, IsObject, IsIn, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { INDIAN_STATES, PINCODE_REGEX } from '../../../common/constants/indian-states';
 
 export class GuestAddToCartDto {
   @ApiProperty({ description: 'Guest session ID' })
@@ -111,14 +112,12 @@ export class ShippingAddressDto {
   @IsNotEmpty()
   city: string;
 
-  @ApiProperty({ description: 'State' })
-  @IsString()
-  @IsNotEmpty()
+  @ApiProperty({ description: 'State or union territory', enum: INDIAN_STATES })
+  @IsIn(INDIAN_STATES, { message: 'Please select a valid state' })
   state: string;
 
-  @ApiProperty({ description: 'PIN code' })
-  @IsString()
-  @IsNotEmpty()
+  @ApiProperty({ description: 'PIN code (6-digit)' })
+  @Matches(PINCODE_REGEX, { message: 'PIN code must be a valid 6-digit number' })
   pincode: string;
 }
 

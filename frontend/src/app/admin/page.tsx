@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { productApi, orderApi, categoryApi, offerApi, reviewApi } from '@/lib/api';
 import { Order, Product, Review } from '@/types';
+import { orderStatusColor, orderStatusLabel } from '@/lib/orderStatus';
 
 interface DashboardStats {
   totalProducts: number;
@@ -77,14 +78,6 @@ export default function AdminDashboardPage() {
 
     fetchStats();
   }, []);
-
-  const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    confirmed: 'bg-blue-100 text-blue-800',
-    shipped: 'bg-purple-100 text-purple-800',
-    delivered: 'bg-green-100 text-green-800',
-    cancelled: 'bg-red-100 text-red-800',
-  };
 
   const statCards = [
     {
@@ -232,8 +225,8 @@ export default function AdminDashboardPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium text-gray-900">₹{order.totalAmount?.toFixed(2)}</p>
-                    <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${statusColors[order.status] || 'bg-gray-100 text-gray-800'}`}>
-                      {order.status}
+                    <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${orderStatusColor(order.status)}`}>
+                      {orderStatusLabel(order.status)}
                     </span>
                   </div>
                 </Link>

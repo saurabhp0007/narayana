@@ -617,30 +617,8 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Trust Badges */}
-            <div className="grid grid-cols-3 gap-3 pt-6 border-t border-gray-100">
+            <div className="flex justify-center pt-6 border-t border-gray-100">
               {[
-                {
-                  label: 'Free Shipping',
-                  icon: (
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.25h5.223a1.5 1.5 0 011.396.938l1.5 3.75c.06.152.09.313.09.475v3.712a1.125 1.125 0 01-1.125 1.125H14.25m-11.25 0h11.25"
-                    />
-                  ),
-                },
-                {
-                  label: '7-Day Returns',
-                  icon: (
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"
-                    />
-                  ),
-                },
                 {
                   label: 'Secure Payment',
                   icon: (

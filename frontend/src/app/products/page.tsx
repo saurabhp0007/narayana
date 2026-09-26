@@ -524,6 +524,8 @@ function ProductsPageContent() {
                 <SizeFilter
                   genderId={selectedGender}
                   categoryId={selectedCategory}
+                  categoryName={categoryNameFilter}
+                  productIds={productIdsFilter}
                   selectedSizes={selectedSizes}
                   onChange={handleSizeChange}
                   className="mb-4"

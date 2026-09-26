@@ -20,6 +20,8 @@ import { useAuthStore } from '../store/authStore';
 const statusColors: Record<string, { bg: string; text: string }> = {
   pending: colors.statusPending,
   confirmed: colors.statusConfirmed,
+  processing: colors.statusProcessing,
+  packed: colors.statusPacked,
   shipped: colors.statusShipped,
   delivered: colors.statusDelivered,
   cancelled: colors.statusCancelled,
@@ -68,8 +70,10 @@ export const OrdersScreen = ({ navigation }: any) => {
 
   const statusOptions = [
     { label: 'All Orders', value: '' },
-    { label: 'Pending', value: 'pending' },
+    { label: 'Order Placed', value: 'pending' },
     { label: 'Confirmed', value: 'confirmed' },
+    { label: 'Processing', value: 'processing' },
+    { label: 'Packed', value: 'packed' },
     { label: 'Shipped', value: 'shipped' },
     { label: 'Delivered', value: 'delivered' },
     { label: 'Cancelled', value: 'cancelled' },
@@ -135,9 +139,9 @@ export const OrdersScreen = ({ navigation }: any) => {
                     {new Date(order.createdAt).toLocaleDateString()}
                   </Text>
                 </View>
-                <View style={[styles.statusBadge, { backgroundColor: statusColors[order.status].bg }]}>
-                  <Text style={[styles.statusText, { color: statusColors[order.status].text }]}>
-                    {order.status.toUpperCase()}
+                <View style={[styles.statusBadge, { backgroundColor: (statusColors[order.status] ?? colors.statusPending).bg }]}>
+                  <Text style={[styles.statusText, { color: (statusColors[order.status] ?? colors.statusPending).text }]}>
+                    {(order.status === 'pending' ? 'order placed' : order.status).toUpperCase()}
                   </Text>
                 </View>
               </View>

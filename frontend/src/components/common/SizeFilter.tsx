@@ -9,6 +9,8 @@ interface SizeFilterProps {
   // Leave both unset to show every size used across the whole catalog.
   genderId?: string;
   categoryId?: string;
+  categoryName?: string;
+  productIds?: string;
   selectedSizes: string[];
   onChange: (sizes: string[]) => void;
   className?: string;
@@ -20,6 +22,8 @@ interface SizeFilterProps {
 export default function SizeFilter({
   genderId,
   categoryId,
+  categoryName,
+  productIds,
   selectedSizes,
   onChange,
   className,
@@ -29,7 +33,12 @@ export default function SizeFilter({
   useEffect(() => {
     let cancelled = false;
     productApi
-      .getSizes({ genderId: genderId || undefined, categoryId: categoryId || undefined })
+      .getSizes({
+        genderId: genderId || undefined,
+        categoryId: categoryId || undefined,
+        categoryName: categoryName || undefined,
+        productIds: productIds || undefined,
+      })
       .then((res) => {
         if (!cancelled) setAvailableSizes(res.data || []);
       })
@@ -37,7 +46,7 @@ export default function SizeFilter({
     return () => {
       cancelled = true;
     };
-  }, [genderId, categoryId]);
+  }, [genderId, categoryId, categoryName, productIds]);
 
   if (availableSizes.length === 0) return null;
 

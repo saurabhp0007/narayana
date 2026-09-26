@@ -127,7 +127,7 @@ export class EmailService {
         <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
           <h2 style="margin-top: 0;">Order Details</h2>
           <p><strong>Order ID:</strong> ${orderData.orderId}</p>
-          <p><strong>Status:</strong> <span style="color: #28a745;">Pending</span></p>
+          <p><strong>Status:</strong> <span style="color: #28a745;">Order Placed</span></p>
         </div>
 
         <h3>Order Items</h3>
@@ -186,6 +186,8 @@ export class EmailService {
     const statusColors: any = {
       pending: '#ffc107',
       confirmed: '#17a2b8',
+      processing: '#fd7e14',
+      packed: '#6f42c1',
       shipped: '#007bff',
       delivered: '#28a745',
       cancelled: '#dc3545',
@@ -213,7 +215,7 @@ export class EmailService {
           <p><strong>Order ID:</strong> ${orderData.orderId}</p>
           <p><strong>New Status:</strong>
             <span style="color: ${statusColor}; font-weight: bold; text-transform: uppercase;">
-              ${orderData.status}
+              ${orderData.status === 'pending' ? 'order placed' : orderData.status}
             </span>
           </p>
           <p><strong>Total Amount:</strong> ₹${orderData.totalAmount.toFixed(2)}</p>

@@ -2,18 +2,14 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { orderApi } from '@/lib/api';
-import { Order, PaginatedResponse } from '@/types';
+import { Order, OrderStatus, PaginatedResponse } from '@/types';
 import { printOrderReceipt } from '@/lib/receipt';
-
-type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
-
-const FULFILLMENT_STATUSES: OrderStatus[] = [
-  'pending',
-  'confirmed',
-  'shipped',
-  'delivered',
-  'cancelled',
-];
+import {
+  ORDER_STATUS_OPTIONS,
+  allowedNextStatuses,
+  orderStatusColor,
+  orderStatusLabel,
+} from '@/lib/orderStatus';
 
 const STATUS_LABEL = (s: string) =>
   s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -27,6 +23,8 @@ interface OrderStats {
   totalOrders: number;
   pendingOrders: number;
   confirmedOrders: number;
+  processingOrders: number;
+  packedOrders: number;
   shippedOrders: number;
   deliveredOrders: number;
   cancelledOrders: number;
@@ -106,15 +104,29 @@ export default function OrderManagementPage() {
     fetchStats();
   }, [fetchStats]);
 
-  const handleStatusUpdate = async (orderId: string, newStatus: OrderStatus) => {
-    setUpdatingOrderId(orderId);
+  const handleStatusUpdate = async (order: Order, newStatus: OrderStatus) => {
+    if (
+      newStatus === 'cancelled' &&
+      !window.confirm(`Cancel order ${order.orderId}? Stock will be returned to inventory. This can't be undone.`)
+    ) {
+      return;
+    }
+    if (
+      newStatus === 'delivered' &&
+      !window.confirm(`Mark order ${order.orderId} as delivered? This can't be undone.`)
+    ) {
+      return;
+    }
+
+    setUpdatingOrderId(order._id);
     try {
-      await orderApi.updateStatus(orderId, newStatus);
+      await orderApi.updateStatus(order._id, newStatus);
       fetchOrders();
       fetchStats();
     } catch (err) {
       console.error('Failed to update order status:', err);
-      setError('Failed to update order status. Please try again.');
+      const apiError = err as { response?: { data?: { message?: string } } };
+      setError(apiError.response?.data?.message || 'Failed to update order status. Please try again.');
     } finally {
       setUpdatingOrderId(null);
     }
@@ -141,18 +153,7 @@ export default function OrderManagementPage() {
     setIsDetailsModalOpen(false);
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      payment_pending: 'bg-orange-100 text-orange-800',
-      payment_failed: 'bg-red-100 text-red-800',
-      pending: 'bg-yellow-100 text-yellow-800',
-      confirmed: 'bg-blue-100 text-blue-800',
-      shipped: 'bg-purple-100 text-purple-800',
-      delivered: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
+  const getStatusColor = orderStatusColor;
 
   const getPaymentStatusColor = (status?: string) => {
     const colors: Record<string, string> = {
@@ -197,24 +198,30 @@ export default function OrderManagementPage() {
 
       {/* Statistics */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
           <div className="bg-white shadow rounded-lg p-4">
             <div className="text-sm font-medium text-gray-500">Total Orders</div>
             <div className="text-2xl font-bold text-gray-900">{stats.totalOrders}</div>
           </div>
           <div className="bg-white shadow rounded-lg p-4">
             <div className="text-sm font-medium text-gray-500">Total Revenue</div>
-            <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(stats.totalRevenue)}
-            </div>
+            <div className="text-2xl font-bold text-green-600">{formatCurrency(stats.totalRevenue)}</div>
           </div>
           <div className="bg-white shadow rounded-lg p-4">
-            <div className="text-sm font-medium text-gray-500">Pending Orders</div>
+            <div className="text-sm font-medium text-gray-500">Pending</div>
             <div className="text-2xl font-bold text-yellow-600">{stats.pendingOrders}</div>
           </div>
           <div className="bg-white shadow rounded-lg p-4">
-            <div className="text-sm font-medium text-gray-500">Delivered Orders</div>
-            <div className="text-2xl font-bold text-blue-600">{stats.deliveredOrders}</div>
+            <div className="text-sm font-medium text-gray-500">Processing</div>
+            <div className="text-2xl font-bold text-amber-600">{stats.processingOrders}</div>
+          </div>
+          <div className="bg-white shadow rounded-lg p-4">
+            <div className="text-sm font-medium text-gray-500">Packed</div>
+            <div className="text-2xl font-bold text-indigo-600">{stats.packedOrders}</div>
+          </div>
+          <div className="bg-white shadow rounded-lg p-4">
+            <div className="text-sm font-medium text-gray-500">Delivered</div>
+            <div className="text-2xl font-bold text-green-600">{stats.deliveredOrders}</div>
           </div>
         </div>
       )}
@@ -237,11 +244,11 @@ export default function OrderManagementPage() {
               className="text-black w-full text-black px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="shipped">Shipped</option>
-              <option value="delivered">Delivered</option>
-              <option value="cancelled">Cancelled</option>
+              {ORDER_STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {orderStatusLabel(s)}
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -374,20 +381,18 @@ export default function OrderManagementPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {FULFILLMENT_STATUSES.includes(order.status as OrderStatus) ? (
+                      {allowedNextStatuses(order.status).length > 0 ? (
                         <select
                           value={order.status}
-                          onChange={(e) =>
-                            handleStatusUpdate(order._id, e.target.value as OrderStatus)
-                          }
+                          onChange={(e) => handleStatusUpdate(order, e.target.value as OrderStatus)}
                           disabled={updatingOrderId === order._id}
                           className={`text-xs font-semibold rounded-full px-2 py-1 border-0 focus:ring-2 focus:ring-indigo-500 ${getStatusColor(
                             order.status
                           )} ${updatingOrderId === order._id ? 'opacity-50' : ''}`}
                         >
-                          {FULFILLMENT_STATUSES.map((s) => (
+                          {[order.status, ...allowedNextStatuses(order.status)].map((s) => (
                             <option key={s} value={s}>
-                              {STATUS_LABEL(s)}
+                              {orderStatusLabel(s)}
                             </option>
                           ))}
                         </select>
@@ -397,7 +402,7 @@ export default function OrderManagementPage() {
                             order.status
                           )}`}
                         >
-                          {STATUS_LABEL(order.status)}
+                          {orderStatusLabel(order.status)}
                         </span>
                       )}
                       {order.paymentMethod && (
@@ -556,7 +561,7 @@ export default function OrderManagementPage() {
                           selectedOrder.status
                         )}`}
                       >
-                        {STATUS_LABEL(selectedOrder.status)}
+                        {orderStatusLabel(selectedOrder.status)}
                       </span>
                     </div>
                     <div>

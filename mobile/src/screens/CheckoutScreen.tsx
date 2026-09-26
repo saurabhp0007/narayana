@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,10 @@ import { useAuthStore } from '../store/authStore';
 import { orderApi } from '../lib/api';
 import { ScreenHeader } from '../components/common/ScreenHeader';
 import { EmptyState } from '../components/common/EmptyState';
+import { CustomDropdown } from '../components/common/CustomDropdown';
+import { INDIAN_STATES, PINCODE_REGEX, PincodeInfo, lookupPincode } from '../lib/indiaAddress';
+
+const STATE_OPTIONS = INDIAN_STATES.map((state) => ({ label: state, value: state }));
 
 type FieldName = 'name' | 'email' | 'phone' | 'address' | 'city' | 'state' | 'pincode' | 'notes';
 
@@ -57,7 +61,25 @@ export const CheckoutScreen = ({ navigation }: any) => {
     }));
   }, [user]);
 
-  const setField = (field: FieldName, value: string) => setForm((prev) => ({ ...prev, [field]: value }));
+  const [pincodeInfo, setPincodeInfo] = useState<PincodeInfo | null>(null);
+  const autofilledCity = useRef('');
+
+  const setField = (field: FieldName, value: string) => {
+    if (field === 'pincode') return handlePincodeChange(value);
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handlePincodeChange = (value: string) => {
+    const pincode = value.replace(/\D/g, '').slice(0, 6);
+    const info = pincode.length === 6 ? lookupPincode(pincode) : null;
+    setPincodeInfo(info);
+    setForm((prev) => {
+      if (!info) return { ...prev, pincode };
+      const keepCity = prev.city && prev.city !== autofilledCity.current;
+      autofilledCity.current = info.district;
+      return { ...prev, pincode, state: info.state, city: keepCity ? prev.city : info.district };
+    });
+  };
 
   const validate = (): boolean => {
     if (!form.name || !form.email || !form.phone) {
@@ -76,6 +98,14 @@ export const CheckoutScreen = ({ navigation }: any) => {
     const phoneRegex = /^[0-9]{10}$/;
     if (!phoneRegex.test(form.phone)) {
       setError('Please enter a valid 10-digit phone number.');
+      return false;
+    }
+    if (!PINCODE_REGEX.test(form.pincode)) {
+      setError('Please enter a valid 6-digit PIN code.');
+      return false;
+    }
+    if (pincodeInfo && pincodeInfo.state !== form.state) {
+      setError(`PIN code ${form.pincode} belongs to ${pincodeInfo.state}. Please check the PIN code or state.`);
       return false;
     }
     return true;
@@ -212,20 +242,6 @@ export const CheckoutScreen = ({ navigation }: any) => {
               placeholder: 'House no., street, area',
             })}
             {renderField({
-              field: 'city',
-              label: 'City *',
-              icon: 'business-outline',
-              value: form.city,
-              placeholder: 'City',
-            })}
-            {renderField({
-              field: 'state',
-              label: 'State *',
-              icon: 'map-outline',
-              value: form.state,
-              placeholder: 'State',
-            })}
-            {renderField({
               field: 'pincode',
               label: 'PIN Code *',
               icon: 'navigate-outline',
@@ -233,6 +249,35 @@ export const CheckoutScreen = ({ navigation }: any) => {
               placeholder: '6-digit PIN code',
               keyboardType: 'number-pad',
             })}
+            {form.pincode.length === 6 && (
+              <Text
+                style={[
+                  styles.pincodeHint,
+                  { color: !pincodeInfo ? colors.warning : pincodeInfo.state === form.state ? colors.success : colors.danger },
+                ]}
+              >
+                {!pincodeInfo
+                  ? "We couldn't verify this PIN code. Please double-check it and select your city and state."
+                  : pincodeInfo.state === form.state
+                    ? `Delivering to ${pincodeInfo.district}, ${pincodeInfo.state}`
+                    : `This PIN code belongs to ${pincodeInfo.state}, not ${form.state || 'the selected state'}.`}
+              </Text>
+            )}
+            {renderField({
+              field: 'city',
+              label: 'City *',
+              icon: 'business-outline',
+              value: form.city,
+              placeholder: 'City',
+            })}
+            <CustomDropdown
+              label="State *"
+              options={STATE_OPTIONS}
+              selectedValue={form.state}
+              onSelect={(value) => setField('state', value)}
+              placeholder="Select state"
+              searchable
+            />
           </View>
 
           <Text style={styles.sectionTitle}>Additional Notes</Text>
@@ -308,6 +353,7 @@ const styles = StyleSheet.create({
   },
   errorText: { flex: 1, color: colors.danger, fontSize: 13 },
   inputGroup: { marginBottom: spacing.md },
+  pincodeHint: { fontSize: 12, marginTop: -8, marginBottom: spacing.md },
   label: { fontSize: 13, fontWeight: '600', color: colors.primary, marginBottom: 8 },
   inputContainer: {
     flexDirection: 'row',

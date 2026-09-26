@@ -634,13 +634,25 @@ export class ProductService {
 
   // Distinct sizes actually present in the catalog (optionally scoped to a gender/category),
   // so the size filter UI always reflects real product data instead of a hardcoded list.
-  async getAvailableSizes(filters?: { genderId?: string; categoryId?: string }): Promise<string[]> {
+  async getAvailableSizes(filters?: {
+    genderId?: string;
+    categoryId?: string;
+    categoryName?: string;
+    productIds?: string[];
+  }): Promise<string[]> {
     const filter: any = { isActive: true };
     if (filters?.genderId) {
       filter.genderId = new Types.ObjectId(filters.genderId);
     }
     if (filters?.categoryId) {
       filter.categoryId = new Types.ObjectId(filters.categoryId);
+    }
+    if (filters?.categoryName) {
+      const matchingCategories = await this.categoryService.findAllByName(filters.categoryName);
+      filter.categoryId = { $in: matchingCategories.map((c) => c._id) };
+    }
+    if (filters?.productIds && filters.productIds.length > 0) {
+      filter._id = { $in: filters.productIds.map((id) => new Types.ObjectId(id)) };
     }
 
     const sizes = await this.productModel.distinct('sizes', filter);

@@ -129,12 +129,24 @@ export class ProductController {
   })
   @ApiQuery({ name: 'genderId', required: false, description: 'Scope to a gender' })
   @ApiQuery({ name: 'categoryId', required: false, description: 'Scope to a category' })
+  @ApiQuery({ name: 'categoryName', required: false, description: 'Scope to categories matching this name' })
+  @ApiQuery({ name: 'productIds', required: false, description: 'Comma-separated product IDs to scope to' })
   @ApiResponse({
     status: 200,
     description: 'Available sizes retrieved successfully',
   })
-  async getAvailableSizes(@Query('genderId') genderId?: string, @Query('categoryId') categoryId?: string) {
-    return this.productService.getAvailableSizes({ genderId, categoryId });
+  async getAvailableSizes(
+    @Query('genderId') genderId?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('categoryName') categoryName?: string,
+    @Query('productIds') productIds?: string,
+  ) {
+    return this.productService.getAvailableSizes({
+      genderId,
+      categoryId,
+      categoryName,
+      productIds: productIds?.split(',').map((id) => id.trim()).filter(Boolean),
+    });
   }
 
   @Get('autosuggest')

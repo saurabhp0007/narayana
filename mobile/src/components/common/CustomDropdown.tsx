@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
+  TextInput,
   StyleSheet,
   Animated,
 } from 'react-native';
@@ -22,6 +23,7 @@ interface CustomDropdownProps {
   onSelect: (value: string) => void;
   placeholder?: string;
   label?: string;
+  searchable?: boolean;
 }
 
 export const CustomDropdown: React.FC<CustomDropdownProps> = ({
@@ -30,11 +32,17 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
   onSelect,
   placeholder = 'Select an option',
   label,
+  searchable = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
   const selectedOption = options.find((opt) => opt.value === selectedValue);
+  const needle = search.trim().toLowerCase();
+  const visibleOptions = needle
+    ? options.filter((opt) => opt.label.toLowerCase().includes(needle))
+    : options;
 
   const toggleDropdown = () => {
     Animated.timing(rotateAnim, {
@@ -43,6 +51,7 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
       useNativeDriver: true,
     }).start();
     setIsOpen(!isOpen);
+    setSearch('');
   };
 
   const handleSelect = (value: string) => {
@@ -89,8 +98,23 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
           onPress={() => setIsOpen(false)}
         >
           <View style={styles.dropdownList}>
+            {searchable && (
+              <View style={styles.searchRow}>
+                <Ionicons name="search" size={18} color={colors.secondary} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search"
+                  placeholderTextColor={colors.placeholder}
+                  value={search}
+                  onChangeText={setSearch}
+                  autoCorrect={false}
+                  autoFocus
+                />
+              </View>
+            )}
             <FlatList
-              data={options}
+              data={visibleOptions}
+              keyboardShouldPersistTaps="handled"
               keyExtractor={(item) => item.value}
               renderItem={({ item }) => (
                 <TouchableOpacity
@@ -122,6 +146,16 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
 };
 
 const styles = StyleSheet.create({
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.borderLight,
+  },
+  searchInput: { flex: 1, fontSize: 15, color: colors.primary, paddingVertical: 4 },
   container: {
     marginBottom: 16,
   },

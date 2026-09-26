@@ -267,7 +267,7 @@ export interface Order {
   discount: number;
   totalAmount: number;
   totalItems: number;
-  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled';
   notes?: string;
   shippingAddress?: string;
   contactEmail?: string;

@@ -12,6 +12,7 @@ import {
   OrderStatus,
   PaymentMethod,
   OrderPaymentStatus,
+  allowedNextStatuses,
 } from './schemas/order.schema';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
@@ -450,9 +451,21 @@ export class OrderService {
 
   async updateStatus(id: string, updateOrderStatusDto: UpdateOrderStatusDto): Promise<Order> {
     const order = await this.findOne(id);
+    const { status } = updateOrderStatusDto;
 
-    order.status = updateOrderStatusDto.status;
+    if (status === order.status) {
+      return order;
+    }
+    if (!allowedNextStatuses(order.status).includes(status)) {
+      throw new BadRequestException(`Cannot change order status from ${order.status} to ${status}`);
+    }
+
+    order.status = status;
     await order.save();
+
+    if (status === OrderStatus.CANCELLED) {
+      await this.restoreStock(order);
+    }
 
     // Send status update email
     if (order.contactEmail) {
@@ -464,6 +477,19 @@ export class OrderService {
     }
 
     return order;
+  }
+
+  private async restoreStock(order: Order): Promise<void> {
+    for (const item of order.items) {
+      const productId = (item.productId as any)?._id ?? item.productId;
+      try {
+        await this.productService.updateStock(productId.toString(), item.quantity, item.size);
+      } catch (error) {
+        this.logger.error(
+          `Stock restore failed for cancelled order ${order.orderId}, product ${productId}: ${error.message}`,
+        );
+      }
+    }
   }
 
   async getOrderStats(userId?: string): Promise<any> {
@@ -505,6 +531,8 @@ export class OrderService {
       totalRevenue: totalRevenue[0]?.total || 0,
       pendingOrders: countFor(OrderStatus.PENDING),
       confirmedOrders: countFor(OrderStatus.CONFIRMED),
+      processingOrders: countFor(OrderStatus.PROCESSING),
+      packedOrders: countFor(OrderStatus.PACKED),
       shippedOrders: countFor(OrderStatus.SHIPPED),
       deliveredOrders: countFor(OrderStatus.DELIVERED),
       cancelledOrders: countFor(OrderStatus.CANCELLED),
