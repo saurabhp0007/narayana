@@ -33,11 +33,9 @@ export class ProductService {
 
   private async invalidateCache(): Promise<void> {
     try {
-      const keys = await this.redisService.keys(`${this.CACHE_PREFIX}*`);
-      for (const key of keys) {
-        await this.redisService.del(key);
-      }
-      this.logger.log('Product cache invalidated');
+      // Carts and wishlists cache populated product snapshots (images, prices), so they go stale too.
+      const deleted = await this.redisService.deleteByPattern(`${this.CACHE_PREFIX}*`, 'cart:*', 'wishlist:*');
+      this.logger.log(`Product cache invalidated (${deleted} keys)`);
     } catch (error) {
       this.logger.error('Failed to invalidate cache:', error);
     }
