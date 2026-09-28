@@ -3,7 +3,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { RedisService } from '../../database/redis.service';
+import { CacheService } from '../../database/cache.service';
 import { ProductService } from '../product/product.service';
 import { OfferService } from '../offer/offer.service';
 import { CartService } from '../cart/cart.service';
@@ -35,7 +35,7 @@ export class GuestService {
   private readonly GUEST_TTL = 86400; // 24 hours = 1 day
 
   constructor(
-    private redisService: RedisService,
+    private cacheService: CacheService,
     private productService: ProductService,
     private offerService: OfferService,
     private cartService: CartService,
@@ -100,7 +100,7 @@ export class GuestService {
     }
 
     // Save to Redis with TTL
-    await this.redisService.set(
+    await this.cacheService.set(
       cartKey,
       JSON.stringify(currentCart),
       this.GUEST_TTL,
@@ -155,7 +155,7 @@ export class GuestService {
     currentCart[itemIndex].quantity = quantity;
 
     const cartKey = this.getCartKey(guestId);
-    await this.redisService.set(
+    await this.cacheService.set(
       cartKey,
       JSON.stringify(currentCart),
       this.GUEST_TTL,
@@ -175,7 +175,7 @@ export class GuestService {
     }
 
     const cartKey = this.getCartKey(guestId);
-    await this.redisService.set(
+    await this.cacheService.set(
       cartKey,
       JSON.stringify(filteredCart),
       this.GUEST_TTL,
@@ -186,7 +186,7 @@ export class GuestService {
 
   async clearCart(guestId: string): Promise<any> {
     const cartKey = this.getCartKey(guestId);
-    await this.redisService.del(cartKey);
+    await this.cacheService.del(cartKey);
     return { message: 'Cart cleared', guestId };
   }
 
@@ -215,7 +215,7 @@ export class GuestService {
       addedAt: new Date().toISOString(),
     });
 
-    await this.redisService.set(
+    await this.cacheService.set(
       wishlistKey,
       JSON.stringify(currentWishlist),
       this.GUEST_TTL,
@@ -275,7 +275,7 @@ export class GuestService {
     }
 
     const wishlistKey = this.getWishlistKey(guestId);
-    await this.redisService.set(
+    await this.cacheService.set(
       wishlistKey,
       JSON.stringify(filteredWishlist),
       this.GUEST_TTL,
@@ -286,7 +286,7 @@ export class GuestService {
 
   async clearWishlist(guestId: string): Promise<any> {
     const wishlistKey = this.getWishlistKey(guestId);
-    await this.redisService.del(wishlistKey);
+    await this.cacheService.del(wishlistKey);
     return { message: 'Wishlist cleared', guestId };
   }
 
@@ -438,7 +438,7 @@ export class GuestService {
 
   private async getGuestCartItems(guestId: string): Promise<GuestCartItem[]> {
     const cartKey = this.getCartKey(guestId);
-    const cartData = await this.redisService.get(cartKey);
+    const cartData = await this.cacheService.get(cartKey);
     return cartData ? JSON.parse(cartData) : [];
   }
 
@@ -446,7 +446,7 @@ export class GuestService {
     guestId: string,
   ): Promise<GuestWishlistItem[]> {
     const wishlistKey = this.getWishlistKey(guestId);
-    const wishlistData = await this.redisService.get(wishlistKey);
+    const wishlistData = await this.cacheService.get(wishlistKey);
     return wishlistData ? JSON.parse(wishlistData) : [];
   }
 

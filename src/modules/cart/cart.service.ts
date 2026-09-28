@@ -11,7 +11,7 @@ import { AddToCartDto } from './dto/add-to-cart.dto';
 import { UpdateCartDto } from './dto/update-cart.dto';
 import { ProductService } from '../product/product.service';
 import { OfferService } from '../offer/offer.service';
-import { RedisService } from '../../database/redis.service';
+import { CacheService } from '../../database/cache.service';
 
 @Injectable()
 export class CartService {
@@ -23,7 +23,7 @@ export class CartService {
     private cartModel: Model<Cart>,
     private productService: ProductService,
     private offerService: OfferService,
-    private redisService: RedisService,
+    private cacheService: CacheService,
   ) {}
 
   async addToCart(userId: string, addToCartDto: AddToCartDto): Promise<Cart> {
@@ -94,7 +94,7 @@ export class CartService {
   async getCart(userId: string): Promise<any> {
     // Try to get from cache first
     const cacheKey = this.getCacheKey(userId);
-    const cachedCart = await this.redisService.get(cacheKey);
+    const cachedCart = await this.cacheService.get(cacheKey);
 
     if (cachedCart) {
       return JSON.parse(cachedCart);
@@ -114,7 +114,7 @@ export class CartService {
     const result = await this.calculateCartTotals(cartItems);
 
     // Cache the result
-    await this.redisService.set(cacheKey, JSON.stringify(result), this.CART_CACHE_TTL);
+    await this.cacheService.set(cacheKey, JSON.stringify(result), this.CART_CACHE_TTL);
 
     return result;
   }
@@ -261,7 +261,7 @@ export class CartService {
 
   private async invalidateCartCache(userId: string): Promise<void> {
     const cacheKey = this.getCacheKey(userId);
-    await this.redisService.del(cacheKey);
+    await this.cacheService.del(cacheKey);
   }
 
   async removeCartItemsByProduct(productId: string): Promise<void> {

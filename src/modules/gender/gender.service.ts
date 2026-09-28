@@ -5,7 +5,7 @@ import { Gender } from './schemas/gender.schema';
 import { CreateGenderDto } from './dto/create-gender.dto';
 import { UpdateGenderDto } from './dto/update-gender.dto';
 import { CategoryService } from '../category/category.service';
-import { RedisService } from '../../database/redis.service';
+import { CacheService } from '../../database/cache.service';
 import { generateSlug } from '../../common/utils/slug.util';
 
 @Injectable()
@@ -19,14 +19,14 @@ export class GenderService {
     private genderModel: Model<Gender>,
     @Inject(forwardRef(() => CategoryService))
     private categoryService: CategoryService,
-    private redisService: RedisService,
+    private cacheService: CacheService,
   ) {}
 
   private async invalidateCache(): Promise<void> {
     try {
-      const keys = await this.redisService.keys(`${this.CACHE_PREFIX}*`);
+      const keys = await this.cacheService.keys(`${this.CACHE_PREFIX}*`);
       for (const key of keys) {
-        await this.redisService.del(key);
+        await this.cacheService.del(key);
       }
       this.logger.log('Gender cache invalidated');
     } catch (error) {
@@ -67,7 +67,7 @@ export class GenderService {
 
     // Try to get from cache first
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         this.logger.log(`Cache hit for ${cacheKey}`);
         return JSON.parse(cached);
@@ -105,7 +105,7 @@ export class GenderService {
 
     // Cache the result
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
+      await this.cacheService.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
       this.logger.log(`Cached ${cacheKey}`);
     } catch (error) {
       this.logger.error('Cache write error:', error);
@@ -119,7 +119,7 @@ export class GenderService {
 
     // Try to get from cache first
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         this.logger.log(`Cache hit for ${cacheKey}`);
         return JSON.parse(cached);
@@ -135,7 +135,7 @@ export class GenderService {
 
     // Cache the result
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(gender), this.CACHE_TTL);
+      await this.cacheService.set(cacheKey, JSON.stringify(gender), this.CACHE_TTL);
       this.logger.log(`Cached ${cacheKey}`);
     } catch (error) {
       this.logger.error('Cache write error:', error);
@@ -159,7 +159,7 @@ export class GenderService {
 
     // Try to get from cache first
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         this.logger.log(`Cache hit for ${cacheKey}`);
         return JSON.parse(cached);
@@ -175,7 +175,7 @@ export class GenderService {
 
     // Cache the result
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(gender), this.CACHE_TTL);
+      await this.cacheService.set(cacheKey, JSON.stringify(gender), this.CACHE_TTL);
       this.logger.log(`Cached ${cacheKey}`);
     } catch (error) {
       this.logger.error('Cache write error:', error);

@@ -5,7 +5,7 @@ import { Category } from './schemas/category.schema';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { GenderService } from '../gender/gender.service';
-import { RedisService } from '../../database/redis.service';
+import { CacheService } from '../../database/cache.service';
 import { generateSlug } from '../../common/utils/slug.util';
 
 @Injectable()
@@ -21,7 +21,7 @@ export class CategoryService {
     private categoryModel: Model<Category>,
     @Inject(forwardRef(() => GenderService))
     private genderService: GenderService,
-    private redisService: RedisService,
+    private cacheService: CacheService,
   ) {}
 
   private async assertHomepageSectionCapacity(
@@ -109,9 +109,9 @@ export class CategoryService {
 
   private async invalidateCache(): Promise<void> {
     try {
-      const keys = await this.redisService.keys(`${this.CACHE_PREFIX}*`);
+      const keys = await this.cacheService.keys(`${this.CACHE_PREFIX}*`);
       for (const key of keys) {
-        await this.redisService.del(key);
+        await this.cacheService.del(key);
       }
       this.logger.log('Category cache invalidated');
     } catch (error) {
@@ -124,7 +124,7 @@ export class CategoryService {
 
     // Try to get from cache first
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         this.logger.log(`Cache hit for ${cacheKey}`);
         return JSON.parse(cached);
@@ -167,7 +167,7 @@ export class CategoryService {
 
     // Cache the result
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
+      await this.cacheService.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
       this.logger.log(`Cached ${cacheKey}`);
     } catch (error) {
       this.logger.error('Cache write error:', error);
@@ -181,7 +181,7 @@ export class CategoryService {
 
     // Try to get from cache first
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         this.logger.log(`Cache hit for ${cacheKey}`);
         return JSON.parse(cached);
@@ -200,7 +200,7 @@ export class CategoryService {
 
     // Cache the result
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(category), this.CACHE_TTL);
+      await this.cacheService.set(cacheKey, JSON.stringify(category), this.CACHE_TTL);
       this.logger.log(`Cached ${cacheKey}`);
     } catch (error) {
       this.logger.error('Cache write error:', error);
@@ -224,7 +224,7 @@ export class CategoryService {
 
     // Try to get from cache first
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         this.logger.log(`Cache hit for ${cacheKey}`);
         return JSON.parse(cached);
@@ -248,7 +248,7 @@ export class CategoryService {
 
     // Cache the result
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(category), this.CACHE_TTL);
+      await this.cacheService.set(cacheKey, JSON.stringify(category), this.CACHE_TTL);
       this.logger.log(`Cached ${cacheKey}`);
     } catch (error) {
       this.logger.error('Cache write error:', error);
@@ -262,7 +262,7 @@ export class CategoryService {
 
     // Try to get from cache first
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         this.logger.log(`Cache hit for ${cacheKey}`);
         return JSON.parse(cached);
@@ -281,7 +281,7 @@ export class CategoryService {
 
     // Cache the result
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(categories), this.CACHE_TTL);
+      await this.cacheService.set(cacheKey, JSON.stringify(categories), this.CACHE_TTL);
       this.logger.log(`Cached ${cacheKey}`);
     } catch (error) {
       this.logger.error('Cache write error:', error);
@@ -294,7 +294,7 @@ export class CategoryService {
     const cacheKey = `${this.CACHE_PREFIX}tabgroup:${tabGroup}`;
 
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         return JSON.parse(cached);
       }
@@ -309,7 +309,7 @@ export class CategoryService {
       .exec();
 
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(categories), this.CACHE_TTL);
+      await this.cacheService.set(cacheKey, JSON.stringify(categories), this.CACHE_TTL);
     } catch (error) {
       this.logger.error('Cache write error:', error);
     }
@@ -321,7 +321,7 @@ export class CategoryService {
     const cacheKey = `${this.CACHE_PREFIX}latest-arrivals`;
 
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         return JSON.parse(cached);
       }
@@ -337,7 +337,7 @@ export class CategoryService {
       .exec();
 
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(categories), this.CACHE_TTL);
+      await this.cacheService.set(cacheKey, JSON.stringify(categories), this.CACHE_TTL);
     } catch (error) {
       this.logger.error('Cache write error:', error);
     }
@@ -349,7 +349,7 @@ export class CategoryService {
     const cacheKey = `${this.CACHE_PREFIX}best-sellers`;
 
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         return JSON.parse(cached);
       }
@@ -365,7 +365,7 @@ export class CategoryService {
       .exec();
 
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(categories), this.CACHE_TTL);
+      await this.cacheService.set(cacheKey, JSON.stringify(categories), this.CACHE_TTL);
     } catch (error) {
       this.logger.error('Cache write error:', error);
     }

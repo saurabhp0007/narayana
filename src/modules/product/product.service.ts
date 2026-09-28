@@ -13,7 +13,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { GenderService } from '../gender/gender.service';
 import { CategoryService } from '../category/category.service';
 import { SizeGroupService } from '../size-group/size-group.service';
-import { RedisService } from '../../database/redis.service';
+import { CacheService } from '../../database/cache.service';
 import { generateSKU } from '../../common/utils/sku.util';
 
 @Injectable()
@@ -28,13 +28,13 @@ export class ProductService {
     private genderService: GenderService,
     private categoryService: CategoryService,
     private sizeGroupService: SizeGroupService,
-    private redisService: RedisService,
+    private cacheService: CacheService,
   ) {}
 
   private async invalidateCache(): Promise<void> {
     try {
       // Carts and wishlists cache populated product snapshots (images, prices), so they go stale too.
-      const deleted = await this.redisService.deleteByPattern(`${this.CACHE_PREFIX}*`, 'cart:*', 'wishlist:*');
+      const deleted = await this.cacheService.deleteByPattern(`${this.CACHE_PREFIX}*`, 'cart:*', 'wishlist:*');
       this.logger.log(`Product cache invalidated (${deleted} keys)`);
     } catch (error) {
       this.logger.error('Failed to invalidate cache:', error);
@@ -129,7 +129,7 @@ export class ProductService {
 
     // Try to get from cache first
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         this.logger.log(`Cache hit for products query`);
         return JSON.parse(cached);
@@ -265,12 +265,9 @@ export class ProductService {
       result.suggestions = await this.getBestSellers(6);
     }
 
-    // Cache the result
-    try {
-      await this.redisService.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
-      this.logger.log(`Cached products query`);
-    } catch (error) {
-      this.logger.error('Cache write error:', error);
+    // Search-as-you-type produces a unique key per keystroke that is almost never reused.
+    if (!searchTerm) {
+      await this.cacheService.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
     }
 
     return result;
@@ -281,7 +278,7 @@ export class ProductService {
 
     // Try to get from cache first
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         this.logger.log(`Cache hit for product ${id}`);
         return JSON.parse(cached);
@@ -303,7 +300,7 @@ export class ProductService {
 
     // Cache the result
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(product), this.CACHE_TTL);
+      await this.cacheService.set(cacheKey, JSON.stringify(product), this.CACHE_TTL);
       this.logger.log(`Cached product ${id}`);
     } catch (error) {
       this.logger.error('Cache write error:', error);
@@ -320,7 +317,7 @@ export class ProductService {
     const cacheKey = `${this.CACHE_PREFIX}related:${id}:${limit}`;
 
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         return JSON.parse(cached);
       }
@@ -365,7 +362,7 @@ export class ProductService {
     }
 
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(related), this.CACHE_TTL);
+      await this.cacheService.set(cacheKey, JSON.stringify(related), this.CACHE_TTL);
     } catch (error) {
       this.logger.error('Cache write error:', error);
     }
@@ -678,7 +675,7 @@ export class ProductService {
 
     // Try to get from cache first
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         this.logger.log(`Cache hit for products by category ${categoryId}`);
         return JSON.parse(cached);
@@ -697,7 +694,7 @@ export class ProductService {
 
     // Cache the result
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(products), this.CACHE_TTL);
+      await this.cacheService.set(cacheKey, JSON.stringify(products), this.CACHE_TTL);
       this.logger.log(`Cached products by category ${categoryId}`);
     } catch (error) {
       this.logger.error('Cache write error:', error);
@@ -773,7 +770,7 @@ export class ProductService {
 
     // Try to get from cache first
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         this.logger.log(`Cache hit for featured products`);
         return JSON.parse(cached);
@@ -795,7 +792,7 @@ export class ProductService {
 
     // Cache the result
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(products), this.CACHE_TTL);
+      await this.cacheService.set(cacheKey, JSON.stringify(products), this.CACHE_TTL);
       this.logger.log(`Cached featured products`);
     } catch (error) {
       this.logger.error('Cache write error:', error);
@@ -820,7 +817,7 @@ export class ProductService {
     const cacheKey = `${this.CACHE_PREFIX}bestsellers:${limit}`;
 
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         this.logger.log(`Cache hit for best sellers`);
         return JSON.parse(cached);
@@ -842,7 +839,7 @@ export class ProductService {
       .exec();
 
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(products), this.CACHE_TTL);
+      await this.cacheService.set(cacheKey, JSON.stringify(products), this.CACHE_TTL);
       this.logger.log(`Cached best sellers`);
     } catch (error) {
       this.logger.error('Cache write error:', error);
@@ -876,7 +873,7 @@ export class ProductService {
     const CACHE_TTL_SHORT = 300; // 5 minutes — favors freshness over the standard product cache TTL
 
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         this.logger.log('Cache hit for latest arrivals sections');
         return JSON.parse(cached);
@@ -917,7 +914,7 @@ export class ProductService {
     const result = sections.filter((section) => section.images.length > 0);
 
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(result), CACHE_TTL_SHORT);
+      await this.cacheService.set(cacheKey, JSON.stringify(result), CACHE_TTL_SHORT);
       this.logger.log('Cached latest arrivals sections');
     } catch (error) {
       this.logger.error('Cache write error:', error);
@@ -935,7 +932,7 @@ export class ProductService {
     const CACHE_TTL_SHORT = 300; // 5 minutes — favors freshness over the standard product cache TTL
 
     try {
-      const cached = await this.redisService.get(cacheKey);
+      const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         this.logger.log('Cache hit for best sellers sections');
         return JSON.parse(cached);
@@ -976,7 +973,7 @@ export class ProductService {
     const result = sections.filter((section) => section.images.length > 0);
 
     try {
-      await this.redisService.set(cacheKey, JSON.stringify(result), CACHE_TTL_SHORT);
+      await this.cacheService.set(cacheKey, JSON.stringify(result), CACHE_TTL_SHORT);
       this.logger.log('Cached best sellers sections');
     } catch (error) {
       this.logger.error('Cache write error:', error);

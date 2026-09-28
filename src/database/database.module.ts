@@ -1,7 +1,7 @@
 import { Module, Global } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigService } from '@nestjs/config';
-import { RedisService } from './redis.service';
+import { CacheService } from './cache.service';
 
 @Global()
 @Module({
@@ -15,7 +15,7 @@ import { RedisService } from './redis.service';
       }),
     }),
   ],
-  providers: [RedisService],
-  exports: [RedisService],
+  providers: [CacheService],
+  exports: [CacheService],
 })
 export class DatabaseModule {}

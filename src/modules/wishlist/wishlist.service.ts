@@ -9,7 +9,7 @@ import { Model, Types } from 'mongoose';
 import { Wishlist } from './schemas/wishlist.schema';
 import { AddToWishlistDto } from './dto/add-to-wishlist.dto';
 import { ProductService } from '../product/product.service';
-import { RedisService } from '../../database/redis.service';
+import { CacheService } from '../../database/cache.service';
 
 @Injectable()
 export class WishlistService {
@@ -20,7 +20,7 @@ export class WishlistService {
     @InjectModel(Wishlist.name)
     private wishlistModel: Model<Wishlist>,
     private productService: ProductService,
-    private redisService: RedisService,
+    private cacheService: CacheService,
   ) {}
 
   async addToWishlist(userId: string, addToWishlistDto: AddToWishlistDto): Promise<Wishlist> {
@@ -59,7 +59,7 @@ export class WishlistService {
   async getWishlist(userId: string): Promise<any> {
     // Try to get from cache first
     const cacheKey = this.getCacheKey(userId);
-    const cachedWishlist = await this.redisService.get(cacheKey);
+    const cachedWishlist = await this.cacheService.get(cacheKey);
 
     if (cachedWishlist) {
       return JSON.parse(cachedWishlist);
@@ -85,7 +85,7 @@ export class WishlistService {
     };
 
     // Cache the result
-    await this.redisService.set(cacheKey, JSON.stringify(result), this.WISHLIST_CACHE_TTL);
+    await this.cacheService.set(cacheKey, JSON.stringify(result), this.WISHLIST_CACHE_TTL);
 
     return result;
   }
@@ -138,7 +138,7 @@ export class WishlistService {
 
   private async invalidateWishlistCache(userId: string): Promise<void> {
     const cacheKey = this.getCacheKey(userId);
-    await this.redisService.del(cacheKey);
+    await this.cacheService.del(cacheKey);
   }
 
   async removeWishlistItemsByProduct(productId: string): Promise<void> {
