@@ -10,7 +10,7 @@ import { Tabs } from '../common/Tabs';
 import { colors, radius, spacing, fontDisplay } from '../../lib/theme';
 
 const { width } = Dimensions.get('window');
-const COLUMNS = 2;
+const COLUMNS = 3;
 const GAP = spacing.md;
 const TILE_WIDTH = (width - spacing.md * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
 
@@ -133,5 +133,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   offerBadgeText: { color: colors.white, fontSize: 10, fontWeight: '600' },
-  tileName: { fontSize: 13, fontWeight: '500', color: colors.primary },
+  tileName: { fontSize: 12, fontWeight: '500', color: colors.primary },
 });

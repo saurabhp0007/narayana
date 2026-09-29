@@ -5,6 +5,8 @@ import { ShopSubcategory } from './schemas/shop-subcategory.schema';
 import { CreateShopSubcategoryDto } from './dto/create-shop-subcategory.dto';
 import { UpdateShopSubcategoryDto } from './dto/update-shop-subcategory.dto';
 import { generateSlug } from '../../common/utils/slug.util';
+import { withInStockProducts } from '../../common/utils/in-stock-tiles.util';
+import { Product } from '../product/schemas/product.schema';
 
 const PRODUCT_POPULATE_FIELDS = 'name images price discountPrice badge sku';
 const TAB_POPULATE_FIELDS = 'name slug displayOrder isActive';
@@ -14,6 +16,8 @@ export class ShopSubcategoryService {
   constructor(
     @InjectModel(ShopSubcategory.name)
     private shopSubcategoryModel: Model<ShopSubcategory>,
+    @InjectModel(Product.name)
+    private productModel: Model<Product>,
   ) {}
 
   private async ensureUnique(name: string, slug: string, shopCategoryId: string, excludeId?: string): Promise<void> {
@@ -68,10 +72,11 @@ export class ShopSubcategoryService {
       .exec();
 
     // Only surface subcategories whose parent tab is populated and active
-    return subcategories.filter((s) => {
+    const inActiveTabs = subcategories.filter((s) => {
       const tab = s.shopCategoryId as unknown as { isActive?: boolean } | null;
       return tab && typeof tab === 'object' && tab.isActive;
     });
+    return withInStockProducts(this.productModel, inActiveTabs);
   }
 
   async findOne(id: string): Promise<ShopSubcategory> {

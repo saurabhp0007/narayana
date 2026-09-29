@@ -15,14 +15,14 @@ function getGenderName(genderId: Gender | string): string {
 function CategoryTile({ category, image }: { category: Category; image?: string }) {
   return (
     <Link href={`/products?categoryId=${category._id}`} className="group block">
-      <div className="relative aspect-[4/5] bg-gray-100 rounded-lg overflow-hidden mb-3">
+      <div className="relative aspect-[4/5] bg-gray-100 rounded-lg overflow-hidden mb-2">
         {image ? (
           <Image
             src={image}
             alt={category.name}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
-            sizes="(max-width: 768px) 50vw, 25vw"
+            sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 16vw"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300">
@@ -32,12 +32,12 @@ function CategoryTile({ category, image }: { category: Category; image?: string 
           </div>
         )}
         {category.tileLabel && (
-          <span className="absolute top-2 left-2 bg-red-600 text-white text-xs font-semibold uppercase px-2 py-1 rounded">
+          <span className="absolute top-1.5 left-1.5 bg-red-600 text-white text-[10px] sm:text-xs font-semibold uppercase px-1.5 py-0.5 rounded">
             {category.tileLabel}
           </span>
         )}
       </div>
-      <h3 className="text-sm font-medium text-gray-900">{category.name}</h3>
+      <h3 className="text-xs sm:text-sm font-medium text-gray-900 line-clamp-1">{category.name}</h3>
     </Link>
   );
 }
@@ -116,7 +116,7 @@ export default function FootwearPage() {
               <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-900 border-t-transparent"></div>
             </div>
           ) : activeItems.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
               {activeItems.map((category) => (
                 <CategoryTile key={category._id} category={category} image={imageByCategory[category._id]} />
               ))}

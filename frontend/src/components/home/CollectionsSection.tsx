@@ -67,9 +67,13 @@ function CollectionRow({ collection }: { collection: Collection }) {
   return (
     <div className="mb-1 last:mb-0">
       {collection.bannerImage && (
-        <div className="relative w-full aspect-[4/5] sm:aspect-[16/9] md:aspect-[21/9] overflow-hidden">
+        <Link
+          href={`/products?productIds=${products.map((p) => p._id).join(',')}`}
+          aria-label={`Shop ${collection.name}`}
+          className="relative block w-full aspect-[4/5] sm:aspect-[16/9] md:aspect-[21/9] overflow-hidden"
+        >
           <Image src={collection.bannerImage} alt={collection.name} fill className="object-cover" sizes="100vw" />
-        </div>
+        </Link>
       )}
       <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 pt-3 pb-1 sm:grid sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 sm:gap-px sm:overflow-visible sm:p-0 sm:bg-gray-100">
         {products.map((product) => (

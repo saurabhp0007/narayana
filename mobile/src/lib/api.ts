@@ -99,6 +99,7 @@ export const productApi = {
     search?: string;
     familySKU?: string;
     productIds?: string; // Comma-separated list of product IDs
+    offerId?: string;
   }) => api.get('/products', { params }),
   getById: (id: string) => api.get(`/products/${id}`),
   getBySku: (sku: string) => api.get(`/products/sku/${sku}`),

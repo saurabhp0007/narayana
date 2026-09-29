@@ -51,6 +51,8 @@ export const ProductDetailScreen = ({ navigation, route }: any) => {
       if (fetchedProduct.relatedProductIds?.length > 0) {
         const relatedResponse = await productApi.getAll({
           productIds: fetchedProduct.relatedProductIds.join(','),
+          isActive: true,
+          inStock: true,
         });
         setRelatedProducts(relatedResponse.data.data || relatedResponse.data);
       } else {

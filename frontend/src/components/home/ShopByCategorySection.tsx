@@ -66,23 +66,23 @@ export default function ShopByCategorySection() {
         </div>
 
         {isLoading ? (
-          <ProductGridSkeleton count={8} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6" />
+          <ProductGridSkeleton count={8} className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4" />
         ) : (
-          <div key={currentCategoryId} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-in-up">
+          <div key={currentCategoryId} className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4 animate-fade-in-up">
             {currentSubcategories.map((subcategory) => (
               <Link
                 key={subcategory._id}
                 href={`/products?shopSubcategorySlug=${subcategory.slug}`}
                 className="group block"
               >
-                <div className="relative aspect-[4/5] bg-gray-100 rounded-lg overflow-hidden mb-3">
+                <div className="relative aspect-[4/5] bg-gray-100 rounded-lg overflow-hidden mb-2">
                   {subcategory.image ? (
                     <Image
                       src={subcategory.image}
                       alt={subcategory.name}
                       fill
                       className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      sizes="(max-width: 768px) 50vw, 25vw"
+                      sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 16vw"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-300">
@@ -92,12 +92,12 @@ export default function ShopByCategorySection() {
                     </div>
                   )}
                   {subcategory.offerText && (
-                    <span className="absolute top-2 left-2 bg-gray-900 text-white text-xs px-2 py-1 rounded font-medium">
+                    <span className="absolute top-1.5 left-1.5 bg-gray-900 text-white text-[10px] sm:text-xs px-1.5 py-0.5 rounded font-medium">
                       {subcategory.offerText}
                     </span>
                   )}
                 </div>
-                <h3 className="text-sm font-medium text-gray-900 line-clamp-1">{subcategory.name}</h3>
+                <h3 className="text-xs sm:text-sm font-medium text-gray-900 line-clamp-1">{subcategory.name}</h3>
               </Link>
             ))}
           </div>

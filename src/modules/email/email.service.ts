@@ -42,6 +42,7 @@ export class EmailService {
       totalAmount: number;
       subtotal: number;
       discount: number;
+      shippingCharge?: number;
     },
   ): Promise<void> {
     if (!this.transporter) return;
@@ -161,6 +162,12 @@ export class EmailService {
             `
                 : ''
             }
+            <tr>
+              <td style="padding: 5px;"><strong>Shipping:</strong></td>
+              <td style="padding: 5px; text-align: right;">${
+                orderData.shippingCharge ? `₹${orderData.shippingCharge.toFixed(2)}` : 'Free'
+              }</td>
+            </tr>
             <tr style="border-top: 2px solid #dee2e6;">
               <td style="padding: 10px 5px;"><strong>Total Amount:</strong></td>
               <td style="padding: 10px 5px; text-align: right; font-size: 1.2em; color: #28a745;">
@@ -194,6 +201,11 @@ export class EmailService {
     };
 
     const statusColor = statusColors[orderData.status] || '#6c757d';
+    const statusMessages: Record<string, string> = {
+      confirmed: '<strong>Your order is confirmed!</strong> We are getting it ready.',
+      packed: '<strong>Your order is packed!</strong> It will be dispatched soon.',
+      cancelled: '<strong>Your order has been cancelled.</strong> Contact us if you have any questions.',
+    };
 
     return `
       <!DOCTYPE html>
@@ -222,24 +234,10 @@ export class EmailService {
         </div>
 
         ${
-          orderData.status === 'delivered'
+          statusMessages[orderData.status]
             ? `
-        <div style="background-color: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; margin: 20px 0;">
-          <p style="margin: 0; color: #155724;">
-            <strong>Your order has been delivered!</strong> Thank you for shopping with us.
-          </p>
-        </div>
-        `
-            : ''
-        }
-
-        ${
-          orderData.status === 'shipped'
-            ? `
-        <div style="background-color: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 5px; margin: 20px 0;">
-          <p style="margin: 0; color: #0c5460;">
-            <strong>Your order has been shipped!</strong> It should arrive soon.
-          </p>
+        <div style="background-color: #f8f9fa; border-left: 4px solid ${statusColor}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p style="margin: 0;">${statusMessages[orderData.status]}</p>
         </div>
         `
             : ''

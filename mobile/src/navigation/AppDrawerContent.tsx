@@ -93,7 +93,6 @@ export function AppDrawerContent(props: DrawerContentComponentProps) {
                 onPress={() =>
                   go('Products', {
                     offerId: offer._id,
-                    productIds: offer.productIds.join(','),
                     title: offer.name,
                   })
                 }

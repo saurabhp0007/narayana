@@ -80,7 +80,7 @@ export default function SlideCard({
 
   return (
     <Link href={href} className="group block">
-      <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden mb-3">
+      <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden mb-2">
         {images.map((image, index) => {
           const isActive = !isSlideshow || index === activeIndex;
           const isNeighbour = (index - activeIndex + images.length) % images.length <= 1 || (activeIndex - index + images.length) % images.length === 1;
@@ -101,14 +101,14 @@ export default function SlideCard({
                     }
                   : undefined
               }
-              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+              sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 16vw"
             />
           );
         })}
 
         {badge && (
           <span
-            className={`absolute bottom-3 left-3 rounded-sm text-xs px-3 py-1.5 font-medium tracking-[0.15em] uppercase ${
+            className={`absolute bottom-1.5 left-1.5 rounded-sm text-[10px] sm:text-xs px-1.5 py-0.5 font-medium tracking-wider uppercase ${
               badge.className || DEFAULT_BADGE_CLASSNAME
             }`}
           >
@@ -116,7 +116,7 @@ export default function SlideCard({
           </span>
         )}
       </div>
-      <h3 className="text-sm md:text-base font-medium text-gray-900 group-hover:underline transition-colors">
+      <h3 className="text-xs sm:text-sm font-medium text-gray-900 line-clamp-1 group-hover:underline transition-colors">
         {title}
       </h3>
 

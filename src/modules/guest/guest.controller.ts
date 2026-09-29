@@ -14,6 +14,7 @@ import {
   GuestAddToCartDto,
   GuestUpdateCartDto,
   GuestCartQueryDto,
+  GuestRemoveCartItemQueryDto,
   GuestAddToWishlistDto,
   GuestCheckoutDto,
 } from './dto/guest.dto';
@@ -68,10 +69,9 @@ export class GuestController {
   @ApiResponse({ status: 200, description: 'Item removed from guest cart' })
   async removeFromCart(
     @Param('productId') productId: string,
-    @Query() query: GuestCartQueryDto,
-    @Query('size') size?: string,
+    @Query() query: GuestRemoveCartItemQueryDto,
   ) {
-    return this.guestService.removeFromCart(query.guestId, productId, size);
+    return this.guestService.removeFromCart(query.guestId, productId, query.size);
   }
 
   @Delete('cart')

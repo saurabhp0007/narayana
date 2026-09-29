@@ -24,6 +24,7 @@ import { CollectionModule } from './modules/collection/collection.module';
 import { ShopCategoryModule } from './modules/shop-category/shop-category.module';
 import { ShopSubcategoryModule } from './modules/shop-subcategory/shop-subcategory.module';
 import { SizeGroupModule } from './modules/size-group/size-group.module';
+import { ShippingModule } from './modules/shipping/shipping.module';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
@@ -61,6 +62,7 @@ import payuConfig from './config/payu.config';
     ShopCategoryModule,
     ShopSubcategoryModule,
     SizeGroupModule,
+    ShippingModule,
   ],
   controllers: [AppController],
   providers: [],

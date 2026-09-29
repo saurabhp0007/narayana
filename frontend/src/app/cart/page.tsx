@@ -338,6 +338,10 @@ export default function CartPage() {
                       <p className="text-sm font-medium text-accent-700 tabular-nums">−₹{getTotalDiscount().toFixed(2)}</p>
                     </div>
                   )}
+                  <div className="flex justify-between">
+                    <p className="text-sm text-gray-500">Shipping</p>
+                    <p className="text-sm font-medium text-gray-900 tabular-nums">₹{(summary?.shipping || 0).toFixed(2)}</p>
+                  </div>
                   <div className="border-t border-gray-100 pt-3.5">
                     <div className="flex justify-between items-baseline">
                       <p className="text-base font-semibold text-gray-900">Total</p>

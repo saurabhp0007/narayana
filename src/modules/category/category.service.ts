@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException, 
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Category } from './schemas/category.schema';
+import { Product } from '../product/schemas/product.schema';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { GenderService } from '../gender/gender.service';
@@ -19,6 +20,8 @@ export class CategoryService {
   constructor(
     @InjectModel(Category.name)
     private categoryModel: Model<Category>,
+    @InjectModel(Product.name)
+    private productModel: Model<Product>,
     @Inject(forwardRef(() => GenderService))
     private genderService: GenderService,
     private cacheService: CacheService,
@@ -257,7 +260,20 @@ export class CategoryService {
     return category;
   }
 
+  // Storefront menu: categories with nothing to buy are left out. Stock changes don't clear
+  // the category cache, so that filter runs on every call rather than being cached.
   async findByGender(genderId: string): Promise<Category[]> {
+    const categories = await this.findAllByGender(genderId);
+    const stocked = await this.productModel.distinct('categoryId', {
+      categoryId: { $in: categories.map((c) => new Types.ObjectId(String(c._id))) },
+      isActive: true,
+      stock: { $gt: 0 },
+    });
+    const stockedIds = new Set(stocked.map(String));
+    return categories.filter((c) => stockedIds.has(String(c._id)));
+  }
+
+  private async findAllByGender(genderId: string): Promise<Category[]> {
     const cacheKey = `${this.CACHE_PREFIX}gender:${genderId}`;
 
     // Try to get from cache first
@@ -393,7 +409,7 @@ export class CategoryService {
     // If name is being updated, regenerate slug
     if (updateCategoryDto.name) {
       const newSlug = updateCategoryDto.slug || generateSlug(updateCategoryDto.name);
-      const targetGenderId = updateCategoryDto.genderId || category.genderId;
+      const targetGenderId = new Types.ObjectId(String(updateCategoryDto.genderId || category.genderId));
 
       // Check for duplicate name (excluding current)
       const existingByName = await this.categoryModel.findOne({
@@ -418,7 +434,11 @@ export class CategoryService {
       updateCategoryDto.slug = newSlug;
     }
 
-    Object.assign(category, updateCategoryDto);
+    // genderId is cast explicitly: Object.assign stored it as a plain string, which then
+    // silently dropped the category from every gender-filtered query.
+    const { genderId, ...rest } = updateCategoryDto;
+    Object.assign(category, rest);
+    if (genderId) category.genderId = new Types.ObjectId(genderId);
     const savedCategory = await category.save();
 
     // Invalidate cache

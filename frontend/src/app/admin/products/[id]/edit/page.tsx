@@ -79,7 +79,7 @@ export default function EditProductPage() {
       try {
         const [gendersRes, categoriesRes, productRes] = await Promise.all([
           genderApi.getAll({ isActive: true }),
-          categoryApi.getAll({ isActive: true, limit: 100 }),
+          categoryApi.getAll({ limit: 200 }),
           productApi.getById(productId),
         ]);
 
@@ -181,10 +181,12 @@ export default function EditProductPage() {
     setErrors({});
 
     try {
+      // null (not undefined) so clearing a discount/badge actually reaches the API.
       const dataToSubmit = {
         ...formData,
-        discountPrice: formData.discountPrice || undefined,
-        stock: sizeStockTotal,
+        discountPrice: formData.discountPrice || null,
+        badge: formData.badge || null,
+        stock: formData.sizeStock.length > 0 ? sizeStockTotal : formData.stock,
       };
       await productApi.update(productId, dataToSubmit);
       router.push('/admin/products');
@@ -391,6 +393,7 @@ export default function EditProductPage() {
               {filteredCategories.map((category) => (
                 <option key={category._id} value={category._id}>
                   {category.name}
+                  {category.isActive ? '' : ' (inactive)'}
                 </option>
               ))}
             </select>
@@ -501,6 +504,23 @@ export default function EditProductPage() {
               value={formData.sizeStock}
               onChange={(next) => setFormData((prev) => ({ ...prev, sizeStock: next }))}
             />
+            {formData.sizeStock.length === 0 && (
+              <div className="mt-3">
+                <label htmlFor="stock" className="block text-sm font-medium text-gray-700 mb-1">
+                  Stock (product without sizes)
+                </label>
+                <input
+                  type="number"
+                  id="stock"
+                  min="0"
+                  value={formData.stock}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, stock: Math.max(0, parseInt(e.target.value, 10) || 0) }))
+                  }
+                  className="text-black w-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+            )}
           </div>
 
           {/* Images */}

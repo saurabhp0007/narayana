@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ProductService } from './product.service';
 import { ProductController } from './product.controller';
 import { Product, ProductSchema } from './schemas/product.schema';
+import { Offer, OfferSchema } from '../offer/schemas/offer.schema';
 import { GenderModule } from '../gender/gender.module';
 import { CategoryModule } from '../category/category.module';
 import { SizeGroupModule } from '../size-group/size-group.module';
@@ -10,7 +11,10 @@ import { DatabaseModule } from '../../database/database.module';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Product.name, schema: ProductSchema }]),
+    MongooseModule.forFeature([
+      { name: Product.name, schema: ProductSchema },
+      { name: Offer.name, schema: OfferSchema },
+    ]),
     GenderModule,
     CategoryModule,
     SizeGroupModule,

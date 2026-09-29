@@ -141,7 +141,7 @@ function receiptHtml(order: Order, meta: ReceiptMeta): string {
     <div class="totals">
       <div><span>Subtotal</span><span>${inr(order.subtotal)}</span></div>
       ${order.discount > 0 ? `<div><span>Discount</span><span>-${inr(order.discount)}</span></div>` : ''}
-      <div><span>Shipping</span><span>Free</span></div>
+      <div><span>Shipping</span><span>${order.shippingCharge ? inr(order.shippingCharge) : 'Free'}</span></div>
       <div class="grand"><span>Total</span><span>${inr(order.totalAmount)}</span></div>
     </div>
 

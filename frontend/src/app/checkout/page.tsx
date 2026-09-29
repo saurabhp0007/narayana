@@ -520,7 +520,7 @@ export default function CheckoutPage() {
                     )}
                     <div className="flex justify-between">
                       <p className="text-sm text-gray-600">Shipping</p>
-                      <p className="text-sm font-medium text-gray-900">Free</p>
+                      <p className="text-sm font-medium text-gray-900">₹{(summary?.shipping || 0).toFixed(2)}</p>
                     </div>
                     <div className="border-t border-gray-200 pt-2">
                       <div className="flex justify-between">

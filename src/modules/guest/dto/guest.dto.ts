@@ -72,6 +72,13 @@ export class GuestCartQueryDto {
   guestId: string;
 }
 
+export class GuestRemoveCartItemQueryDto extends GuestCartQueryDto {
+  @ApiProperty({ description: 'Size of the cart line to remove', required: false })
+  @IsOptional()
+  @IsString()
+  size?: string;
+}
+
 export class GuestAddToWishlistDto {
   @ApiProperty({ description: 'Guest session ID' })
   @IsString()

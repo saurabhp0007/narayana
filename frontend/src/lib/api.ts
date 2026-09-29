@@ -112,6 +112,7 @@ export const productApi = {
     search?: string;
     familySKU?: string;
     productIds?: string; // Comma-separated list of product IDs
+    offerId?: string;
     sortBy?: 'newest' | 'price_asc' | 'price_desc' | 'name_asc';
   }) => api.get('/products', { params }),
   getById: (id: string) => api.get(`/products/${id}`),
@@ -129,7 +130,6 @@ export const productApi = {
   autosuggest: (q: string, limit?: number) => api.get('/products/autosuggest', { params: { q, limit } }),
   create: (data: object) => api.post('/products', data),
   update: (id: string, data: object) => api.patch(`/products/${id}`, data),
-  updateStock: (id: string, stock: number) => api.patch(`/products/${id}/stock`, { stock }),
   delete: (id: string) => api.delete(`/products/${id}`),
 };
 
@@ -228,6 +228,13 @@ export const collectionApi = {
   create: (data: object) => api.post('/collections', data),
   update: (id: string, data: object) => api.patch(`/collections/${id}`, data),
   delete: (id: string) => api.delete(`/collections/${id}`),
+};
+
+export const shippingRuleApi = {
+  getAll: () => api.get('/shipping-rules'),
+  create: (data: object) => api.post('/shipping-rules', data),
+  update: (id: string, data: object) => api.patch(`/shipping-rules/${id}`, data),
+  delete: (id: string) => api.delete(`/shipping-rules/${id}`),
 };
 
 // Shop Category API (homepage "Shop by Category" tabs: independent of each product's own category)

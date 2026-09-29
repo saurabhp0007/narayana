@@ -5,6 +5,8 @@ import { FootwearSubcategory } from './schemas/footwear-subcategory.schema';
 import { CreateFootwearSubcategoryDto } from './dto/create-footwear-subcategory.dto';
 import { UpdateFootwearSubcategoryDto } from './dto/update-footwear-subcategory.dto';
 import { generateSlug } from '../../common/utils/slug.util';
+import { withInStockProducts } from '../../common/utils/in-stock-tiles.util';
+import { Product } from '../product/schemas/product.schema';
 
 const PRODUCT_POPULATE_FIELDS = 'name images price discountPrice badge sku';
 
@@ -13,6 +15,8 @@ export class FootwearSubcategoryService {
   constructor(
     @InjectModel(FootwearSubcategory.name)
     private footwearSubcategoryModel: Model<FootwearSubcategory>,
+    @InjectModel(Product.name)
+    private productModel: Model<Product>,
   ) {}
 
   // Uniqueness is scoped per-tab: a name only conflicts with another subcategory that
@@ -60,10 +64,11 @@ export class FootwearSubcategoryService {
   }
 
   async findActive(): Promise<FootwearSubcategory[]> {
-    return this.footwearSubcategoryModel
+    const subcategories = await this.footwearSubcategoryModel
       .find({ isActive: true })
       .sort({ displayOrder: 1, createdAt: 1 })
       .exec();
+    return withInStockProducts(this.productModel, subcategories);
   }
 
   async findOne(id: string): Promise<FootwearSubcategory> {

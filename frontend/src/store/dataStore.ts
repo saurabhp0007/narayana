@@ -168,7 +168,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
     set({ isLoadingProducts: true });
 
     try {
-      const response = await productApi.getAll({ limit, isActive: true });
+      const response = await productApi.getAll({ limit, isActive: true, inStock: true });
       const data = response.data.data || response.data || [];
 
       set({

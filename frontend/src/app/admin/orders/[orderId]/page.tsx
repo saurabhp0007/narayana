@@ -282,6 +282,10 @@ export default function AdminOrderDetailPage() {
                   <span>-{formatCurrency(itemsSavings)}</span>
                 </div>
               )}
+              <div className="flex justify-between">
+                <span className="text-gray-500">Shipping</span>
+                <span>{formatCurrency(order.shippingCharge || 0)}</span>
+              </div>
               <div className="flex justify-between border-t border-gray-100 pt-2 text-base font-semibold text-gray-900">
                 <span>Total</span>
                 <span>{formatCurrency(order.totalAmount)}</span>

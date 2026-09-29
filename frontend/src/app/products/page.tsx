@@ -224,6 +224,7 @@ function ProductsPageContent() {
       page: currentPage,
       limit: pagination.limit,
       isActive: true,
+      inStock: true,
     };
 
     if (selectedGender) params.genderId = selectedGender;
@@ -234,6 +235,7 @@ function ProductsPageContent() {
     if (maxPrice) params.maxPrice = Number(maxPrice);
     if (searchQuery) params.search = searchQuery;
     if (productIdsFilter) params.productIds = productIdsFilter;
+    if (currentOfferId) params.offerId = currentOfferId;
     if (sortBy && sortBy !== 'newest') params.sortBy = sortBy;
 
     // Create a hash of current params to avoid duplicate fetches
@@ -283,6 +285,7 @@ function ProductsPageContent() {
     maxPrice,
     searchQuery,
     productIdsFilter,
+    currentOfferId,
     sortBy,
   ]);
 
@@ -626,7 +629,7 @@ function ProductsPageContent() {
                 </div>
               )}
               {isLoading && products.length === 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
                   {[...Array(10)].map((_, i) => (
                     <div key={i} className="animate-pulse">
                       <div className="aspect-[4/5] bg-gray-100 rounded-lg mb-3"></div>
@@ -675,7 +678,7 @@ function ProductsPageContent() {
                       <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">
                         Trending Products
                       </h2>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
                         {suggestions.map((product) => (
                           <ProductCard key={product._id} product={product} />
                         ))}
@@ -689,7 +692,7 @@ function ProductsPageContent() {
                     Showing {products.length} of {pagination.total} products
                   </div>
 
-                  <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 transition-opacity duration-200 ${isRefreshing ? 'opacity-60' : 'opacity-100'}`}>
+                  <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3 transition-opacity duration-200 ${isRefreshing ? 'opacity-60' : 'opacity-100'}`}>
                     {products.map((product) => (
                       <ProductCard
                         key={product._id}

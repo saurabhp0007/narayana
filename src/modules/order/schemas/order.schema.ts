@@ -15,24 +15,22 @@ export enum OrderStatus {
   CANCELLED = 'cancelled',
 }
 
-// Fulfilment moves forward only (steps may be skipped). Orders can be cancelled until
-// they ship; delivered/cancelled are final. Payment-pending/failed orders aren't
-// admin-editable — PayU drives those.
+// Admins only move orders Placed -> Confirmed -> Packed (steps may be skipped) or cancel
+// them. PROCESSING/SHIPPED/DELIVERED are legacy: kept so old orders still render, never
+// offered as targets. Payment-pending/failed orders aren't admin-editable — PayU drives those.
 const FULFILMENT_FLOW = [
   OrderStatus.PENDING,
   OrderStatus.CONFIRMED,
   OrderStatus.PROCESSING,
   OrderStatus.PACKED,
-  OrderStatus.SHIPPED,
-  OrderStatus.DELIVERED,
 ];
-const CANCELLABLE = FULFILMENT_FLOW.slice(0, FULFILMENT_FLOW.indexOf(OrderStatus.SHIPPED));
+const LEGACY_STATUSES = [OrderStatus.PROCESSING, OrderStatus.SHIPPED, OrderStatus.DELIVERED];
 
 export const allowedNextStatuses = (current: OrderStatus): OrderStatus[] => {
   const step = FULFILMENT_FLOW.indexOf(current);
   if (step === -1) return [];
-  const next = FULFILMENT_FLOW.slice(step + 1);
-  return CANCELLABLE.includes(current) ? [...next, OrderStatus.CANCELLED] : next;
+  const next = FULFILMENT_FLOW.slice(step + 1).filter((s) => !LEGACY_STATUSES.includes(s));
+  return [...next, OrderStatus.CANCELLED];
 };
 
 export enum PaymentMethod {
@@ -100,6 +98,9 @@ export class Order extends Document {
 
   @Prop({ default: 0, min: 0 })
   discount: number;
+
+  @Prop({ default: 0, min: 0 })
+  shippingCharge: number;
 
   @Prop({ required: true, min: 0 })
   totalAmount: number;

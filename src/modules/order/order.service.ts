@@ -80,6 +80,7 @@ export class OrderService {
       items: orderItems,
       subtotal: cart.summary.subtotal,
       discount: cart.summary.totalDiscount,
+      shippingCharge: cart.summary.shipping || 0,
       totalAmount: cart.summary.total,
       totalItems: cart.summary.totalItems,
       status: OrderStatus.PENDING,
@@ -116,6 +117,7 @@ export class OrderService {
         totalAmount: order.totalAmount,
         subtotal: order.subtotal,
         discount: order.discount,
+        shippingCharge: order.shippingCharge,
       });
     }
 
@@ -179,6 +181,7 @@ export class OrderService {
       items: orderItems,
       subtotal: cart.summary.subtotal,
       discount: cart.summary.totalDiscount,
+      shippingCharge: cart.summary.shipping || 0,
       totalAmount: cart.summary.total,
       totalItems: cart.summary.totalItems,
       status: OrderStatus.PENDING,
@@ -211,6 +214,7 @@ export class OrderService {
         totalAmount: order.totalAmount,
         subtotal: order.subtotal,
         discount: order.discount,
+        shippingCharge: order.shippingCharge,
       });
     }
 
@@ -274,6 +278,7 @@ export class OrderService {
       items: orderItems,
       subtotal: cart.summary.subtotal,
       discount: cart.summary.totalDiscount,
+      shippingCharge: cart.summary.shipping || 0,
       totalAmount: cart.summary.total,
       totalItems: cart.summary.totalItems,
       status: OrderStatus.PAYMENT_PENDING,
@@ -334,6 +339,7 @@ export class OrderService {
         totalAmount: order.totalAmount,
         subtotal: order.subtotal,
         discount: order.discount,
+        shippingCharge: order.shippingCharge,
       });
     }
 

@@ -74,6 +74,7 @@ export class ProductController {
   @ApiQuery({ name: 'search', required: false, description: 'Search term for product name, sku, description or category' })
   @ApiQuery({ name: 'familySKU', required: false, description: 'Filter by family SKU' })
   @ApiQuery({ name: 'productIds', required: false, description: 'Comma-separated list of product IDs to filter by' })
+  @ApiQuery({ name: 'offerId', required: false, description: 'Only products covered by this offer' })
   @ApiQuery({ name: 'sortBy', required: false, description: 'Sort order', enum: ['newest', 'price_asc', 'price_desc', 'name_asc'] })
   @ApiResponse({
     status: 200,
@@ -96,6 +97,7 @@ export class ProductController {
     @Query('search') search?: string,
     @Query('familySKU') familySKU?: string,
     @Query('productIds') productIds?: string,
+    @Query('offerId') offerId?: string,
     @Query('sortBy') sortBy?: string,
   ) {
     const pageNum = parseInt(page, 10);
@@ -117,6 +119,7 @@ export class ProductController {
     if (search) filters.search = search;
     if (familySKU) filters.familySKU = familySKU;
     if (productIds) filters.productIds = productIds.split(',').filter(id => id.trim());
+    if (offerId) filters.offerId = offerId;
     if (sortBy) filters.sortBy = sortBy;
 
     return this.productService.findAll(pageNum, limitNum, filters);

@@ -143,9 +143,32 @@ export interface CartSummary {
   totalProductDiscount: number;
   totalOfferDiscount: number;
   totalDiscount: number;
+  itemsTotal?: number;
+  shipping?: number;
+  shippingBreakdown?: ShippingBucket[];
   total: number;
   totalItems: number;
   itemCount: number;
+}
+
+export interface ShippingRule {
+  _id: string;
+  name: string;
+  categoryIds: string[];
+  footwearSubcategoryIds: string[];
+  shopSubcategoryIds: string[];
+  charges: number[];
+  additionalCharge: number;
+  priority: number;
+  isActive: boolean;
+  isFallback: boolean;
+}
+
+export interface ShippingBucket {
+  ruleId: string;
+  label: string;
+  quantity: number;
+  amount: number;
 }
 
 export interface CartResponse {
@@ -211,6 +234,7 @@ export interface Order {
   items: OrderItem[];
   subtotal: number;
   discount: number;
+  shippingCharge?: number;
   totalAmount: number;
   totalItems: number;
   status: OrderStatus;

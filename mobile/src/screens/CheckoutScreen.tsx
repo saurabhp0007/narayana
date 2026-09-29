@@ -306,7 +306,7 @@ export const CheckoutScreen = ({ navigation }: any) => {
             )}
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Shipping</Text>
-              <Text style={styles.summaryValue}>Free</Text>
+              <Text style={styles.summaryValue}>₹{(summary.shipping || 0).toFixed(2)}</Text>
             </View>
             <View style={[styles.summaryRow, styles.totalRow]}>
               <Text style={styles.totalLabel}>Total</Text>

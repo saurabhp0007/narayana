@@ -53,16 +53,16 @@ export default function ProductCard({
     <motion.div
       whileHover={{ y: -4 }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-      className="group h-full bg-white rounded-2xl ring-1 ring-gray-100 group-hover:ring-gray-200 shadow-sm hover:shadow-lg transition-shadow duration-300 p-2.5 sm:p-3 flex flex-col"
+      className="group h-full bg-white rounded-xl ring-1 ring-gray-100 group-hover:ring-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300 p-2 flex flex-col"
     >
       <Link href={`/products/${product._id}`} className="block">
-        <div className="relative aspect-[4/5] bg-gray-50 rounded-xl overflow-hidden mb-3">
+        <div className="relative aspect-[4/5] bg-gray-50 rounded-lg overflow-hidden mb-2">
           {showImage ? (
             <Image
               src={product.images[0]}
               alt={product.name}
               fill
-              className="object-contain p-3 group-hover:scale-105 transition-transform duration-300"
+              className="object-contain p-2 group-hover:scale-105 transition-transform duration-300"
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
               onError={() => setImageFailed(true)}
             />
@@ -124,7 +124,7 @@ export default function ProductCard({
           </span>
         )}
         <Link href={`/products/${product._id}`} className="flex-grow">
-          <h3 className="text-sm font-medium text-gray-900 mb-1.5 line-clamp-2 group-hover:text-gray-600 transition-colors">
+          <h3 className="text-xs sm:text-sm font-medium text-gray-900 mb-1 line-clamp-2 group-hover:text-gray-600 transition-colors">
             {product.name}
           </h3>
         </Link>

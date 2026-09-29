@@ -3,12 +3,22 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Offer, OfferType } from './schemas/offer.schema';
 import { CreateOfferDto } from './dto/create-offer.dto';
+import { Product } from '../product/schemas/product.schema';
+
+interface ProductScope {
+  categoryId?: string;
+  genderId?: string;
+}
+
+const toObjectIds = (ids?: string[]) => ids?.map((id) => new Types.ObjectId(id));
 
 @Injectable()
 export class OfferService {
   constructor(
     @InjectModel(Offer.name)
     private offerModel: Model<Offer>,
+    @InjectModel(Product.name)
+    private productModel: Model<Product>,
   ) {}
 
   async create(createOfferDto: CreateOfferDto): Promise<Offer> {
@@ -23,9 +33,9 @@ export class OfferService {
       ...createOfferDto,
       startDate,
       endDate,
-      productIds: createOfferDto.productIds?.map(id => new Types.ObjectId(id)),
-      categoryIds: createOfferDto.categoryIds?.map(id => new Types.ObjectId(id)),
-      genderIds: createOfferDto.genderIds?.map(id => new Types.ObjectId(id)),
+      productIds: toObjectIds(createOfferDto.productIds),
+      categoryIds: toObjectIds(createOfferDto.categoryIds),
+      genderIds: toObjectIds(createOfferDto.genderIds),
     });
 
     return offer.save();
@@ -70,7 +80,11 @@ export class OfferService {
 
   async update(id: string, updateOfferDto: Partial<CreateOfferDto>): Promise<Offer> {
     const offer = await this.findOne(id);
-    Object.assign(offer, updateOfferDto);
+    const { productIds, categoryIds, genderIds, ...rest } = updateOfferDto;
+    Object.assign(offer, rest);
+    if (productIds !== undefined) offer.productIds = toObjectIds(productIds);
+    if (categoryIds !== undefined) offer.categoryIds = toObjectIds(categoryIds);
+    if (genderIds !== undefined) offer.genderIds = toObjectIds(genderIds);
     return offer.save();
   }
 
@@ -106,30 +120,37 @@ export class OfferService {
   }
 
   async getOffersForProduct(productId: string): Promise<Offer[]> {
-    const now = new Date();
-    const productObjectId = new Types.ObjectId(productId);
+    const [offers, scopes] = await Promise.all([this.getActiveOffers(), this.productScopes([productId])]);
+    return offers.filter((offer) => this.appliesTo(offer, productId, scopes.get(productId)));
+  }
 
-    // Find offers that include this specific product
-    const productOffers = await this.offerModel
-      .find({
-        isActive: true,
-        startDate: { $lte: now },
-        endDate: { $gte: now },
-        productIds: productObjectId,
-      })
-      .sort({ priority: -1 })
+  // An offer covers a product when it lists the product explicitly, or when the product
+  // falls inside its category/gender scope (each scope list only narrows when non-empty).
+  private appliesTo(offer: Offer, productId: string, scope?: ProductScope): boolean {
+    if ((offer.productIds || []).some((id) => id.toString() === productId)) return true;
+
+    const categoryIds = (offer.categoryIds || []).map(String);
+    const genderIds = (offer.genderIds || []).map(String);
+    if (!scope || (!categoryIds.length && !genderIds.length)) return false;
+
+    return (
+      (!categoryIds.length || categoryIds.includes(scope.categoryId)) &&
+      (!genderIds.length || genderIds.includes(scope.genderId))
+    );
+  }
+
+  private async productScopes(productIds: string[]): Promise<Map<string, ProductScope>> {
+    const products = await this.productModel
+      .find({ _id: { $in: toObjectIds(productIds) } })
+      .select('categoryId genderId')
+      .lean()
       .exec();
-
-    if (productOffers.length > 0) {
-      return productOffers;
-    }
-
-    // If no product-specific offers, check category/gender offers
-    // This requires populating product data to get category/gender
-    // For now, return empty if no product-specific offers
-    // TODO: Enhance to check category/gender level offers
-
-    return [];
+    return new Map(
+      products.map((p) => [
+        p._id.toString(),
+        { categoryId: p.categoryId?.toString(), genderId: p.genderId?.toString() },
+      ]),
+    );
   }
 
   async getBestOfferForProduct(
@@ -190,13 +211,15 @@ export class OfferService {
       return { perProductDiscount, perProductOffer, totalDiscount: 0 };
     }
 
-    const activeOffers = await this.getActiveOffers();
+    const [activeOffers, scopes] = await Promise.all([
+      this.getActiveOffers(),
+      this.productScopes(lines.map((l) => l.productId)),
+    ]);
 
     for (const offer of activeOffers) {
-      const offerProductIds = new Set((offer.productIds || []).map((id) => id.toString()));
       const matched = lines
         .map((l) => l.productId)
-        .filter((pid) => offerProductIds.has(pid) && remainingQty[pid] > 0);
+        .filter((pid) => remainingQty[pid] > 0 && this.appliesTo(offer, pid, scopes.get(pid)));
 
       if (matched.length === 0) continue;
 

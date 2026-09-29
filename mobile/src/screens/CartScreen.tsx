@@ -156,6 +156,10 @@ export const CartScreen = ({ navigation }: any) => {
                 <Text style={styles.discountValue}>-₹{summary.totalDiscount.toFixed(2)}</Text>
               </View>
             )}
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Shipping</Text>
+              <Text style={styles.summaryValue}>₹{(summary.shipping || 0).toFixed(2)}</Text>
+            </View>
             <View style={[styles.summaryRow, styles.totalRow]}>
               <Text style={styles.totalLabel}>Total</Text>
               <Text style={styles.totalValue}>₹{summary.total.toFixed(2)}</Text>

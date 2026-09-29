@@ -1,23 +1,17 @@
 import { Order, OrderStatus } from '@/types';
 
-// Mirrors the backend rules in order.schema.ts: forward only, cancellable until shipped.
-const FULFILMENT_FLOW: OrderStatus[] = [
-  'pending',
-  'confirmed',
-  'processing',
-  'packed',
-  'shipped',
-  'delivered',
-];
-const CANCELLABLE = FULFILMENT_FLOW.slice(0, FULFILMENT_FLOW.indexOf('shipped'));
+// Mirrors the backend rules in order.schema.ts: Placed -> Confirmed -> Packed, or cancel.
+// processing/shipped/delivered are legacy statuses that old orders may still carry.
+const FULFILMENT_FLOW: OrderStatus[] = ['pending', 'confirmed', 'processing', 'packed'];
+const LEGACY_STATUSES: OrderStatus[] = ['processing', 'shipped', 'delivered'];
 
-export const ORDER_STATUS_OPTIONS: OrderStatus[] = [...FULFILMENT_FLOW, 'cancelled'];
+export const ORDER_STATUS_OPTIONS: OrderStatus[] = ['pending', 'confirmed', 'packed', 'cancelled'];
 
 export const allowedNextStatuses = (current: string): OrderStatus[] => {
   const step = FULFILMENT_FLOW.indexOf(current as OrderStatus);
   if (step === -1) return [];
-  const next = FULFILMENT_FLOW.slice(step + 1);
-  return CANCELLABLE.includes(current as OrderStatus) ? [...next, 'cancelled'] : next;
+  const next = FULFILMENT_FLOW.slice(step + 1).filter((s) => !LEGACY_STATUSES.includes(s));
+  return [...next, 'cancelled'];
 };
 
 export const orderStatusLabel = (status: string): string =>
@@ -41,15 +35,12 @@ export const ORDER_STATUS_COLORS: Record<string, string> = {
 export const orderStatusColor = (status: string): string =>
   ORDER_STATUS_COLORS[status] || 'bg-gray-100 text-gray-800';
 
-// Cancelling and delivering are irreversible, so both need an explicit confirm.
+// Cancelling is irreversible, so it needs an explicit confirm.
 export const confirmStatusChange = (orderId: string, status: string): boolean => {
   if (status === 'cancelled') {
     return window.confirm(
       `Cancel order ${orderId}? Stock will be returned to inventory. This can't be undone.`,
     );
-  }
-  if (status === 'delivered') {
-    return window.confirm(`Mark order ${orderId} as delivered? This can't be undone.`);
   }
   return true;
 };

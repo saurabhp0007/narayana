@@ -46,7 +46,11 @@ export class CollectionService {
   async findActive(): Promise<Collection[]> {
     return this.collectionModel
       .find({ isActive: true })
-      .populate('productIds', PRODUCT_POPULATE_FIELDS)
+      .populate({
+        path: 'productIds',
+        select: PRODUCT_POPULATE_FIELDS,
+        match: { isActive: true, stock: { $gt: 0 } },
+      })
       .sort({ displayOrder: 1, createdAt: -1 })
       .exec();
   }

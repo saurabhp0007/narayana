@@ -61,9 +61,9 @@ export default function LatestArrivalsSection() {
         </div>
 
         {isLoading ? (
-          <ProductGridSkeleton count={8} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6" />
+          <ProductGridSkeleton count={8} className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4" />
         ) : (
-          <div key={currentTab} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-in-up">
+          <div key={currentTab} className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4 animate-fade-in-up">
             {currentSections.map((section) => (
               <SlideCard
                 key={section.categoryId}

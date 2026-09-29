@@ -12,6 +12,7 @@ import { UpdateCartDto } from './dto/update-cart.dto';
 import { ProductService } from '../product/product.service';
 import { OfferService } from '../offer/offer.service';
 import { CacheService } from '../../database/cache.service';
+import { ShippingService } from '../shipping/shipping.service';
 
 @Injectable()
 export class CartService {
@@ -24,6 +25,7 @@ export class CartService {
     private productService: ProductService,
     private offerService: OfferService,
     private cacheService: CacheService,
+    private shippingService: ShippingService,
   ) {}
 
   async addToCart(userId: string, addToCartDto: AddToCartDto): Promise<Cart> {
@@ -97,7 +99,7 @@ export class CartService {
     const cachedCart = await this.cacheService.get(cacheKey);
 
     if (cachedCart) {
-      return JSON.parse(cachedCart);
+      return this.applyShipping(JSON.parse(cachedCart));
     }
 
     // Get from database
@@ -116,7 +118,24 @@ export class CartService {
     // Cache the result
     await this.cacheService.set(cacheKey, JSON.stringify(result), this.CART_CACHE_TTL);
 
-    return result;
+    return this.applyShipping(result);
+  }
+
+  // Shipping sits outside the cached totals so rule/category/tile changes apply immediately.
+  async applyShipping(cart: { items: any[]; summary: any }): Promise<any> {
+    const { shipping, shippingBreakdown } = await this.shippingService.calculate(
+      cart.items.map((item) => ({ productId: item.product._id.toString(), quantity: item.quantity })),
+    );
+    return {
+      ...cart,
+      summary: {
+        ...cart.summary,
+        itemsTotal: cart.summary.total,
+        shipping,
+        shippingBreakdown,
+        total: cart.summary.total + shipping,
+      },
+    };
   }
 
   async updateCartItem(userId: string, cartItemId: string, updateCartDto: UpdateCartDto): Promise<Cart> {

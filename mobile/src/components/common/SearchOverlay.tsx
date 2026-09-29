@@ -53,7 +53,7 @@ export function SearchOverlay({ visible, onClose }: { visible: boolean; onClose:
     debounceRef.current = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const response = await productApi.getAll({ search: query, limit: 12, isActive: true });
+        const response = await productApi.getAll({ search: query, limit: 12, isActive: true, inStock: true });
         const data = response.data.data || response.data || [];
         setResults(Array.isArray(data) ? data : []);
       } catch {

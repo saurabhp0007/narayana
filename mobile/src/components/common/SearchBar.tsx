@@ -43,6 +43,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onProductSelect }) => {
           search: query,
           limit: 6,
           isActive: true,
+          inStock: true,
         });
         const data = response.data.data || response.data || [];
         setResults(Array.isArray(data) ? data : []);

@@ -16,7 +16,7 @@ const TAB_CONFIG: Record<TabKey, { label: string; badgeLabel: string; fetch: () 
 };
 
 const { width } = Dimensions.get('window');
-const COLUMNS = 2;
+const COLUMNS = 3;
 const GAP = spacing.md;
 const TILE_WIDTH = (width - spacing.md * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
 

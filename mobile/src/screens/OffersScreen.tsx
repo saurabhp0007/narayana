@@ -44,11 +44,8 @@ export const OffersScreen = ({ navigation }: any) => {
     }, []);
 
     const handleOfferPress = (offer: Offer) => {
-        // Navigate to products screen with offer filter
-        const productIds = offer.productIds.join(',');
         navigation.navigate('Products', {
             offerId: offer._id,
-            productIds: productIds || undefined,
             title: offer.name,
         });
     };

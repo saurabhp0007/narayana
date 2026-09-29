@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { productApi, genderApi, categoryApi } from '@/lib/api';
 import { Product, Gender, Category, PaginatedResponse } from '@/types';
 
 export default function ProductManagementPage() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [genders, setGenders] = useState<Gender[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -86,13 +88,23 @@ export default function ProductManagementPage() {
 
   const handleStockUpdate = async (productId: string) => {
     try {
-      await productApi.updateStock(productId, newStock);
+      await productApi.update(productId, { stock: newStock });
       setEditingStock(null);
       fetchProducts();
     } catch (err) {
       console.error('Failed to update stock:', err);
       setError('Failed to update stock. Please try again.');
     }
+  };
+
+  // Per-size stock can only be edited row by row, so sized products open the full editor.
+  const startStockEdit = (product: Product) => {
+    if (product.sizeStock?.length) {
+      router.push(`/admin/products/${product._id}/edit`);
+      return;
+    }
+    setEditingStock(product._id);
+    setNewStock(product.stock);
   };
 
   const handleDelete = async (productId: string) => {
@@ -338,8 +350,7 @@ export default function ProductManagementPage() {
                   ) : (
                     <div
                       onClick={() => {
-                        setEditingStock(product._id);
-                        setNewStock(product.stock);
+                        startStockEdit(product);
                       }}
                       className={`cursor-pointer font-medium ${
                         product.stock > 10
@@ -532,8 +543,7 @@ export default function ProductManagementPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            setEditingStock(product._id);
-                            setNewStock(product.stock);
+                            startStockEdit(product);
                           }}
                           className={`group inline-flex items-center gap-1.5 text-sm font-medium rounded px-1.5 py-0.5 -ml-1.5 hover:bg-gray-100 ${
                             product.stock > 10

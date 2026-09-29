@@ -265,6 +265,10 @@ export default function OrdersPage() {
                       </div>
                     )}
                     <div className="text-right">
+                      <p className="text-sm text-gray-500">Shipping</p>
+                      <p className="text-sm font-medium text-gray-900">₹{(order.shippingCharge || 0).toFixed(2)}</p>
+                    </div>
+                    <div className="text-right">
                       <p className="text-sm text-gray-500">Total</p>
                       <p className="text-lg font-bold text-gray-900">₹{order.totalAmount.toFixed(2)}</p>
                     </div>

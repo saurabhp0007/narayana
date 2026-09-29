@@ -72,10 +72,7 @@ export const OrdersScreen = ({ navigation }: any) => {
     { label: 'All Orders', value: '' },
     { label: 'Order Placed', value: 'pending' },
     { label: 'Confirmed', value: 'confirmed' },
-    { label: 'Processing', value: 'processing' },
     { label: 'Packed', value: 'packed' },
-    { label: 'Shipped', value: 'shipped' },
-    { label: 'Delivered', value: 'delivered' },
     { label: 'Cancelled', value: 'cancelled' },
   ];
 
@@ -175,6 +172,10 @@ export const OrdersScreen = ({ navigation }: any) => {
                     <Text style={styles.discountValue}>-₹{order.discount.toFixed(2)}</Text>
                   </View>
                 )}
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Shipping</Text>
+                  <Text style={styles.summaryValue}>₹{(order.shippingCharge || 0).toFixed(2)}</Text>
+                </View>
                 <View style={styles.summaryRow}>
                   <Text style={styles.totalLabel}>Total</Text>
                   <Text style={styles.totalValue}>₹{order.totalAmount.toFixed(2)}</Text>

@@ -41,6 +41,7 @@ export const ProductsScreen = ({ navigation, route }: any) => {
   const [maxPrice, setMaxPrice] = useState('');
   const [searchQuery, setSearchQuery] = useState(route.params?.search || '');
   const [productIds, setProductIds] = useState(route.params?.productIds || '');
+  const offerId = route.params?.offerId || '';
 
   const { genders, allSubcategories, categoriesByGender, fetchGenders, fetchAllSubcategories, fetchCategoriesByGender } = useDataStore();
   const { addToCart } = useCartStore();
@@ -65,6 +66,7 @@ export const ProductsScreen = ({ navigation, route }: any) => {
         page: pageNum,
         limit: 10,
         isActive: true,
+        inStock: true,
       };
 
       if (selectedGender) params.genderId = selectedGender;
@@ -74,6 +76,7 @@ export const ProductsScreen = ({ navigation, route }: any) => {
       if (maxPrice) params.maxPrice = parseFloat(maxPrice);
       if (searchQuery) params.search = searchQuery;
       if (productIds) params.productIds = productIds;
+      if (offerId) params.offerId = offerId;
 
       const response = await productApi.getAll(params);
       const data = response.data;
@@ -91,7 +94,7 @@ export const ProductsScreen = ({ navigation, route }: any) => {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [selectedGender, selectedCategory, selectedSubcategory, minPrice, maxPrice, searchQuery, productIds]);
+  }, [selectedGender, selectedCategory, selectedSubcategory, minPrice, maxPrice, searchQuery, productIds, offerId]);
 
   useEffect(() => {
     fetchProducts(1);

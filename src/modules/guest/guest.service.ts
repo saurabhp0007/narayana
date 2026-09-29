@@ -120,6 +120,9 @@ export class GuestService {
           totalProductDiscount: 0,
           totalOfferDiscount: 0,
           totalDiscount: 0,
+          itemsTotal: 0,
+          shipping: 0,
+          shippingBreakdown: [],
           total: 0,
           totalItems: 0,
           itemCount: 0,
@@ -127,8 +130,7 @@ export class GuestService {
       };
     }
 
-    // Calculate totals with product details
-    return this.calculateGuestCartTotals(cartItems);
+    return this.cartService.applyShipping(await this.calculateGuestCartTotals(cartItems));
   }
 
   async updateCartItem(dto: GuestUpdateCartDto): Promise<any> {
@@ -167,7 +169,7 @@ export class GuestService {
   async removeFromCart(guestId: string, productId: string, size?: string): Promise<any> {
     const currentCart = await this.getGuestCartItems(guestId);
     const filteredCart = currentCart.filter(
-      (item) => !(item.productId === productId && item.size === size),
+      (item) => !(item.productId === productId && (item.size || '') === (size || '')),
     );
 
     if (filteredCart.length === currentCart.length) {

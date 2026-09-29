@@ -9,7 +9,7 @@ import { colors, badgeLabels, radius, shadow, spacing, fontDisplay } from '../..
 import { Skeleton } from '../common/Skeleton';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.38;
+const CARD_WIDTH = width * 0.3;
 
 function ProductCardTile({ product }: { product: Product }) {
   const navigation = useNavigation();
@@ -54,15 +54,24 @@ function ProductCardTile({ product }: { product: Product }) {
 }
 
 function CollectionBlock({ collection }: { collection: Collection }) {
+  const navigation = useNavigation();
   const products = (collection.productIds as Product[]).filter((p) => typeof p === 'object');
   if (products.length === 0) return null;
+
+  const openCollection = () =>
+    navigation.dispatch(
+      CommonActions.navigate({
+        name: 'Root',
+        params: { screen: 'Products', params: { productIds: products.map((p) => p._id).join(',') } },
+      })
+    );
 
   return (
     <View style={styles.block}>
       {collection.bannerImage ? (
-        <View style={styles.bannerWrap}>
+        <TouchableOpacity style={styles.bannerWrap} activeOpacity={0.9} onPress={openCollection}>
           <Image source={{ uri: collection.bannerImage }} style={styles.banner} contentFit="cover" />
-        </View>
+        </TouchableOpacity>
       ) : null}
 
       <Text style={styles.collectionName}>{collection.name}</Text>

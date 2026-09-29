@@ -8,6 +8,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Product, SizeStock } from './schemas/product.schema';
+import { Offer } from '../offer/schemas/offer.schema';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { GenderService } from '../gender/gender.service';
@@ -25,6 +26,8 @@ export class ProductService {
   constructor(
     @InjectModel(Product.name)
     private productModel: Model<Product>,
+    @InjectModel(Offer.name)
+    private offerModel: Model<Offer>,
     private genderService: GenderService,
     private categoryService: CategoryService,
     private sizeGroupService: SizeGroupService,
@@ -121,6 +124,7 @@ export class ProductService {
       search?: string;
       familySKU?: string;
       productIds?: string[]; // Filter by specific product IDs
+      offerId?: string; // Products covered by an offer (explicit products or its category/gender scope)
       sortBy?: 'newest' | 'price_asc' | 'price_desc' | 'name_asc';
     },
   ): Promise<any> {
@@ -170,7 +174,21 @@ export class ProductService {
     // must send an array via $in — a bare `filter.sizes = value` only matches an exact
     // single-element array and silently drops every multi-size selection.
     if (filters?.sizes && filters.sizes.length > 0) {
-      filter.sizes = { $in: filters.sizes.map((s) => String(s).trim()) };
+      const sizes = filters.sizes.map((s) => String(s).trim());
+      if (filters.inStock) {
+        // A size only counts when that size itself has stock; products without per-size
+        // tracking fall back to their flat sizes list.
+        filter.$and = [
+          {
+            $or: [
+              { sizeStock: { $elemMatch: { size: { $in: sizes }, stock: { $gt: 0 } } } },
+              { 'sizeStock.0': { $exists: false }, sizes: { $in: sizes } },
+            ],
+          },
+        ];
+      } else {
+        filter.sizes = { $in: sizes };
+      }
     }
 
     if (filters?.minPrice !== undefined || filters?.maxPrice !== undefined) {
@@ -228,6 +246,9 @@ export class ProductService {
     if (filters?.productIds && filters.productIds.length > 0) {
       filter._id = { $in: filters.productIds.map(id => new Types.ObjectId(id)) };
     }
+    if (filters?.offerId) {
+      filter.$and = [...(filter.$and || []), await this.offerScopeFilter(filters.offerId)];
+    }
 
     const sortMap: Record<string, Record<string, 1 | -1>> = {
       newest: { createdAt: -1 },
@@ -265,12 +286,30 @@ export class ProductService {
       result.suggestions = await this.getBestSellers(6);
     }
 
-    // Search-as-you-type produces a unique key per keystroke that is almost never reused.
-    if (!searchTerm) {
+    // Search-as-you-type produces a unique key per keystroke that is almost never reused;
+    // offer listings follow offer edits, which don't invalidate the product cache.
+    if (!searchTerm && !filters?.offerId) {
       await this.cacheService.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
     }
 
     return result;
+  }
+
+  // Mirrors OfferService.appliesTo: listed products, plus the category/gender scope.
+  private async offerScopeFilter(offerId: string): Promise<Record<string, unknown>> {
+    const offer = await this.offerModel.findById(offerId).lean().exec();
+    if (!offer) throw new NotFoundException(`Offer with ID ${offerId} not found`);
+
+    const toIds = (ids: unknown[] = []) => ids.map((id) => new Types.ObjectId(String(id)));
+    const or: Record<string, unknown>[] = [];
+    if (offer.productIds?.length) or.push({ _id: { $in: toIds(offer.productIds) } });
+
+    const scope: Record<string, unknown> = {};
+    if (offer.categoryIds?.length) scope.categoryId = { $in: toIds(offer.categoryIds) };
+    if (offer.genderIds?.length) scope.genderId = { $in: toIds(offer.genderIds) };
+    if (Object.keys(scope).length) or.push(scope);
+
+    return or.length ? { $or: or } : { _id: null };
   }
 
   async findOne(id: string): Promise<Product> {
@@ -336,7 +375,7 @@ export class ProductService {
 
     if (product.relatedProductIds && product.relatedProductIds.length > 0) {
       const curated = await this.productModel
-        .find({ _id: { $in: product.relatedProductIds }, isActive: true })
+        .find({ _id: { $in: product.relatedProductIds }, isActive: true, stock: { $gt: 0 } })
         .select(selectFields)
         .limit(limit)
         .exec();
@@ -635,7 +674,7 @@ export class ProductService {
     categoryName?: string;
     productIds?: string[];
   }): Promise<string[]> {
-    const filter: any = { isActive: true };
+    const filter: any = { isActive: true, stock: { $gt: 0 } };
     if (filters?.genderId) {
       filter.genderId = new Types.ObjectId(filters.genderId);
     }
@@ -650,8 +689,17 @@ export class ProductService {
       filter._id = { $in: filters.productIds.map((id) => new Types.ObjectId(id)) };
     }
 
-    const sizes = await this.productModel.distinct('sizes', filter);
-    return (sizes as unknown as string[]).sort((a, b) => {
+    // Only sizes that can actually be bought: per-size stock when tracked, else the flat list.
+    const products = await this.productModel.find(filter).select('sizes sizeStock').lean().exec();
+    const sizes = new Set<string>();
+    for (const product of products) {
+      if (product.sizeStock?.length) {
+        product.sizeStock.filter((s) => s.stock > 0).forEach((s) => sizes.add(s.size));
+      } else {
+        (product.sizes || []).forEach((size) => sizes.add(size));
+      }
+    }
+    return [...sizes].sort((a, b) => {
       const numA = Number(a);
       const numB = Number(b);
       if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
@@ -686,7 +734,7 @@ export class ProductService {
 
     await this.categoryService.findOne(categoryId);
     const products = await this.productModel
-      .find({ categoryId: new Types.ObjectId(categoryId), isActive: true })
+      .find({ categoryId: new Types.ObjectId(categoryId), isActive: true, stock: { $gt: 0 } })
       .populate('genderId', 'name slug')
       .populate('categoryId', 'name slug')
       .sort({ name: 1 })
@@ -733,6 +781,7 @@ export class ProductService {
     const products = await this.productModel
       .find({
         isActive: true,
+        stock: { $gt: 0 },
         $or: [
           { name: { $regex: searchRegex } },
           { sku: { $regex: searchRegex } },

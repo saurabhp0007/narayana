@@ -227,6 +227,7 @@ export interface CartSummary {
   totalProductDiscount: number;
   totalOfferDiscount: number;
   totalDiscount: number;
+  shipping?: number;
   total: number;
   totalItems: number;
   itemCount: number;
@@ -265,6 +266,7 @@ export interface Order {
   items: OrderItem[];
   subtotal: number;
   discount: number;
+  shippingCharge?: number;
   totalAmount: number;
   totalItems: number;
   status: 'pending' | 'confirmed' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled';

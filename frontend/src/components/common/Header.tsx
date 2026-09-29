@@ -401,23 +401,16 @@ export default function Header() {
                         View All Offers
                       </Link>
                       <div className="grid grid-cols-3 gap-x-8 gap-y-3">
-                        {navbarOffers
-                          .filter((offer) => offer.productIds && offer.productIds.length > 0)
-                          .map((offer) => {
-                            const params = new URLSearchParams();
-                            params.set('productIds', offer.productIds.join(','));
-                            params.set('offerId', offer._id);
-                            return (
-                              <Link
-                                key={offer._id}
-                                href={`/products?${params.toString()}`}
-                                onClick={() => setIsMenuOpen(false)}
-                                className="text-sm text-gray-700 hover:text-gray-900 hover:underline transition-colors"
-                              >
-                                {offer.name}
-                              </Link>
-                            );
-                          })}
+                        {navbarOffers.map((offer) => (
+                          <Link
+                            key={offer._id}
+                            href={`/products?offerId=${offer._id}`}
+                            onClick={() => setIsMenuOpen(false)}
+                            className="text-sm text-gray-700 hover:text-gray-900 hover:underline transition-colors"
+                          >
+                            {offer.name}
+                          </Link>
+                        ))}
                       </div>
                     </div>
                   ) : activeDesktopGender ? (
@@ -612,23 +605,16 @@ export default function Header() {
                         >
                           View All Offers
                         </Link>
-                        {navbarOffers
-                          .filter((offer) => offer.productIds && offer.productIds.length > 0)
-                          .map((offer) => {
-                            const params = new URLSearchParams();
-                            params.set('productIds', offer.productIds.join(','));
-                            params.set('offerId', offer._id);
-                            return (
-                              <Link
-                                key={offer._id}
-                                href={`/products?${params.toString()}`}
-                                className="block px-6 py-2 text-sm text-gray-600 hover:text-gray-900"
-                                onClick={() => setIsMenuOpen(false)}
-                              >
-                                {offer.name}
-                              </Link>
-                            );
-                          })}
+                        {navbarOffers.map((offer) => (
+                          <Link
+                            key={offer._id}
+                            href={`/products?offerId=${offer._id}`}
+                            className="block px-6 py-2 text-sm text-gray-600 hover:text-gray-900"
+                            onClick={() => setIsMenuOpen(false)}
+                          >
+                            {offer.name}
+                          </Link>
+                        ))}
                       </motion.div>
                     )}
                   </AnimatePresence>
