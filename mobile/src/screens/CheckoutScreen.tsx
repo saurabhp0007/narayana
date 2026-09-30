@@ -308,6 +308,13 @@ export const CheckoutScreen = ({ navigation }: any) => {
               <Text style={styles.summaryLabel}>Shipping</Text>
               <Text style={styles.summaryValue}>₹{(summary.shipping || 0).toFixed(2)}</Text>
             </View>
+            {(summary.shippingBreakdown?.length ?? 0) > 1 &&
+              summary.shippingBreakdown!.map((bucket) => (
+                <View key={bucket.ruleId} style={[styles.summaryRow, styles.shippingBucketRow]}>
+                  <Text style={styles.shippingBucketText}>{bucket.label} × {bucket.quantity}</Text>
+                  <Text style={styles.shippingBucketText}>₹{bucket.amount.toFixed(2)}</Text>
+                </View>
+              ))}
             <View style={[styles.summaryRow, styles.totalRow]}>
               <Text style={styles.totalLabel}>Total</Text>
               <Text style={styles.totalValue}>₹{summary.total.toFixed(2)}</Text>
@@ -377,6 +384,8 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   summaryLabel: { fontSize: 14, color: colors.secondary },
   summaryValue: { fontSize: 14, color: colors.primary, fontWeight: '500' },
+  shippingBucketRow: { paddingLeft: 12, marginTop: -4 },
+  shippingBucketText: { fontSize: 12, color: colors.secondary },
   discountLabel: { fontSize: 14, color: colors.success },
   discountValue: { fontSize: 14, color: colors.success, fontWeight: '600' },
   totalRow: { borderTopWidth: 1, borderTopColor: colors.borderLight, paddingTop: 8, marginTop: 4, marginBottom: 0 },

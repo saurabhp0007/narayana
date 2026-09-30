@@ -342,6 +342,16 @@ export default function CartPage() {
                     <p className="text-sm text-gray-500">Shipping</p>
                     <p className="text-sm font-medium text-gray-900 tabular-nums">₹{(summary?.shipping || 0).toFixed(2)}</p>
                   </div>
+                  {(summary?.shippingBreakdown?.length ?? 0) > 1 && (
+                    <div className="-mt-2 space-y-1 pl-3">
+                      {summary!.shippingBreakdown!.map((bucket) => (
+                        <div key={bucket.ruleId} className="flex justify-between text-xs text-gray-400">
+                          <p>{bucket.label} × {bucket.quantity}</p>
+                          <p className="tabular-nums">₹{bucket.amount.toFixed(2)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="border-t border-gray-100 pt-3.5">
                     <div className="flex justify-between items-baseline">
                       <p className="text-base font-semibold text-gray-900">Total</p>

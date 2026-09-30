@@ -25,6 +25,7 @@ interface ProductTargets {
   categoryId?: string;
   footwearSubcategoryIds: Set<string>;
   shopSubcategoryIds: Set<string>;
+  slugs: Set<string>;
 }
 
 export const ruleCharge = (rule: Pick<ShippingRule, 'charges' | 'additionalCharge'>, qty: number): number => {
@@ -49,7 +50,16 @@ export class ShippingService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    if (await this.shippingRuleModel.exists({})) return;
+    if (await this.shippingRuleModel.exists({})) {
+      // Rules seeded before slug matching existed only hold the ids resolved at seed time.
+      for (const seed of SHIPPING_RULE_SEEDS) {
+        await this.shippingRuleModel.updateOne(
+          { name: seed.name, isFallback: false, $or: [{ slugs: { $exists: false } }, { slugs: { $size: 0 } }] },
+          { $set: { slugs: seed.slugs } },
+        );
+      }
+      return;
+    }
 
     const idsBySlug = async (model: Model<any>, slugs: string[]) =>
       (await model.find({ slug: { $in: slugs } }).select('_id').lean()).map((doc: any) => doc._id);
@@ -57,6 +67,7 @@ export class ShippingService implements OnModuleInit {
     for (const [index, seed] of SHIPPING_RULE_SEEDS.entries()) {
       await this.shippingRuleModel.create({
         name: seed.name,
+        slugs: seed.slugs,
         categoryIds: await idsBySlug(this.categoryModel, seed.slugs),
         footwearSubcategoryIds: await idsBySlug(this.footwearSubcategoryModel, seed.slugs),
         shopSubcategoryIds: await idsBySlug(this.shopSubcategoryModel, seed.slugs),
@@ -142,14 +153,15 @@ export class ShippingService implements OnModuleInit {
   }
 
   private matches(
-    rule: Pick<ShippingRule, 'categoryIds' | 'footwearSubcategoryIds' | 'shopSubcategoryIds'>,
+    rule: Pick<ShippingRule, 'categoryIds' | 'footwearSubcategoryIds' | 'shopSubcategoryIds' | 'slugs'>,
     targets?: ProductTargets,
   ): boolean {
     if (!targets) return false;
     return (
       rule.categoryIds.some((id) => String(id) === targets.categoryId) ||
       rule.footwearSubcategoryIds.some((id) => targets.footwearSubcategoryIds.has(String(id))) ||
-      rule.shopSubcategoryIds.some((id) => targets.shopSubcategoryIds.has(String(id)))
+      rule.shopSubcategoryIds.some((id) => targets.shopSubcategoryIds.has(String(id))) ||
+      (rule.slugs ?? []).some((slug) => targets.slugs.has(slug))
     );
   }
 
@@ -158,23 +170,40 @@ export class ShippingService implements OnModuleInit {
 
     const [products, footwearTiles, shopTiles] = await Promise.all([
       this.productModel.find({ _id: { $in: ids } }).select('categoryId').lean().exec(),
-      this.footwearSubcategoryModel.find({ productIds: { $in: ids } }).select('productIds').lean().exec(),
-      this.shopSubcategoryModel.find({ productIds: { $in: ids } }).select('productIds').lean().exec(),
+      this.footwearSubcategoryModel.find({ productIds: { $in: ids } }).select('productIds slug').lean().exec(),
+      this.shopSubcategoryModel.find({ productIds: { $in: ids } }).select('productIds slug').lean().exec(),
     ]);
+    const categories = await this.categoryModel
+      .find({ _id: { $in: products.map((product) => product.categoryId).filter(Boolean) } })
+      .select('slug')
+      .lean()
+      .exec();
+    const categorySlugs = new Map(categories.map((category) => [String(category._id), category.slug]));
 
     const result = new Map<string, ProductTargets>();
     for (const product of products) {
+      const categoryId = product.categoryId ? String(product.categoryId) : undefined;
+      const categorySlug = categoryId && categorySlugs.get(categoryId);
       result.set(String(product._id), {
-        categoryId: product.categoryId ? String(product.categoryId) : undefined,
+        categoryId,
         footwearSubcategoryIds: new Set(),
         shopSubcategoryIds: new Set(),
+        slugs: new Set(categorySlug ? [categorySlug] : []),
       });
     }
     for (const tile of footwearTiles) {
-      tile.productIds.forEach((id) => result.get(String(id))?.footwearSubcategoryIds.add(String(tile._id)));
+      tile.productIds.forEach((id) => {
+        const targets = result.get(String(id));
+        targets?.footwearSubcategoryIds.add(String(tile._id));
+        targets?.slugs.add(tile.slug);
+      });
     }
     for (const tile of shopTiles) {
-      tile.productIds.forEach((id) => result.get(String(id))?.shopSubcategoryIds.add(String(tile._id)));
+      tile.productIds.forEach((id) => {
+        const targets = result.get(String(id));
+        targets?.shopSubcategoryIds.add(String(tile._id));
+        targets?.slugs.add(tile.slug);
+      });
     }
     return result;
   }

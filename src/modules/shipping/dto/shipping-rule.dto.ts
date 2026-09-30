@@ -35,6 +35,12 @@ export class CreateShippingRuleDto {
   @IsMongoId({ each: true })
   shopSubcategoryIds?: string[];
 
+  @ApiPropertyOptional({ type: [String], description: 'Category / tile slugs this rule applies to' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  slugs?: string[];
+
   @ApiProperty({
     type: [Number],
     example: [150, 300, 400],

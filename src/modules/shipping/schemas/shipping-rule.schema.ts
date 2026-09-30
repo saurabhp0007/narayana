@@ -2,7 +2,8 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
 // A cart line lands in the first active rule (lowest priority) targeting its product's
-// category or one of its footwear/shop tiles; lines matching nothing use the fallback rule.
+// category or one of its footwear/shop tiles (by id, or by slug via `slugs`); lines
+// matching nothing use the fallback rule.
 // Charge for qty N = charges[N - 1] while N <= charges.length, then + additionalCharge per item.
 @Schema({ timestamps: true })
 export class ShippingRule extends Document {
@@ -17,6 +18,11 @@ export class ShippingRule extends Document {
 
   @Prop({ type: [Types.ObjectId], ref: 'ShopSubcategory', default: [] })
   shopSubcategoryIds: Types.ObjectId[];
+
+  // Category / tile slugs matched at calculation time, so categories and tiles created
+  // after the rule still pick it up without being linked by id.
+  @Prop({ type: [String], default: [] })
+  slugs: string[];
 
   @Prop({ type: [Number], required: true })
   charges: number[];

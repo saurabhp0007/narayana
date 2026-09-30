@@ -222,12 +222,20 @@ export interface CartItem {
   addedAt: string;
 }
 
+export interface ShippingBucket {
+  ruleId: string;
+  label: string;
+  quantity: number;
+  amount: number;
+}
+
 export interface CartSummary {
   subtotal: number;
   totalProductDiscount: number;
   totalOfferDiscount: number;
   totalDiscount: number;
   shipping?: number;
+  shippingBreakdown?: ShippingBucket[];
   total: number;
   totalItems: number;
   itemCount: number;
